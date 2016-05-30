@@ -33,13 +33,14 @@ TESTS = \
 	src/cache_test \
 	src/log_test \
 	src/env_test \
-	src/osd_test
+	src/osd_test \
+	modules/rados/rados_test
 
 # Put the object files in a subdirectory, but the application at the top of the object dir.
 PROGNAMES := $(notdir $(TESTS))
 
-CFLAGS += -I./include -I./src -I./modules $(PLATFORM_CCFLAGS) $(OPT)
-CXXFLAGS += -I./include -I./src -I./modules $(PLATFORM_CXXFLAGS) $(OPT)
+CFLAGS += -I./include -I./src $(PLATFORM_CCFLAGS) $(OPT)
+CXXFLAGS += -I./include -I./src $(PLATFORM_CXXFLAGS) $(OPT)
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
 LIBS += $(PLATFORM_LIBS)
@@ -73,13 +74,13 @@ $(STATIC_OUTDIR):
 $(STATIC_OUTDIR)/src: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
-$(STATIC_OUTDIR)/modules: | $(STATIC_OUTDIR)
+$(STATIC_OUTDIR)/modules/rados: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
 .PHONY: STATIC_OBJDIRS
 STATIC_OBJDIRS: \
 	$(STATIC_OUTDIR)/src \
-	$(STATIC_OUTDIR)/modules
+	$(STATIC_OUTDIR)/modules/rados
 
 $(STATIC_ALLOBJS): | STATIC_OBJDIRS
 
@@ -113,6 +114,9 @@ $(STATIC_OUTDIR)/env_test:src/env_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 
 $(STATIC_OUTDIR)/osd_test:src/osd_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/osd_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/rados_test:modules/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) modules/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(STATIC_OUTDIR)/%.o: %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@

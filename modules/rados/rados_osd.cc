@@ -48,26 +48,25 @@ class RadosOSD : public OSD {
     cluster_.shutdown();
   }
 
-  virtual Status NewSequentialObj(const Slice& name, SequentialFile** result) {
+  virtual Status NewSequentialObj(const Slice& name, SequentialFile** f) {
     if (Exists(name)) {
-      *result = new RadosSequentialFile(name, io_, true);
+      *f = new RadosSequentialFile(name, io_, true);
       return Status::OK();
     } else {
       return Status::NotFound(Slice());
     }
   }
 
-  virtual Status NewRandomAccessObj(const Slice& name,
-                                    RandomAccessFile** result) {
+  virtual Status NewRandomAccessObj(const Slice& name, RandomAccessFile** f) {
     if (Exists(name)) {
-      *result = new RadosRandomAccessFile(name, io_, true);
+      *f = new RadosRandomAccessFile(name, io_, true);
       return Status::OK();
     } else {
       return Status::NotFound(Slice());
     }
   }
 
-  virtual Status NewWritableObj(const Slice& name, WritableFile** result) {
+  virtual Status NewWritableObj(const Slice& name, WritableFile** f) {
     ceph::bufferlist bl;
     int r = io_.write_full(name.ToString(), bl);  // Truncate
     if (r < 0) {
@@ -76,10 +75,10 @@ class RadosOSD : public OSD {
       librados::IoCtx new_io;
       new_io.dup(io_);
       if (async_io_) {
-        *result = new RadosAsyncWritableFile(name, new_io, false);
+        *f = new RadosAsyncWritableFile(name, new_io, false);
         return Status::OK();
       } else {
-        *result = new RadosWritableFile(name, new_io, false);
+        *f = new RadosWritableFile(name, new_io, false);
         return Status::OK();
       }
     }
