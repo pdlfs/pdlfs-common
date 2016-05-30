@@ -18,6 +18,12 @@
 
 namespace pdlfs {
 
+class OSD;
+class Env;
+class SequentialFile;
+class RandomAccessFile;
+class WritableFile;
+
 // Create an OSD adaptor atop an existing Env instance. The caller may
 // specify a prefix so that all objects will be stored under that path.
 // If "env" is NULL, the result of Env::Default() will be used.

@@ -30,6 +30,8 @@ enum FileType {
   kInfoLogFile  // Either the current one, or an old one
 };
 
+static const int kMaxFileType = kInfoLogFile;
+
 // Return the string name of file type.
 extern const char* NameOfType(FileType type);
 
@@ -73,10 +75,10 @@ extern std::string InfoLogFileName(const std::string& dbname);
 // Return the name of the old info log file for "dbname".
 extern std::string OldInfoLogFileName(const std::string& dbname);
 
-// If filename is a leveldb file, store the type of the file in *type.
+// If filename is a db-owned file, store the type of the file in *type.
 // The number encoded in the filename is stored in *number.  If the
 // filename was successfully parsed, returns true.  Else return false.
-extern bool ParseFileName(const std::string& filename, uint64_t* number,
+extern bool ParseFileName(const Slice& filename, uint64_t* number,
                           FileType* type);
 
 // Make the CURRENT file point to the descriptor file with the

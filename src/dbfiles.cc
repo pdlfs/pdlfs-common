@@ -77,7 +77,7 @@ std::string OldInfoLogFileName(const std::string& dbname) {
 //    dbname/LOG.old
 //    dbname/MANIFEST-[0-9]+
 //    dbname/[0-9]+.(log|sst|ldb)
-bool ParseFileName(const std::string& fname, uint64_t* number, FileType* type) {
+bool ParseFileName(const Slice& fname, uint64_t* number, FileType* type) {
   Slice rest(fname);
   if (rest == "CURRENT") {
     *number = 0;
