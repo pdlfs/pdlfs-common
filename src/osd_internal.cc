@@ -44,7 +44,7 @@ static Status Access(const std::string& name, OSD* osd, uint64_t* time) {
 static bool Execute(Slice* input, HashSet* files, HashSet* garbage) {
   Slice fname;
   if (!input->empty()) {
-    char type = *input->data();
+    int type = (*input)[0];
     input->remove_prefix(1);
     if (type <= kMaxRecordType && GetLengthPrefixedSlice(input, &fname) &&
         !fname.empty()) {

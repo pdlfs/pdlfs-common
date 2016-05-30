@@ -38,8 +38,8 @@ TESTS = \
 # Put the object files in a subdirectory, but the application at the top of the object dir.
 PROGNAMES := $(notdir $(TESTS))
 
-CFLAGS += -I. -I./include -I./libs $(PLATFORM_CCFLAGS) $(OPT)
-CXXFLAGS += -I. -I./include -I./libs $(PLATFORM_CXXFLAGS) $(OPT)
+CFLAGS += -I./include -I./src -I./modules $(PLATFORM_CCFLAGS) $(OPT)
+CXXFLAGS += -I./include -I./src -I./modules $(PLATFORM_CXXFLAGS) $(OPT)
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
 LIBS += $(PLATFORM_LIBS)
@@ -48,8 +48,8 @@ STATIC_OUTDIR=build
 
 STATIC_PROGRAMS := $(addprefix $(STATIC_OUTDIR)/, $(PROGNAMES))
 
-TESTUTIL := $(STATIC_OUTDIR)/testutil.o
-TESTHARNESS := $(STATIC_OUTDIR)/testharness.o $(TESTUTIL)
+TESTUTIL := $(STATIC_OUTDIR)/src/testutil.o
+TESTHARNESS := $(STATIC_OUTDIR)/src/testharness.o $(TESTUTIL)
 
 STATIC_LIBOBJECTS := $(addprefix $(STATIC_OUTDIR)/, $(SOURCES:.cc=.o))
 
@@ -70,19 +70,23 @@ clean:
 $(STATIC_OUTDIR):
 	mkdir -p $@
 
-$(STATIC_OUTDIR)/common: | $(STATIC_OUTDIR)
+$(STATIC_OUTDIR)/src: | $(STATIC_OUTDIR)
+	mkdir -p $@
+
+$(STATIC_OUTDIR)/modules: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
 .PHONY: STATIC_OBJDIRS
 STATIC_OBJDIRS: \
-	$(STATIC_OUTDIR)/common \
+	$(STATIC_OUTDIR)/src \
+	$(STATIC_OUTDIR)/modules
 
 $(STATIC_ALLOBJS): | STATIC_OBJDIRS
 
 $(STATIC_OUTDIR)/pdlfs-common.a:$(STATIC_LIBOBJECTS)
 	rm -f $@
 	$(AR) -rs $@ $(STATIC_LIBOBJECTS)
-	
+
 $(STATIC_OUTDIR)/arena_test:src/arena_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/arena_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
@@ -110,8 +114,8 @@ $(STATIC_OUTDIR)/env_test:src/env_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 $(STATIC_OUTDIR)/osd_test:src/osd_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/osd_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
-$(STATIC_OUTDIR)/%.o: src/%.cc
+$(STATIC_OUTDIR)/%.o: %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(STATIC_OUTDIR)/%.o: src/%.c
+$(STATIC_OUTDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

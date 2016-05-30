@@ -15,7 +15,11 @@
 #
 #  -DPLATFORM_ATOMIC_PRESENT    if <atomic> is present
 #  -DPLATFORM_POSIX             if on POSIX-based platforms
+#
 #  -DSNAPPY                     if the Snappy library is present
+#  -DGLOG                       if the Google logging library is present
+#  -DGFLAGS                     if the Google flags library is present
+#  -DRADOS                      if the Ceph rados library is present
 #
 
 OUTPUT=$1
@@ -113,11 +117,11 @@ esac
 # except for the test and benchmark files. By default, find will output a list
 # of all files matching either rule, so we need to append -print to make the
 # prune take effect.
-DIRS="$PREFIX/src"
+DIRS="$PREFIX/src $PREFIX/modules"
 
 set -f # temporarily disable globbing so that our patterns aren't expanded
 PRUNE_TEST="-name *test*.cc -prune"
-SOURCE_FILES=`find $DIRS $PRUNE_TEST -o -name '*.cc' -print | sort | sed "s,^$PREFIX/src/,," | tr "\n" " "`
+SOURCE_FILES=`find $DIRS $PRUNE_TEST -o -name '*.cc' -print | sort | sed "s,^$PREFIX/,," | tr "\n" " "`
 
 set +f # re-enable globbing
 

@@ -9,6 +9,7 @@
 
 #include "pdlfs-common/osd.h"
 #include "pdlfs-common/env.h"
+#include "pdlfs-common/osd_env.h"
 
 #include "osd_internal.h"
 
@@ -19,6 +20,15 @@ OSD::~OSD() {}
 OSDEnv::OSDEnv(OSD* osd) { impl_ = new InternalImpl(osd); }
 
 OSDEnv::~OSDEnv() { delete impl_; }
+
+MountOptions::MountOptions()
+    : read_only(false),
+      create_if_missing(true),
+      error_if_exists(false),
+      sync(false),
+      paranoid_checks(false) {}
+
+UnmountOptions::UnmountOptions() : deletion(false) {}
 
 static bool ResolvePath(const Slice& path, Slice* parent, Slice* base) {
   const char* a = path.data();

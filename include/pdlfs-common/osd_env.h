@@ -26,12 +26,7 @@ namespace pdlfs {
 extern OSD* NewOSDAdaptor(const Slice& prefix = Slice("/"), Env* env = NULL);
 
 struct MountOptions {
-  MountOptions()
-      : read_only(false),
-        create_if_missing(true),
-        error_if_exists(false),
-        sync(false),
-        paranoid_checks(false) {}
+  MountOptions();
 
   // Mount a file set read-only. A read-only file set is immutable
   // so no membership updates are allowed.  It is safe for multiple
@@ -68,7 +63,7 @@ struct MountOptions {
 };
 
 struct UnmountOptions {
-  UnmountOptions() : deletion(false) {}
+  UnmountOptions();
 
   // If true, the file set will be physically removed after it is unmounted.
   // One cannot delete a set that still contains files.
