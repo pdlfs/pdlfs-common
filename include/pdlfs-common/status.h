@@ -129,7 +129,7 @@ inline void Status::operator=(const Status& s) {
   if (state_ != s.state_) {
     delete[] state_;
     if (s.state_ != NULL) {
-      CopyState(s.state_);
+      state_ = CopyState(s.state_);
     } else {
       state_ = NULL;
     }
