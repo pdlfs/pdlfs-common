@@ -1224,7 +1224,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   return result;
 }
 
-Compaction* VersionSet::PickCompaction() {
+Compaction* VersionSet::PickCompaction(bool allow_seek_compaction) {
   Compaction* c;
   int level;
 
@@ -1251,7 +1251,7 @@ Compaction* VersionSet::PickCompaction() {
       // Wrap-around to the beginning of the key space
       c->inputs_[0].push_back(current_->files_[level][0]);
     }
-  } else if (seek_compaction) {
+  } else if (allow_seek_compaction && seek_compaction) {
     level = current_->file_to_compact_level_;
     c = new Compaction(level);
     c->inputs_[0].push_back(current_->file_to_compact_);

@@ -140,6 +140,23 @@ struct Options {
   // Default: NULL
   const FilterPolicy* filter_policy;
 
+  // -------------------
+  // Dangerous zone - parameters for experts
+
+  // If true, no background compaction will be performed except for
+  // those triggered by MemTable dumps.
+  // All Tables will stay in Level-0 forever.
+  // This facilitates fast insertion speed at the expense of read performance.
+  // Default: false
+  bool disable_compaction;
+
+  // If true, compaction is no longer triggered by reads that have looked
+  // multiple Tables at different levels.
+  // In other words, all compaction jobs are direct results of insertions that
+  // make some levels to contain too many Table files.
+  // Default: false
+  bool disable_seek_compaction;
+
   Options();
 };
 

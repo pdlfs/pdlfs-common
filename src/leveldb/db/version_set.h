@@ -230,7 +230,7 @@ class VersionSet {
   // Returns NULL if there is no compaction to be done.
   // Otherwise returns a pointer to a heap-allocated object that
   // describes the compaction.  Caller should delete the result.
-  Compaction* PickCompaction();
+  Compaction* PickCompaction(bool allow_seek_compaction);
 
   // Return a compaction object for compacting the range [begin,end] in
   // the specified level.  Returns NULL if there is nothing in that
@@ -248,9 +248,11 @@ class VersionSet {
   Iterator* MakeInputIterator(Compaction* c);
 
   // Returns true iff some level needs a compaction.
-  bool NeedsCompaction() const {
+  bool NeedsCompaction(bool allow_seek_compaction) const {
     Version* v = current_;
-    return (v->compaction_score_ >= 1) || (v->file_to_compact_ != NULL);
+    if (v->compaction_score_ >= 1) return true;
+    if (allow_seek_compaction && v->file_to_compact_ != NULL) return true;
+    return false;
   }
 
   // Add all files listed in any live version to *live.

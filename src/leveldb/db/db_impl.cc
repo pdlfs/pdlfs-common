@@ -91,6 +91,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                                &internal_filter_policy_, raw_options)),
       owns_info_log_(options_.info_log != raw_options.info_log),
       owns_cache_(options_.block_cache != raw_options.block_cache),
+      disable_seek_compaction_(options_.disable_seek_compaction),
+      disable_compaction_(options_.disable_compaction),
       dbname_(dbname),
       db_lock_(NULL),
       shutting_down_(NULL),
@@ -114,6 +116,10 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
 
   versions_ =
       new VersionSet(dbname_, &options_, table_cache_, &internal_comparator_);
+
+  if (disable_compaction_) {
+    disable_seek_compaction_ = true;
+  }
 }
 
 DBImpl::~DBImpl() {
@@ -451,7 +457,9 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   if (s.ok() && meta.file_size > 0) {
     const Slice min_user_key = meta.smallest.user_key();
     const Slice max_user_key = meta.largest.user_key();
-    if (base != NULL) {
+    // If compaction has been disabled, all MemTable dumps should only
+    // go to Level-0.
+    if (!disable_compaction_ && base != NULL) {
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size, meta.smallest,
@@ -586,7 +594,8 @@ void DBImpl::MaybeScheduleCompaction() {
   } else if (!bg_error_.ok()) {
     // Already got an error; no more changes
   } else if (imm_ == NULL && manual_compaction_ == NULL &&
-             !versions_->NeedsCompaction()) {
+             (disable_compaction_ ||
+              !versions_->NeedsCompaction(!disable_seek_compaction_))) {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
@@ -640,8 +649,10 @@ void DBImpl::BackgroundCompaction() {
         m->level, (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
         (m->end ? m->end->DebugString().c_str() : "(end)"),
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
+  } else if (!disable_compaction_) {
+    c = versions_->PickCompaction(!disable_seek_compaction_);
   } else {
-    c = versions_->PickCompaction();
+    c = NULL;
   }
 
   Status status;
@@ -1246,7 +1257,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // Yield previous error
       s = bg_error_;
       break;
-    } else if (allow_delay &&
+    } else if (!disable_compaction_ && allow_delay &&
                versions_->NumLevelFiles(0) >=
                    config::kL0_SlowdownWritesTrigger) {
       // We are getting close to hitting a hard limit on the number of
@@ -1268,7 +1279,8 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
       bg_cv_.Wait();
-    } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
+    } else if (!disable_compaction_ &&
+               versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       bg_cv_.Wait();

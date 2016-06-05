@@ -31,7 +31,9 @@ Options::Options()
       block_size(4096),
       block_restart_interval(16),
       compression(kSnappyCompression),
-      filter_policy(NULL) {}
+      filter_policy(NULL),
+      disable_compaction(false),
+      disable_seek_compaction(false) {}
 
 ReadOptions::ReadOptions()
     : verify_checksums(false),
