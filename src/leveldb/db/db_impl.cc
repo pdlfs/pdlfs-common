@@ -23,6 +23,7 @@
 #include "leveldb/db/table_cache.h"
 #include "leveldb/db/version_set.h"
 #include "leveldb/db/write_batch_internal.h"
+#include "leveldb/iterator_wrapper.h"
 #include "leveldb/merger.h"
 #include "leveldb/two_level_iterator.h"
 
@@ -1369,6 +1370,107 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
     MutexLock l(&mutex_);
     v->Unref();
   }
+}
+
+Status DBImpl::Dump(const DumpOptions& options, const Range& r,
+                    const std::string& dump_dir, SequenceNumber* min_seq,
+                    SequenceNumber* max_seq) {
+  Status s;
+  SequenceNumber seq;
+  uint32_t ignored_seed;
+  ReadOptions opt;
+  opt.verify_checksums = options.verify_checksums;
+  IteratorWrapper iter(NewInternalIterator(opt, &seq, &ignored_seed));
+  if (options.snapshot != NULL) {
+    seq = reinterpret_cast<const SnapshotImpl*>(options.snapshot)->number_;
+  }
+
+  uint64_t file_size = 0;
+  uint64_t file_number = 1;
+  std::string fname = TableFileName(dump_dir, file_number);
+  env_->CreateDir(dump_dir);
+
+  std::string key_buf;
+  if (r.start.empty()) {
+    iter.SeekToFirst();
+  } else {
+    ParsedInternalKey ikey(r.start, kMaxSequenceNumber, kValueTypeForSeek);
+    AppendInternalKey(&key_buf, ikey);
+    iter.Seek(key_buf);
+  }
+
+  key_buf.resize(0);
+  if (iter.Valid() && BeforeUserLimit(iter.key(), r.limit)) {
+    WritableFile* file;
+    s = env_->NewWritableFile(fname, &file);
+    if (!s.ok()) {
+      return s;
+    }
+
+    if (min_seq != NULL) {
+      *min_seq = kMaxSequenceNumber;
+    }
+    if (max_seq != NULL) {
+      *max_seq = 0;
+    }
+    TableBuilder* builder = new TableBuilder(options_, file);
+    std::string* last_user_key = &key_buf;
+    while (s.ok() && iter.Valid() && BeforeUserLimit(iter.key(), r.limit)) {
+      ParsedInternalKey ikey;
+      if (!ParseInternalKey(iter.key(), &ikey)) {
+        s = Status::Corruption(Slice());
+      } else if (ikey.sequence <= seq) {
+        if (last_user_key->empty() ||
+            user_comparator()->Compare(ikey.user_key, *last_user_key) > 0) {
+          last_user_key->assign(ikey.user_key.data(), ikey.user_key.size());
+          switch (ikey.type) {
+            case kTypeDeletion:
+              break;
+            case kTypeValue:
+              builder->Add(iter.key(), iter.value());
+              if (min_seq != NULL) {
+                *min_seq = std::min(*min_seq, ikey.sequence);
+              }
+              if (max_seq != NULL) {
+                *max_seq = std::max(*max_seq, ikey.sequence);
+              }
+              break;
+          }
+        }
+      }
+      iter.Next();
+    }
+
+    if (s.ok() && builder->NumEntries() != 0) {
+      s = builder->Finish();
+      if (s.ok()) {
+        file_size = builder->FileSize();
+        assert(file_size != 0);
+      }
+    } else {
+      builder->Abandon();
+    }
+    delete builder;
+
+    if (s.ok()) {
+      s = file->Sync();
+    }
+    if (s.ok()) {
+      s = file->Close();
+    }
+    delete file;
+  }
+
+  if (s.ok()) {
+    s = iter.status();
+  }
+  if (s.ok() && file_size != 0) {
+    // OK
+  } else {
+    env_->DeleteFile(fname);
+  }
+
+  return s;
 }
 
 // Default implementations of convenience methods that subclasses of DB

@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "pdlfs-common/leveldb/db/options.h"
+#include "pdlfs-common/leveldb/db/dbformat.h"
 #include "pdlfs-common/leveldb/iterator.h"
 
 namespace pdlfs {
@@ -21,17 +21,10 @@ namespace pdlfs {
 struct Options;
 struct ReadOptions;
 struct WriteOptions;
+struct DumpOptions;
 
 class Snapshot;
 class WriteBatch;
-
-// Abstract handle to particular state of a DB.
-// A Snapshot is an immutable object and can therefore be safely
-// accessed from multiple threads without any external synchronization.
-class Snapshot {
- protected:
-  virtual ~Snapshot();
-};
 
 // A range of keys
 struct Range {
@@ -169,6 +162,15 @@ class DB {
   // Therefore the following call will compact the entire database:
   //    db->CompactRange(NULL, NULL);
   virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
+
+  // Extract a logic range of keys into raw Table files that will be stored
+  // under the specified dump directory.  If there is no key within the
+  // specified range, no files will be generated.  If "min_seq" or "max_seq"
+  // is not NULL, they are piggy-backed to the caller.
+  // Return OK on success, or a non-OK status on errors.
+  virtual Status Dump(const DumpOptions& options, const Range& range,
+                      const std::string& dest, SequenceNumber* min_seq,
+                      SequenceNumber* max_seq) = 0;
 
  private:
   // No copying allowed

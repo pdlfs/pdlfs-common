@@ -41,6 +41,8 @@ ReadOptions::ReadOptions()
 
 WriteOptions::WriteOptions() : sync(false) {}
 
+DumpOptions::DumpOptions() : verify_checksums(false), snapshot(NULL) {}
+
 // Fix user-supplied options to be reasonable
 template <class T, class V>
 static void ClipToRange(T* ptr, V minvalue, V maxvalue) {

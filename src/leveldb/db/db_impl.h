@@ -48,6 +48,9 @@ class DBImpl : public DB {
   virtual bool GetProperty(const Slice& property, std::string* value);
   virtual void GetApproximateSizes(const Range* range, int n, uint64_t* sizes);
   virtual void CompactRange(const Slice* begin, const Slice* end);
+  virtual Status Dump(const DumpOptions& options, const Range& range,
+                      const std::string& dest, SequenceNumber* min_seq,
+                      SequenceNumber* max_seq);
 
   // Extra methods (for testing) that are not in the public DB interface
 
@@ -197,6 +200,10 @@ class DBImpl : public DB {
 
   const Comparator* user_comparator() const {
     return internal_comparator_.user_comparator();
+  }
+  bool BeforeUserLimit(const Slice& ikey, const Slice& limit) {
+    if (limit.empty()) return true;
+    return user_comparator()->Compare(ExtractUserKey(ikey), limit) < 0;
   }
 };
 

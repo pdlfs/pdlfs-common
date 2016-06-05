@@ -8,6 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include "leveldb/db/db_test.h"
 #include "leveldb/db/db_impl.h"
 #include "leveldb/db/version_set.h"
 #include "leveldb/db/write_batch_internal.h"
@@ -300,6 +301,31 @@ class DBTest {
     return result;
   }
 
+  int FetchSize(const std::string& k) {
+    ReadOptions options;
+    char buf[1];
+    Slice result;
+    Status s = db_->Get(options, k, &result, buf, 0);
+    if (s.IsBufferFull()) {
+      ASSERT_TRUE(result.data() == NULL);
+      return result.size();
+    } else if (!s.ok()) {
+      return -1 * s.err_code();
+    }
+    return 0;
+  }
+
+  Slice FetchPrefix(const std::string& k, char* scratch, size_t scratch_size) {
+    ReadOptions options;
+    options.limit = scratch_size;
+    Slice result;
+    Status s = db_->Get(options, k, &result, scratch, scratch_size);
+    if (!s.ok()) {
+      result = Slice();
+    }
+    return result;
+  }
+
   // Return a string that contains all key,value pairs in order,
   // formatted like "(k1->v1)(k2->v2)".
   std::string Contents() {
@@ -522,6 +548,16 @@ TEST(DBTest, PutDeleteGet) {
     ASSERT_EQ("v2", Get("foo"));
     ASSERT_OK(db_->Delete(WriteOptions(), "foo"));
     ASSERT_EQ("NOT_FOUND", Get("foo"));
+  } while (ChangeOptions());
+}
+
+TEST(DBTest, Fetch) {
+  char buf[2];
+  do {
+    ASSERT_OK(db_->Put(WriteOptions(), "foo", "v1xxx"));
+    ASSERT_EQ("v1", FetchPrefix("foo", buf, 2));
+    ASSERT_OK(db_->Put(WriteOptions(), "foo", "v2yyyy"));
+    ASSERT_EQ(6, FetchSize("foo"));
   } while (ChangeOptions());
 }
 
@@ -1826,7 +1862,7 @@ namespace {
 typedef std::map<std::string, std::string> KVMap;
 }
 
-class ModelDB : public DB {
+class ModelDB : public EmptyDB {
  public:
   class ModelSnapshot : public Snapshot {
    public:
@@ -1834,23 +1870,7 @@ class ModelDB : public DB {
   };
 
   explicit ModelDB(const Options& options) : options_(options) {}
-  ~ModelDB() {}
-  virtual Status Put(const WriteOptions& o, const Slice& k, const Slice& v) {
-    return DB::Put(o, k, v);
-  }
-  virtual Status Delete(const WriteOptions& o, const Slice& key) {
-    return DB::Delete(o, key);
-  }
-  virtual Status Get(const ReadOptions& options, const Slice& key,
-                     std::string* value) {
-    assert(false);  // Not needed
-    return Status::NotFound(key);
-  }
-  virtual Status Get(const ReadOptions& options, const Slice& key, Slice* value,
-                     char* scratch, size_t scratch_size) {
-    assert(false);  // Not needed
-    return Status::NotFound(key);
-  }
+  virtual ~ModelDB() {}
   virtual Iterator* NewIterator(const ReadOptions& options) {
     if (options.snapshot == NULL) {
       KVMap* saved = new KVMap;
@@ -1867,7 +1887,6 @@ class ModelDB : public DB {
     snapshot->map_ = map_;
     return snapshot;
   }
-
   virtual void ReleaseSnapshot(const Snapshot* snapshot) {
     delete reinterpret_cast<const ModelSnapshot*>(snapshot);
   }
@@ -1884,16 +1903,6 @@ class ModelDB : public DB {
     handler.map_ = &map_;
     return batch->Iterate(&handler);
   }
-
-  virtual bool GetProperty(const Slice& property, std::string* value) {
-    return false;
-  }
-  virtual void GetApproximateSizes(const Range* r, int n, uint64_t* sizes) {
-    for (int i = 0; i < n; i++) {
-      sizes[i] = 0;
-    }
-  }
-  virtual void CompactRange(const Slice* start, const Slice* end) {}
 
  private:
   class ModelIter : public Iterator {

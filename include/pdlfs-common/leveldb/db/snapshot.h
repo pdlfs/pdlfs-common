@@ -10,10 +10,19 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "pdlfs-common/leveldb/db/db.h"
+#include <assert.h>
+
 #include "pdlfs-common/leveldb/db/dbformat.h"
 
 namespace pdlfs {
+
+// Abstract handle to particular state of a DB.
+// A Snapshot is an immutable object and can therefore be safely
+// accessed from multiple threads without any external synchronization.
+class Snapshot {
+ protected:
+  virtual ~Snapshot();
+};
 
 class SnapshotList;
 
