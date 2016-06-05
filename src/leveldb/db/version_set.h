@@ -77,11 +77,6 @@ class Version {
   };
   Status Get(const ReadOptions& options, const LookupKey& key, Buffer* val,
              GetStats* stats);
-  Status Get(const ReadOptions& options, const LookupKey& key, std::string* val,
-             GetStats* stats) {
-    buffer::StringBuf sb(val);
-    return Get(options, key, &sb, stats);
-  }
 
   // Adds "stats" into the current state.  Returns true if a new
   // compaction may need to be triggered, false otherwise.

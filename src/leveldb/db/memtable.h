@@ -67,10 +67,6 @@ class MemTable {
   // store a NotFound() error in *status and return true.
   // Else, return false.
   bool Get(const LookupKey& key, Buffer* value, size_t limit, Status* s);
-  bool Get(const LookupKey& key, std::string* value, Status* s) {
-    buffer::StringBuf sb(value);
-    return Get(key, &sb, 1 << 31, s);
-  }
 
  private:
   ~MemTable();  // Private since only Unref() should be used to delete it
