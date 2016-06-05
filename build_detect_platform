@@ -13,8 +13,9 @@
 #
 # The PLATFORM_CCFLAGS and PLATFORM_CXXFLAGS might include the following:
 #
-#  -DPLATFORM_ATOMIC_PRESENT    if <atomic> is present
-#  -DPLATFORM_POSIX             if on POSIX-based platforms
+#  -DPDLFS_PLATFORM_ATOMIC_PRESENT    if <atomic> is present
+#  -DPDLFS_PLATFORM_POSIX             if on POSIX-based platforms
+#  -DPDLFS_OS_*                       where "*" is the OS name
 #
 #  -DSNAPPY                     if the Snappy library is present
 #  -DGLOG                       if the Google logging library is present
@@ -70,42 +71,43 @@ esac
 
 case "$TARGET_OS" in
     CYGWIN_*)
+        # XXX: DEFINES LINUX TOO
         PLATFORM=OS_LINUX
-        COMMON_FLAGS="$MEMCMP_FLAG -lpthread -DOS_LINUX -DCYGWIN"
+        COMMON_FLAGS="$MEMCMP_FLAG -lpthread -DPDLFS_OS_LINUX -DPDLFS_OS_CYGWIN"
         PLATFORM_LDFLAGS="-lpthread"
         ;;
     Darwin)
         PLATFORM=OS_MACOSX
-        COMMON_FLAGS="$MEMCMP_FLAG -DOS_MACOSX"
+        COMMON_FLAGS="$MEMCMP_FLAG -DPDLFS_OS_MACOSX"
         ;;
     Linux)
         PLATFORM=OS_LINUX
-        COMMON_FLAGS="$MEMCMP_FLAG -pthread -DOS_LINUX"
+        COMMON_FLAGS="$MEMCMP_FLAG -pthread -DPDLFS_OS_LINUX"
         PLATFORM_LDFLAGS="-pthread"
         ;;
     SunOS)
         PLATFORM=OS_SOLARIS
-        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DOS_SOLARIS"
+        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DPDLFS_OS_SOLARIS"
         PLATFORM_LIBS="-lpthread -lrt"
         ;;
     FreeBSD)
         PLATFORM=OS_FREEBSD
-        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DOS_FREEBSD"
+        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DPDLFS_OS_FREEBSD"
         PLATFORM_LIBS="-lpthread"
         ;;
     NetBSD)
         PLATFORM=OS_NETBSD
-        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DOS_NETBSD"
+        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DPDLFS_OS_NETBSD"
         PLATFORM_LIBS="-lpthread -lgcc_s"
         ;;
     OpenBSD)
         PLATFORM=OS_OPENBSD
-        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DOS_OPENBSD"
+        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DPDLFS_OS_OPENBSD"
         PLATFORM_LDFLAGS="-pthread"
         ;;
     HP-UX)
         PLATFORM=OS_HPUX
-        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DOS_HPUX"
+        COMMON_FLAGS="$MEMCMP_FLAG -D_REENTRANT -DPDLFS_OS_HPUX"
         PLATFORM_LDFLAGS="-pthread"
         ;;
     *)
@@ -134,7 +136,7 @@ if [ "$CROSS_COMPILE" = "true" ]; then
     true
 else
     CXXOUTPUT="${TMPDIR}/pdlfs_common_build_detect_platform.$$"
-    COMMON_FLAGS="-Wpedantic -Wno-long-long -Wall -Wno-sign-compare $COMMON_FLAGS -DPLATFORM_POSIX"
+    COMMON_FLAGS="-Wpedantic -Wno-long-long -Wall -Wno-sign-compare $COMMON_FLAGS -DPDLFS_PLATFORM_POSIX"
 
     # Test whether glog is installed
     # https://github.com/google/glog/

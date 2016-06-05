@@ -10,13 +10,13 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#ifdef PLATFORM_ATOMIC_PRESENT
+#ifdef PDLFS_PLATFORM_ATOMIC_PRESENT
 #include <atomic>
 #endif
-#ifdef OS_WIN
+#ifdef PDLFS_OS_WIN
 #include <windows.h>
 #endif
-#ifdef OS_MACOSX
+#ifdef PDLFS_OS_MACOSX
 #include <libkern/OSAtomic.h>
 #endif
 
@@ -49,13 +49,14 @@ namespace port {
 
 // Define MemoryBarrier() if available
 // Windows on x86
-#if defined(OS_WIN) && defined(COMPILER_MSVC) && defined(ARCH_CPU_X86_FAMILY)
+#if defined(PDLFS_OS_WIN) && defined(COMPILER_MSVC) \
+        && defined(ARCH_CPU_X86_FAMILY)
 // windows.h already provides a MemoryBarrier(void) macro
 // http://msdn.microsoft.com/en-us/library/ms684208(v=vs.85).aspx
 #define PLATFORM_HAVE_MEMORY_BARRIER
 
 // Mac OS
-#elif defined(OS_MACOSX)
+#elif defined(PDLFS_OS_MACOSX)
 inline void MemoryBarrier() { OSMemoryBarrier(); }
 #define PLATFORM_HAVE_MEMORY_BARRIER
 

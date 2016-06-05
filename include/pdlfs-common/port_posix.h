@@ -11,7 +11,7 @@
  */
 
 #undef PLATFORM_IS_LITTLE_ENDIAN
-#if defined(OS_MACOSX)
+#if defined(PDLFS_OS_MACOSX)
 #include <machine/endian.h>
 #if defined(__DARWIN_LITTLE_ENDIAN) && defined(__DARWIN_BYTE_ORDER)
 #define PLATFORM_IS_LITTLE_ENDIAN \
@@ -30,18 +30,19 @@
 #define htole64(x) OSSwapHostToLittleInt64(x)
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #define le64toh(x) OSSwapLittleToHostInt64(x)
-#elif defined(OS_SOLARIS)
+#elif defined(PDLFS_OS_SOLARIS)
 #include <sys/isa_defs.h>
 #ifdef _LITTLE_ENDIAN
 #define PLATFORM_IS_LITTLE_ENDIAN true
 #else
 #define PLATFORM_IS_LITTLE_ENDIAN false
 #endif
-#elif defined(OS_FREEBSD) || defined(OS_OPENBSD) || defined(OS_NETBSD)
+#elif defined(PDLFS_OS_FREEBSD) || defined(PDLFS_OS_OPENBSD) || \
+        defined(PDLFS_OS_NETBSD)
 #include <sys/endian.h>
 #include <sys/types.h>
 #define PLATFORM_IS_LITTLE_ENDIAN (_BYTE_ORDER == _LITTLE_ENDIAN)
-#elif defined(OS_HPUX)
+#elif defined(PDLFS_OS_HPUX)
 #define PLATFORM_IS_LITTLE_ENDIAN false
 #else
 #include <endian.h>
@@ -66,16 +67,18 @@
 #define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
 #endif
 
-#if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
-    defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_HPUX) ||    \
-    defined(CYGWIN)
+#if defined(PDLFS_OS_MACOSX) || defined(PDLFS_OS_SOLARIS) || \
+    defined(PDLFS_OS_FREEBSD) || defined(PDLFS_OS_NETBSD) || \
+    defined(PDLFS_OS_OPENBSD) || defined(PDLFS_OS_HPUX) ||    \
+    defined(PDLFS_OS_CYGWIN)
 // Use fread/fwrite/fflush on platforms without _unlocked variants
 #define fread_unlocked fread
 #define fwrite_unlocked fwrite
 #define fflush_unlocked fflush
 #endif
 
-#if defined(OS_MACOSX) || defined(OS_FREEBSD) || defined(OS_OPENBSD)
+#if defined(PDLFS_OS_MACOSX) || defined(PDFS_OS_FREEBSD) || \
+    defined(PDLFS_OS_OPENBSD)
 // Use fsync() on platforms without fdatasync()
 #define fdatasync fsync
 #endif

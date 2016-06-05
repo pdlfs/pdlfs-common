@@ -11,6 +11,6 @@
  */
 
 // Include the appropriate platform specific file below.
-#if defined(PLATFORM_POSIX)
+#if defined(PDLFS_PLATFORM_POSIX)
 #include "pdlfs-common/port_posix.h"
 #endif

@@ -20,7 +20,7 @@
 
 namespace pdlfs {
 
-#if defined(OS_LINUX) && defined(_GNU_SOURCE)
+#if defined(PDLFS_OS_LINUX) && defined(_GNU_SOURCE)
 static Status OSCopyFile(const Slice& s, const Slice& t) {
   Status status;
   int r = -1;
@@ -261,7 +261,7 @@ class PosixEnv : public Env {
   }
 
   virtual Status CopyFile(const Slice& src, const Slice& target) {
-#if defined(OS_LINUX) && defined(_GNU_SOURCE)
+#if defined(PDLFS_OS_LINUX) && defined(_GNU_SOURCE)
     return OSCopyFile(src, target);
 #else
     Status status;
