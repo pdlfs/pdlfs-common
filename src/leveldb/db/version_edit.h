@@ -56,11 +56,12 @@ class VersionEdit {
   // Add the specified file at the specified number.
   // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
   // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
-  void AddFile(int level, uint64_t file, uint64_t file_size,
+  void AddFile(int level, uint64_t file, uint64_t file_size, SequenceOff off,
                const InternalKey& smallest, const InternalKey& largest) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
+    f.seq_off = off;
     f.smallest = smallest;
     f.largest = largest;
     new_files_.push_back(std::make_pair(level, f));

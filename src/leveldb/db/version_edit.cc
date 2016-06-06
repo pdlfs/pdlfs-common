@@ -85,6 +85,7 @@ void VersionEdit::EncodeTo(std::string* dst) const {
     PutVarint32(dst, new_files_[i].first);  // level
     PutVarint64(dst, f.number);
     PutVarint64(dst, f.file_size);
+    PutVarint64(dst, f.seq_off);
     PutLengthPrefixedSlice(dst, f.smallest.Encode());
     PutLengthPrefixedSlice(dst, f.largest.Encode());
   }
@@ -119,6 +120,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
   // Temporary storage for parsing
   int level;
   uint64_t number;
+  uint64_t off;
   FileMetaData f;
   Slice str;
   InternalKey key;
@@ -184,9 +186,10 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
 
       case kNewFile:
         if (GetLevel(&input, &level) && GetVarint64(&input, &f.number) &&
-            GetVarint64(&input, &f.file_size) &&
+            GetVarint64(&input, &f.file_size) && GetVarint64(&input, &off) &&
             GetInternalKey(&input, &f.smallest) &&
             GetInternalKey(&input, &f.largest)) {
+          f.seq_off = off;
           new_files_.push_back(std::make_pair(level, f));
         } else {
           msg = "new-file entry";
@@ -254,6 +257,8 @@ std::string VersionEdit::DebugString() const {
     AppendNumberTo(&r, f.number);
     r.append(" ");
     AppendNumberTo(&r, f.file_size);
+    r.append(" ");
+    AppendSignedNumberTo(&r, f.seq_off);
     r.append(" ");
     r.append(f.smallest.DebugString());
     r.append(" .. ");
