@@ -46,6 +46,7 @@ TESTS = \
 	src/leveldb/db/db_table_test \
 	src/leveldb/db/autocompact_test \
 	src/leveldb/db/corruption_test \
+	src/leveldb/db/bulk_test \
 	modules/rados/rados_test
 
 # Put the object files in a subdirectory, but the application at the top of the object dir.
@@ -170,6 +171,9 @@ $(STATIC_OUTDIR)/corruption_test:src/leveldb/db/corruption_test.cc $(STATIC_LIBO
 
 $(STATIC_OUTDIR)/autocompact_test:src/leveldb/db/autocompact_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/autocompact_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/bulk_test:src/leveldb/db/bulk_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/bulk_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(STATIC_OUTDIR)/rados_test:modules/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) modules/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)

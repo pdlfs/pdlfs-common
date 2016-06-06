@@ -139,7 +139,11 @@ class SequenceOffsetter : public Iterator {
     } else {
       // Don't apply offset when a seek wants to see all the versions
       if (parsed.sequence < kMaxSequenceNumber) {
-        parsed.sequence -= offset_;
+        if (offset_ > 0 && parsed.sequence < offset_) {
+          parsed.sequence = 0;
+        } else {
+          parsed.sequence -= offset_;
+        }
         assert(parsed.sequence <= kMaxSequenceNumber);
       }
       key_.clear();
@@ -196,6 +200,7 @@ class SequenceOffsetter : public Iterator {
         status_ = Status::Corruption("Malformed internal key");
       } else {
         parsed.sequence += offset_;
+        assert(parsed.sequence <= kMaxSequenceNumber);
         AppendInternalKey(&key_, parsed);
       }
     }
@@ -301,9 +306,13 @@ Status TableCache::Get(const ReadOptions& options, uint64_t fnum,
 
     // Don't apply offset when the get wants to see all the versions
     if (parsed.sequence != kMaxSequenceNumber) {
-      parsed.sequence -= off;
-      assert(parsed.sequence <= kMaxSequenceNumber);
+      if (off > 0 && parsed.sequence < off) {
+        parsed.sequence = 0;
+      } else {
+        parsed.sequence -= off;
+      }
 
+      assert(parsed.sequence <= kMaxSequenceNumber);
       // Prefer to use the static buffer if possible.
       // Use heap space for large keys which we don't expect to see frequently.
       if (key.size() <= sizeof(sp)) {
