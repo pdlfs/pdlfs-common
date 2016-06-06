@@ -48,8 +48,9 @@ class DBImpl : public DB {
   virtual bool GetProperty(const Slice& property, std::string* value);
   virtual void GetApproximateSizes(const Range* range, int n, uint64_t* sizes);
   virtual void CompactRange(const Slice* begin, const Slice* end);
-  virtual Status Dump(const DumpOptions& options, const Range& range,
-                      const std::string& dest, SequenceNumber* min_seq,
+  virtual Status AddL0Tables(const InsertOptions&, const std::string& dir);
+  virtual Status Dump(const DumpOptions&, const Range& range,
+                      const std::string& dir, SequenceNumber* min_seq,
                       SequenceNumber* max_seq);
 
   // Extra methods (for testing) that are not in the public DB interface
@@ -77,6 +78,7 @@ class DBImpl : public DB {
  private:
   friend class DB;
   struct CompactionState;
+  struct InsertionState;
   struct Writer;
 
   Status InternalGet(const ReadOptions&, const Slice& key, Buffer* buf);
@@ -122,6 +124,10 @@ class DBImpl : public DB {
   Status FinishCompactionOutputFile(CompactionState* compact, Iterator* input);
   Status InstallCompactionResults(CompactionState* compact);
 
+  Status LoadLevel0Table(InsertionState* insert);
+  Status MigrateLevel0Table(InsertionState* insert, const std::string& fname);
+  Status InsertLevel0Tables(InsertionState* insert);
+
   // Constant after construction
   Env* const env_;
   const InternalKeyComparator internal_comparator_;
@@ -163,6 +169,8 @@ class DBImpl : public DB {
 
   // Has a background compaction been scheduled or is running?
   bool bg_compaction_scheduled_;
+  // Has an outstanding bulk insertion request?
+  bool bulk_insert_in_progress_;
 
   // Information for a manual compaction
   struct ManualCompaction {
@@ -208,25 +216,5 @@ class DBImpl : public DB {
     return user_comparator()->Compare(ExtractUserKey(ikey), limit) < 0;
   }
 };
-
-inline Status DBImpl::Get(const ReadOptions& options, const Slice& key,
-                          std::string* value) {
-  buffer::StringBuf buf(value);
-  Status s = InternalGet(options, key, &buf);
-  return s;
-}
-
-inline Status DBImpl::Get(const ReadOptions& options, const Slice& key,
-                          Slice* value, char* scratch, size_t scratch_size) {
-  buffer::DirectBuf buf(scratch, scratch_size);
-  Status s = InternalGet(options, key, &buf);
-  if (s.ok()) {
-    *value = buf.Read();
-    if (value->data() == NULL) {
-      s = Status::BufferFull(Slice());
-    }
-  }
-  return s;
-}
 
 }  // namespace pdlfs

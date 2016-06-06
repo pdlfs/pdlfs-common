@@ -9,7 +9,9 @@
  */
 
 #include "pdlfs-common/leveldb/db/db.h"
+#include "pdlfs-common/leveldb/db/options.h"
 #include "pdlfs-common/leveldb/db/snapshot.h"
+#include "pdlfs-common/leveldb/db/write_batch.h"
 
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"
@@ -21,6 +23,20 @@ DB::~DB() {}
 Snapshot::~Snapshot() {}
 
 SnapshotImpl::~SnapshotImpl() {}
+
+// Default implementations of convenience methods that subclasses of DB
+// can call if they wish
+Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
+  WriteBatch batch;
+  batch.Put(key, value);
+  return Write(opt, &batch);
+}
+
+Status DB::Delete(const WriteOptions& opt, const Slice& key) {
+  WriteBatch batch;
+  batch.Delete(key);
+  return Write(opt, &batch);
+}
 
 Status DestroyDB(const std::string& dbname, const Options& options) {
   Env* env = options.env;

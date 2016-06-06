@@ -12,6 +12,8 @@
 
 #include <stddef.h>
 
+#include "pdlfs-common/leveldb/db/dbformat.h"
+
 namespace pdlfs {
 
 class Cache;
@@ -212,6 +214,42 @@ struct WriteOptions {
   bool sync;
 
   WriteOptions();
+};
+
+// During each bulk insertion, a set of table files are injected into
+// the database. The following are possible operations that can be
+// used to achieve this data injection.
+enum InsertMethod {
+  kRename = 0x0,  // May not supported by some underlying storage
+  kCopy = 0x1
+};
+
+// Options that control bulk insertion operations
+struct InsertOptions {
+  // Set to true to disable auto sequence number translation.
+  // This is useful when the keys bulk inserted are known to
+  // not conflict with any existing keys in the target database.
+  // Consider setting "suggested_max_seq" to an appropriate value
+  // when auto sequence number translation is disabled.
+  // Default: false
+  bool no_seq_adjustment;
+
+  // Request to forward the database's internal sequence number
+  // to at least "suggested_max_seq".
+  // Default: 0
+  SequenceNumber suggested_max_seq;
+
+  // If true, all data read from underlying storage will be
+  // verified against corresponding checksums.
+  // Default: false
+  bool verify_checksums;
+
+  // Which file system action should get performed when a
+  // table file is to be bulk inserted into the database.
+  // Default: kRename
+  InsertMethod method;
+
+  InsertOptions();
 };
 
 // Options that control dump operations

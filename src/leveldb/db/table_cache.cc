@@ -13,6 +13,7 @@
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"
+#include "pdlfs-common/leveldb/db/options.h"
 #include "pdlfs-common/leveldb/table.h"
 
 namespace pdlfs {

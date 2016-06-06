@@ -25,20 +25,20 @@ class EmptyDB : public DB {
   virtual Status Delete(const WriteOptions& o, const Slice& key) {
     return DB::Delete(o, key);
   }
-  virtual Status Get(const ReadOptions& options, const Slice& key,
+  virtual Status Get(const ReadOptions& o, const Slice& key,
                      std::string* value) {
     return Status::NotFound(key);
   }
-  virtual Status Get(const ReadOptions& options, const Slice& key, Slice* value,
+  virtual Status Get(const ReadOptions& o, const Slice& key, Slice* value,
                      char* scratch, size_t scratch_size) {
     return Status::NotFound(key);
   }
-  virtual Iterator* NewIterator(const ReadOptions& options) {
+  virtual Iterator* NewIterator(const ReadOptions& o) {
     return NewEmptyIterator();
   }
   virtual const Snapshot* GetSnapshot() { return NULL; }
   virtual void ReleaseSnapshot(const Snapshot* snapshot) {}
-  virtual Status Write(const WriteOptions& options, WriteBatch* batch) {
+  virtual Status Write(const WriteOptions& o, WriteBatch* batch) {
     return Status::BufferFull(Slice());
   }
   virtual bool GetProperty(const Slice& property, std::string* value) {
@@ -50,7 +50,10 @@ class EmptyDB : public DB {
     }
   }
   virtual void CompactRange(const Slice* start, const Slice* end) {}
-  virtual Status Dump(const DumpOptions& options, const Range& range,
+  virtual Status AddL0Tables(const InsertOptions& o, const std::string& dir) {
+    return Status::BufferFull(Slice());
+  }
+  virtual Status Dump(const DumpOptions& o, const Range& range,
                       const std::string& dir, SequenceNumber* min_seq,
                       SequenceNumber* max_seq) {
     return Status::OK();

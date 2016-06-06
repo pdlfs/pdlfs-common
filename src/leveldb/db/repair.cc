@@ -20,6 +20,7 @@
 #include "pdlfs-common/leveldb/comparator.h"
 #include "pdlfs-common/leveldb/db/db.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
+#include "pdlfs-common/leveldb/table_builder.h"
 #include "pdlfs-common/log_reader.h"
 #include "pdlfs-common/log_writer.h"
 

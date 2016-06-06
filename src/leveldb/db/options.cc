@@ -43,6 +43,12 @@ ReadOptions::ReadOptions()
 
 WriteOptions::WriteOptions() : sync(false) {}
 
+InsertOptions::InsertOptions()
+    : no_seq_adjustment(false),
+      suggested_max_seq(0),
+      verify_checksums(false),
+      method(kRename) {}
+
 DumpOptions::DumpOptions() : verify_checksums(false), snapshot(NULL) {}
 
 // Fix user-supplied options to be reasonable

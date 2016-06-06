@@ -21,6 +21,7 @@ namespace pdlfs {
 struct Options;
 struct ReadOptions;
 struct WriteOptions;
+struct InsertOptions;
 struct DumpOptions;
 
 class Snapshot;
@@ -163,13 +164,18 @@ class DB {
   //    db->CompactRange(NULL, NULL);
   virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
 
+  // Insert native Table files under a specified directory into Level-0.
+  // Return OK on success, or a non-OK status on errors.
+  virtual Status AddL0Tables(const InsertOptions& options,
+                             const std::string& src_dir) = 0;
+
   // Extract a logic range of keys into raw Table files that will be stored
   // under the specified dump directory.  If there is no key within the
   // specified range, no files will be generated.  If "min_seq" or "max_seq"
   // is not NULL, they are piggy-backed to the caller.
   // Return OK on success, or a non-OK status on errors.
   virtual Status Dump(const DumpOptions& options, const Range& range,
-                      const std::string& dest, SequenceNumber* min_seq,
+                      const std::string& dst_dir, SequenceNumber* min_seq,
                       SequenceNumber* max_seq) = 0;
 
  private:

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "pdlfs-common/leveldb/db/dbformat.h"
+#include "pdlfs-common/status.h"
 
 #include "leveldb/db/table_file.h"
 

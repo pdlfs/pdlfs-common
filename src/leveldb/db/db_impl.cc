@@ -25,6 +25,7 @@
 #include "leveldb/db/write_batch_internal.h"
 #include "leveldb/iterator_wrapper.h"
 #include "leveldb/merger.h"
+#include "leveldb/table_stats.h"
 #include "leveldb/two_level_iterator.h"
 
 #include "pdlfs-common/coding.h"
@@ -83,6 +84,28 @@ struct DBImpl::CompactionState {
       : compaction(c), outfile(NULL), builder(NULL), total_bytes(0) {}
 };
 
+struct DBImpl::InsertionState {
+  const InsertOptions* const options;
+
+  // Source table files involved in this bulk insertion
+  const std::string& source_dir;
+  std::vector<std::string> source_names;
+
+  // Table info
+  struct File {
+    uint64_t number;
+    uint64_t file_size;
+    InternalKey smallest, largest;
+    SequenceNumber min_seq, max_seq;
+  };
+  std::vector<File> files;
+
+  File* current_file() { return &files[files.size() - 1]; }
+
+  explicit InsertionState(const InsertOptions& options, const std::string& dir)
+      : options(&options), source_dir(dir) {}
+};
+
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     : env_(raw_options.env),
       internal_comparator_(raw_options.comparator),
@@ -105,6 +128,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       seed_(0),
       tmp_batch_(new WriteBatch),
       bg_compaction_scheduled_(false),
+      bulk_insert_in_progress_(false),
       manual_compaction_(NULL) {
   mem_->Ref();
   has_imm_.Release_Store(NULL);
@@ -126,7 +150,7 @@ DBImpl::~DBImpl() {
   // Wait for background work to finish
   mutex_.Lock();
   shutting_down_.Release_Store(this);  // Any non-NULL value is ok
-  while (bg_compaction_scheduled_) {
+  while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
     bg_cv_.Wait();
   }
   mutex_.Unlock();
@@ -629,6 +653,12 @@ void DBImpl::BackgroundCall() {
 void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
+  // Only a single background compaction may be scheduled at a time.
+  // And we make sure this one don't interfere with an ongoing bulk insertion.
+  while (bulk_insert_in_progress_) {
+    bg_cv_.Wait();
+  }
+
   if (imm_ != NULL) {
     CompactMemTable();
     return;
@@ -1078,11 +1108,33 @@ Status DBImpl::InternalGet(const ReadOptions& options, const Slice& key,
   }
 
   if (have_stat_update && current->UpdateStats(stats)) {
-    MaybeScheduleCompaction();
+    if (!disable_seek_compaction_) {
+      MaybeScheduleCompaction();
+    }
   }
   mem->Unref();
   if (imm != NULL) imm->Unref();
   current->Unref();
+  return s;
+}
+
+Status DBImpl::Get(const ReadOptions& options, const Slice& key,
+                   std::string* value) {
+  buffer::StringBuf buf(value);
+  Status s = InternalGet(options, key, &buf);
+  return s;
+}
+
+Status DBImpl::Get(const ReadOptions& options, const Slice& key, Slice* value,
+                   char* scratch, size_t scratch_size) {
+  buffer::DirectBuf buf(scratch, scratch_size);
+  Status s = InternalGet(options, key, &buf);
+  if (s.ok()) {
+    *value = buf.Read();
+    if (value->data() == NULL) {
+      s = Status::BufferFull(Slice());
+    }
+  }
   return s;
 }
 
@@ -1101,7 +1153,9 @@ Iterator* DBImpl::NewIterator(const ReadOptions& options) {
 void DBImpl::RecordReadSample(Slice key) {
   MutexLock l(&mutex_);
   if (versions_->current()->RecordReadSample(key)) {
-    MaybeScheduleCompaction();
+    if (!disable_seek_compaction_) {
+      MaybeScheduleCompaction();
+    }
   }
 }
 
@@ -1385,6 +1439,248 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
   }
 }
 
+static Status FetchFirstKey(Table* table, Iterator* iter, InternalKey* result,
+                            const Options& options) {
+  Status s;
+  iter->SeekToFirst();
+  if (!iter->Valid()) {
+    s = iter->status();
+    if (s.ok()) {
+      s = Status::Corruption("Table is empty");
+    }
+  } else {
+    result->DecodeFrom(iter->key());
+    const bool has_stats = TableStats::HasStats(table);
+    if (has_stats && options.paranoid_checks) {
+      ParsedInternalKey parsed;
+      if (!ParseInternalKey(result->Encode(), &parsed)) {
+        s = Status::Corruption("First key corrupted");
+      } else {
+        Slice reported = TableStats::FirstKey(table);
+        const InternalKeyComparator* icmp =
+            reinterpret_cast<const InternalKeyComparator*>(options.comparator);
+        if (icmp->Compare(result->Encode(), reported) != 0) {
+          s = Status::Corruption("First key corrupted");
+        }
+      }
+    }
+  }
+  return s;
+}
+
+static Status FetchLastKey(Table* table, Iterator* iter, InternalKey* result,
+                           const Options& options) {
+  Status s;
+  iter->SeekToLast();
+  if (!iter->Valid()) {
+    s = iter->status();
+    if (s.ok()) {
+      s = Status::Corruption("Table is empty");
+    }
+  } else {
+    result->DecodeFrom(iter->key());
+    const bool has_stats = TableStats::HasStats(table);
+    if (has_stats && options.paranoid_checks) {
+      ParsedInternalKey parsed;
+      if (!ParseInternalKey(result->Encode(), &parsed)) {
+        s = Status::Corruption("Last key corrupted");
+      } else {
+        Slice reported = TableStats::LastKey(table);
+        const InternalKeyComparator* icmp =
+            reinterpret_cast<const InternalKeyComparator*>(options.comparator);
+        if (icmp->Compare(result->Encode(), reported) != 0) {
+          s = Status::Corruption("Last key corrupted");
+        }
+      }
+    }
+  }
+  return s;
+}
+
+Status DBImpl::LoadLevel0Table(InsertionState* insert) {
+  Status s;
+  Table* table;
+  ReadOptions opt;
+  opt.verify_checksums = insert->options->verify_checksums;
+  InsertionState::File* info = insert->current_file();
+  Iterator* it =
+      table_cache_->NewIterator(opt, info->number, info->file_size, 0, &table);
+
+  s = it->status();
+  if (s.ok()) {
+    assert(table != NULL);
+    const bool has_stats = TableStats::HasStats(table);
+    if (!insert->options->no_seq_adjustment) {
+      if (!has_stats) {
+        s = Status::NotFound("Missing table stats");
+      } else {
+        info->min_seq = TableStats::MinSeq(table);
+        info->max_seq = TableStats::MaxSeq(table);
+        if (info->min_seq > info->max_seq) {
+          s = Status::Corruption("Min seq > Max seq?");
+        }
+      }
+    }
+    if (s.ok()) {
+      s = FetchFirstKey(table, it, &info->smallest, options_);
+    }
+    if (s.ok()) {
+      s = FetchLastKey(table, it, &info->largest, options_);
+    }
+  }
+
+  delete it;
+  return s;
+}
+
+Status DBImpl::MigrateLevel0Table(InsertionState* insert,
+                                  const std::string& source) {
+  mutex_.AssertHeld();
+  uint64_t file_number = versions_->NewFileNumber();
+  pending_outputs_.insert(file_number);
+
+  {
+    InsertionState::File info;
+    info.number = file_number;
+    info.min_seq = info.max_seq = kMaxSequenceNumber + 1;
+    insert->files.push_back(info);
+  }
+
+  mutex_.Unlock();
+  std::string target = TableFileName(dbname_, file_number);
+  Log(options_.info_log, "Insert #%llu: %s -> %s",
+      (unsigned long long)file_number, source.c_str(), target.c_str());
+
+  Status s;
+  uint64_t file_size;
+  s = env_->GetFileSize(source, &file_size);
+  if (s.ok()) {
+    if (file_size == 0) {
+      s = Status::Corruption(source, "file is empty");
+    } else {
+      switch (insert->options->method) {
+        case kCopy:
+          s = env_->CopyFile(source, target);
+          break;
+        case kRename:
+          s = env_->RenameFile(source, target);
+          break;
+      }
+    }
+    if (s.ok()) {
+      insert->current_file()->file_size = file_size;
+      s = LoadLevel0Table(insert);
+    }
+  }
+
+  Log(options_.info_log, "Insert #%llu: %llu bytes %s",
+      (unsigned long long)file_number, (unsigned long long)file_size,
+      s.ToString().c_str());
+
+  mutex_.Lock();
+
+  if (!s.ok()) {
+    versions_->ReuseFileNumber(file_number);
+  }
+  return s;
+}
+
+Status DBImpl::InsertLevel0Tables(InsertionState* insert) {
+  mutex_.AssertHeld();
+
+  Status s;
+  Version* base = versions_->current();
+  base->Ref();
+
+  std::string fname = insert->source_dir;
+  fname.push_back('/');
+  size_t prefix = fname.size();
+  for (size_t i = 0; i < insert->source_names.size(); i++) {
+    uint64_t ignored_number;
+    FileType type;
+    if (!ParseFileName(insert->source_names[i], &ignored_number, &type)) {
+      // Ignore non-DB files; usually they are "." and ".."
+    } else {
+      fname.resize(prefix);
+      fname.append(insert->source_names[i]);
+      switch (type) {
+        case kTableFile:
+          s = MigrateLevel0Table(insert, fname);
+          break;
+        default:
+          // Skip all other types of file
+          break;
+      }
+      if (!s.ok()) {
+        break;
+      }
+    }
+  }
+
+  if (s.ok() && shutting_down_.Acquire_Load()) {
+    s = Status::IOError("Deleting DB during bulk operation");
+  }
+
+  if (s.ok()) {
+    const int level = 0;
+    VersionEdit edit;
+    SequenceNumber next = versions_->LastSequence() + 1;
+    for (size_t i = 0; i < insert->files.size(); i++) {
+      SequenceOff off = 0;
+      if (!insert->options->no_seq_adjustment) {
+        assert(insert->files[i].min_seq <= insert->files[i].max_seq);
+        assert(insert->files[i].max_seq <= kMaxSequenceNumber);
+        off = next - insert->files[i].min_seq;
+        next += insert->files[i].max_seq - insert->files[i].min_seq + 1;
+      }
+      edit.AddFile(level, insert->files[i].number, insert->files[i].file_size,
+                   off, insert->files[i].smallest, insert->files[i].largest);
+    }
+    s = versions_->LogAndApply(&edit, &mutex_);
+    if (s.ok()) {
+      versions_->SetLastSequence(
+          std::max(next, insert->options->suggested_max_seq));
+    }
+  }
+
+  for (size_t i = 0; i < insert->files.size(); i++) {
+    pending_outputs_.erase(insert->files[i].number);
+  }
+  base->Unref();
+  return s;
+}
+
+Status DBImpl::AddL0Tables(const InsertOptions& options,
+                           const std::string& bulk_dir) {
+  Status s;
+  InsertionState insert(options, bulk_dir);
+  std::vector<std::string>* const names = &insert.source_names;
+  s = env_->GetChildren(bulk_dir, names);
+  if (!s.ok()) {
+    return s;
+  }
+
+  std::sort(names->begin(), names->end());
+
+  MutexLock l(&mutex_);
+  while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
+    bg_cv_.Wait();
+  }
+  bulk_insert_in_progress_ = true;
+  if (!shutting_down_.Acquire_Load()) {
+    s = InsertLevel0Tables(&insert);
+  } else {
+    s = Status::AssertionFailed("DB is being deleted", "no more operations");
+  }
+  bulk_insert_in_progress_ = false;
+  // A bulk insertion may introduce too many files in Level-0,
+  // so schedule another compaction if needed.
+  MaybeScheduleCompaction();
+  bg_cv_.SignalAll();
+
+  return s;
+}
+
 Status DBImpl::Dump(const DumpOptions& options, const Range& r,
                     const std::string& dump_dir, SequenceNumber* min_seq,
                     SequenceNumber* max_seq) {
@@ -1484,20 +1780,6 @@ Status DBImpl::Dump(const DumpOptions& options, const Range& r,
   }
 
   return s;
-}
-
-// Default implementations of convenience methods that subclasses of DB
-// can call if they wish
-Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
-  WriteBatch batch;
-  batch.Put(key, value);
-  return Write(opt, &batch);
-}
-
-Status DB::Delete(const WriteOptions& opt, const Slice& key) {
-  WriteBatch batch;
-  batch.Delete(key);
-  return Write(opt, &batch);
 }
 
 Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
