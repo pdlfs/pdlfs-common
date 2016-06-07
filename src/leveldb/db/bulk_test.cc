@@ -8,6 +8,8 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include <stdlib.h>
+
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"
@@ -44,9 +46,7 @@ class BulkTest {
   }
 
   ~BulkTest() {
-    for (size_t i = 0; i < snapshots_.size(); i++) {
-      db_->ReleaseSnapshot(snapshots_[i]);
-    }
+    ReleaseSnapshots();
     delete db_;
     DestroyDB(dbtmp_, Options());
     DestroyDB(dbname_, Options());
@@ -80,9 +80,31 @@ class BulkTest {
     return snapshots_.size() - 1;
   }
 
+  void ReleaseSnapshots() {
+    for (size_t i = 0; i < snapshots_.size(); i++) {
+      db_->ReleaseSnapshot(snapshots_[i]);
+    }
+    snapshots_.clear();
+  }
+
   void Flush() {
     DBImpl* impl = reinterpret_cast<DBImpl*>(db_);
     impl->TEST_CompactMemTable();
+  }
+
+  void Compact() {
+    DBImpl* impl = reinterpret_cast<DBImpl*>(db_);
+    impl->TEST_CompactRange(0, NULL, NULL);
+    ASSERT_EQ(0, NumTableFilesAtLevel(0));
+    impl->TEST_CompactRange(1, NULL, NULL);
+    ASSERT_EQ(0, NumTableFilesAtLevel(1));
+  }
+
+  int NumTableFilesAtLevel(int level) {
+    std::string property;
+    ASSERT_TRUE(db_->GetProperty(
+        "leveldb.num-files-at-level" + NumberToString(level), &property));
+    return atoi(property.c_str());
   }
 
   // Return number of files copies
@@ -111,9 +133,12 @@ class BulkTest {
     db_->AddL0Tables(opt, dbtmp_);
   }
 
-  void DestroyAndReopenDB() {
+  void ReopenDB(bool destroy = false) {
+    ReleaseSnapshots();
     delete db_;
-    DestroyDB(dbname_, options_);
+    if (destroy) {
+      DestroyDB(dbname_, options_);
+    }
     ASSERT_OK(DB::Open(options_, dbname_, &db_));
   }
 };
@@ -123,7 +148,7 @@ TEST(BulkTest, NoOverlappingKeys) {
   Put("p", "v1");
   Flush();
   CopyLDBToTmp();
-  DestroyAndReopenDB();
+  ReopenDB(true);
   Put("b", "v1");
   Put("q", "v1");
   BulkInsert(false, 10);
@@ -135,6 +160,17 @@ TEST(BulkTest, NoOverlappingKeys) {
   Put("b", "v2");
   Put("p", "v2");
   Put("q", "v2");
+  ASSERT_EQ("v2", Get("a"));
+  ASSERT_EQ("v2", Get("b"));
+  ASSERT_EQ("v2", Get("p"));
+  ASSERT_EQ("v2", Get("q"));
+  ReopenDB();
+  ASSERT_EQ("v2", Get("a"));
+  ASSERT_EQ("v2", Get("b"));
+  ASSERT_EQ("v2", Get("p"));
+  ASSERT_EQ("v2", Get("q"));
+  ReopenDB();
+  Compact();
   ASSERT_EQ("v2", Get("a"));
   ASSERT_EQ("v2", Get("b"));
   ASSERT_EQ("v2", Get("p"));
@@ -170,6 +206,14 @@ TEST(BulkTest, OverlappingKeys) {
   ASSERT_EQ("v1", Get("p", snapshots_[s3]));
   ASSERT_EQ("v3", Get("a", snapshots_[s4]));
   ASSERT_EQ("v3", Get("p", snapshots_[s4]));
+
+  ReopenDB();
+  ASSERT_EQ("v3", Get("a"));
+  ASSERT_EQ("v3", Get("p"));
+  ReopenDB();
+  Compact();
+  ASSERT_EQ("v3", Get("a"));
+  ASSERT_EQ("v3", Get("p"));
 }
 
 }  // namespace pdlfs
