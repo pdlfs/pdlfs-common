@@ -8,11 +8,11 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/version_set.h"
-#include "leveldb/db/memtable.h"
-#include "leveldb/db/table_cache.h"
-#include "leveldb/merger.h"
-#include "leveldb/two_level_iterator.h"
+#include "version_set.h"
+#include "memtable.h"
+#include "table_cache.h"
+#include "../merger.h"
+#include "../two_level_iterator.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/dbfiles.h"

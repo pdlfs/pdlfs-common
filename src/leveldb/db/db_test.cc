@@ -8,10 +8,10 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/db_test.h"
-#include "leveldb/db/db_impl.h"
-#include "leveldb/db/version_set.h"
-#include "leveldb/db/write_batch_internal.h"
+#include "db_test.h"
+#include "db_impl.h"
+#include "version_set.h"
+#include "write_batch_internal.h"
 
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/dbfiles.h"

@@ -8,11 +8,11 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/two_level_iterator.h"
+#include "two_level_iterator.h"
 
-#include "leveldb/block.h"
-#include "leveldb/format.h"
-#include "leveldb/iterator_wrapper.h"
+#include "block.h"
+#include "format.h"
+#include "iterator_wrapper.h"
 
 namespace pdlfs {
 namespace {

@@ -8,8 +8,8 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/memtable.h"
-#include "leveldb/db/write_batch_internal.h"
+#include "memtable.h"
+#include "write_batch_internal.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"

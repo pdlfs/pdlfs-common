@@ -8,7 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/db_impl.h"
+#include "db_impl.h"
 
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/leveldb/db/db.h"

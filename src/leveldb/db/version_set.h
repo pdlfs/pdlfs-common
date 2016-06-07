@@ -14,8 +14,8 @@
 #include <set>
 #include <vector>
 
-#include "leveldb/db/options_internal.h"
-#include "leveldb/db/version_edit.h"
+#include "options_internal.h"
+#include "version_edit.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
 #include "pdlfs-common/port.h"
 

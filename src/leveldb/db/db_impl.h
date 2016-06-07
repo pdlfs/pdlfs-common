@@ -13,7 +13,7 @@
 #include <deque>
 #include <set>
 
-#include "leveldb/db/options_internal.h"
+#include "options_internal.h"
 
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/leveldb/db/db.h"
