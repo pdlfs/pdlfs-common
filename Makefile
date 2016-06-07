@@ -34,6 +34,19 @@ TESTS = \
 	src/log_test \
 	src/env_test \
 	src/osd_test \
+	src/leveldb/bloom_test \
+	src/leveldb/filter_block_test \
+	src/leveldb/skiplist_test \
+	src/leveldb/table_test \
+	src/leveldb/db/write_batch_test \
+	src/leveldb/db/version_edit_test \
+	src/leveldb/db/version_set_test \
+	src/leveldb/db/dbformat_test \
+	src/leveldb/db/db_test \
+	src/leveldb/db/db_table_test \
+	src/leveldb/db/autocompact_test \
+	src/leveldb/db/corruption_test \
+	src/leveldb/db/bulk_test \
 	modules/rados/rados_test
 
 # Put the object files in a subdirectory, but the application at the top of the object dir.
@@ -74,12 +87,20 @@ $(STATIC_OUTDIR):
 $(STATIC_OUTDIR)/src: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
+$(STATIC_OUTDIR)/src/leveldb: | $(STATIC_OUTDIR)
+	mkdir -p $@
+
+$(STATIC_OUTDIR)/src/leveldb/db: | $(STATIC_OUTDIR)
+	mkdir -p $@
+
 $(STATIC_OUTDIR)/modules/rados: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
 .PHONY: STATIC_OBJDIRS
 STATIC_OBJDIRS: \
 	$(STATIC_OUTDIR)/src \
+	$(STATIC_OUTDIR)/src/leveldb \
+	$(STATIC_OUTDIR)/src/leveldb/db \
 	$(STATIC_OUTDIR)/modules/rados
 
 $(STATIC_ALLOBJS): | STATIC_OBJDIRS
@@ -114,6 +135,45 @@ $(STATIC_OUTDIR)/env_test:src/env_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 
 $(STATIC_OUTDIR)/osd_test:src/osd_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/osd_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/bloom_test:src/leveldb/bloom_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/bloom_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/filter_block_test:src/leveldb/filter_block_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/filter_block_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/skiplist_test:src/leveldb/skiplist_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/skiplist_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/table_test:src/leveldb/table_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/table_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/write_batch_test:src/leveldb/db/write_batch_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/write_batch_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/version_edit_test:src/leveldb/db/version_edit_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/version_edit_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/version_set_test:src/leveldb/db/version_set_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/version_set_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/dbformat_test:src/leveldb/db/dbformat_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/dbformat_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/db_test:src/leveldb/db/db_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/db_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/db_table_test:src/leveldb/db/db_table_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/db_table_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/corruption_test:src/leveldb/db/corruption_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/corruption_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/autocompact_test:src/leveldb/db/autocompact_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/autocompact_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/bulk_test:src/leveldb/db/bulk_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/bulk_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(STATIC_OUTDIR)/rados_test:modules/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) modules/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
