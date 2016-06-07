@@ -52,8 +52,8 @@ TESTS = \
 # Put the object files in a subdirectory, but the application at the top of the object dir.
 PROGNAMES := $(notdir $(TESTS))
 
-CFLAGS += -I./include -I./src $(PLATFORM_CCFLAGS) $(OPT)
-CXXFLAGS += -I./include -I./src $(PLATFORM_CXXFLAGS) $(OPT)
+CFLAGS += -I./include $(PLATFORM_CCFLAGS) $(OPT)
+CXXFLAGS += -I./include $(PLATFORM_CXXFLAGS) $(OPT)
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
 LIBS += $(PLATFORM_LIBS)

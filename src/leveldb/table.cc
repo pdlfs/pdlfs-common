@@ -8,11 +8,11 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/block.h"
-#include "leveldb/filter_block.h"
-#include "leveldb/format.h"
-#include "leveldb/table_stats.h"
-#include "leveldb/two_level_iterator.h"
+#include "block.h"
+#include "filter_block.h"
+#include "format.h"
+#include "table_stats.h"
+#include "two_level_iterator.h"
 
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/coding.h"

@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include "leveldb/skiplist.h"
+#include "../skiplist.h"
 
 #include "pdlfs-common/arena.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"

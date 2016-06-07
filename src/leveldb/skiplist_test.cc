@@ -8,7 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/skiplist.h"
+#include "skiplist.h"
 
 #include "pdlfs-common/arena.h"
 #include "pdlfs-common/env.h"

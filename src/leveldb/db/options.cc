@@ -14,7 +14,7 @@
 #include "pdlfs-common/leveldb/comparator.h"
 #include "pdlfs-common/leveldb/filter_policy.h"
 
-#include "leveldb/db/options_internal.h"
+#include "options_internal.h"
 
 namespace pdlfs {
 

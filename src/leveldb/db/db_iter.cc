@@ -8,8 +8,8 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/db_iter.h"
-#include "leveldb/db/db_impl.h"
+#include "db_iter.h"
+#include "db_impl.h"
 
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"

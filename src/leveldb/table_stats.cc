@@ -12,7 +12,7 @@
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
 
-#include "leveldb/table_stats.h"
+#include "table_stats.h"
 
 namespace pdlfs {
 

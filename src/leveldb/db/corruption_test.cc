@@ -13,8 +13,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "leveldb/db/db_impl.h"
-#include "leveldb/db/version_set.h"
+#include "db_impl.h"
+#include "version_set.h"
 
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/dbfiles.h"

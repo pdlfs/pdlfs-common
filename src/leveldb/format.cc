@@ -8,7 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/format.h"
+#include "format.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/crc32c.h"
@@ -16,7 +16,7 @@
 #include "pdlfs-common/leveldb/db/options.h"
 #include "pdlfs-common/port.h"
 
-#include "leveldb/block.h"
+#include "block.h"
 
 namespace pdlfs {
 

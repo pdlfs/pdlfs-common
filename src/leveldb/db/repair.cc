@@ -8,12 +8,12 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/builder.h"
-#include "leveldb/db/db_impl.h"
-#include "leveldb/db/memtable.h"
-#include "leveldb/db/table_cache.h"
-#include "leveldb/db/version_edit.h"
-#include "leveldb/db/write_batch_internal.h"
+#include "builder.h"
+#include "db_impl.h"
+#include "memtable.h"
+#include "table_cache.h"
+#include "version_edit.h"
+#include "write_batch_internal.h"
 
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"

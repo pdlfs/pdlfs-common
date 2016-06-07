@@ -8,7 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/memtable.h"
+#include "memtable.h"
 
 #include <algorithm>
 

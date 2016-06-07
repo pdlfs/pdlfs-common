@@ -8,9 +8,9 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/merger.h"
+#include "merger.h"
 
-#include "leveldb/iterator_wrapper.h"
+#include "iterator_wrapper.h"
 #include "pdlfs-common/leveldb/comparator.h"
 #include "pdlfs-common/leveldb/iterator.h"
 

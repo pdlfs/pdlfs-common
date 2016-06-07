@@ -8,8 +8,8 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/db/version_edit.h"
-#include "leveldb/db/version_set.h"
+#include "version_edit.h"
+#include "version_set.h"
 
 #include "pdlfs-common/coding.h"
 

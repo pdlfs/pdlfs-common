@@ -16,7 +16,7 @@
 #include "pdlfs-common/testharness.h"
 #include "pdlfs-common/testutil.h"
 
-#include "leveldb/db/db_impl.h"
+#include "db_impl.h"
 
 namespace pdlfs {
 

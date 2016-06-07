@@ -8,7 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/block_builder.h"
+#include "block_builder.h"
 
 #include <assert.h>
 #include <algorithm>

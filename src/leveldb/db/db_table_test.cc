@@ -11,12 +11,12 @@
 #include <map>
 #include <string>
 
-#include "leveldb/block.h"
-#include "leveldb/block_builder.h"
-#include "leveldb/db/memtable.h"
-#include "leveldb/db/options_internal.h"
-#include "leveldb/db/write_batch_internal.h"
-#include "leveldb/format.h"
+#include "../block.h"
+#include "../block_builder.h"
+#include "memtable.h"
+#include "options_internal.h"
+#include "write_batch_internal.h"
+#include "../format.h"
 
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/leveldb/db/db.h"

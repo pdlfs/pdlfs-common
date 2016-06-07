@@ -8,7 +8,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "leveldb/filter_block.h"
+#include "filter_block.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/leveldb/filter_policy.h"

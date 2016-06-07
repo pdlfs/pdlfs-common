@@ -10,7 +10,7 @@
 #include <map>
 #include <string>
 
-#include "leveldb/table_stats.h"
+#include "table_stats.h"
 
 #include "pdlfs-common/leveldb/comparator.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
