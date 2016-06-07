@@ -364,10 +364,11 @@ class Compaction {
   friend class Version;
   friend class VersionSet;
 
-  explicit Compaction(int level);
+  explicit Compaction(const Options* options, int level);
 
   int level_;
   uint64_t max_output_file_size_;
+  int64_t max_grand_parent_overlap_bytes_;
   Version* input_version_;
   VersionEdit edit_;
 

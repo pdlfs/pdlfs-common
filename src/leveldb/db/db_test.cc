@@ -1022,7 +1022,7 @@ TEST(DBTest, RepeatedWritesToSameKey) {
 
   // We must have at most one file per level except for level-0,
   // which may have up to kL0_StopWritesTrigger files.
-  const int kMaxFiles = config::kNumLevels + config::kL0_StopWritesTrigger;
+  const int kMaxFiles = config::kNumLevels + options.l0_hard_limit;
 
   Random rnd(301);
   std::string value = RandomString(&rnd, 2 * options.write_buffer_size);

@@ -33,7 +33,13 @@ Options::Options()
       compression(kSnappyCompression),
       filter_policy(NULL),
       disable_compaction(false),
-      disable_seek_compaction(false) {}
+      disable_seek_compaction(false),
+      table_file_size(2 * 1048576),
+      level_factor(10),
+      l1_compaction_trigger(5),
+      l0_compaction_trigger(4),
+      l0_soft_limit(8),
+      l0_hard_limit(12) {}
 
 ReadOptions::ReadOptions()
     : verify_checksums(false),

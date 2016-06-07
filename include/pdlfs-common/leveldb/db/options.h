@@ -159,6 +159,30 @@ struct Options {
   // Default: false
   bool disable_seek_compaction;
 
+  // The targeted size of each Table file before compression.
+  // Default: 2MB
+  size_t table_file_size;
+
+  // The size ratio between two consecutive levels.
+  // Default: 10
+  int level_factor;
+
+  // Number of files in Level-1 until compaction starts.
+  // Default: 5
+  int l1_compaction_trigger;
+
+  // Number of files in Level-0 until compaction starts.
+  // Default: 4
+  int l0_compaction_trigger;
+
+  // Number of files in Level-0 until writes are slowed down.
+  // Default: 8
+  int l0_soft_limit;
+
+  // Number of files in Level-0 until writes are entirely stalled.
+  // Default: 12
+  int l0_hard_limit;
+
   Options();
 };
 

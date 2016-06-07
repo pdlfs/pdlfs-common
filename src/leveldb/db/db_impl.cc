@@ -1313,8 +1313,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       s = bg_error_;
       break;
     } else if (!disable_compaction_ && allow_delay &&
-               versions_->NumLevelFiles(0) >=
-                   config::kL0_SlowdownWritesTrigger) {
+               versions_->NumLevelFiles(0) >= options_.l0_soft_limit) {
       // We are getting close to hitting a hard limit on the number of
       // L0 files.  Rather than delaying a single write by several
       // seconds when we hit the hard limit, start delaying each
@@ -1335,7 +1334,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       Log(options_.info_log, "Current memtable full; waiting...\n");
       bg_cv_.Wait();
     } else if (!disable_compaction_ &&
-               versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
+               versions_->NumLevelFiles(0) >= options_.l0_hard_limit) {
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       bg_cv_.Wait();
