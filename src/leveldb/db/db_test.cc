@@ -988,6 +988,66 @@ TEST(DBTest, RecoverWithLargeLog) {
   ASSERT_GT(NumTableFilesAtLevel(0), 1);
 }
 
+TEST(DBTest, NoCompaction) {
+  Options options = CurrentOptions();
+  options.disable_compaction = true;
+  options.disable_seek_compaction = true;
+  Reopen(&options);
+
+  const int N = options.l0_hard_limit + 1;
+
+  for (int i = 0; i < N; i++) {
+    Put("100", "v100");
+    Put("900", "v900");
+    dbfull()->TEST_CompactMemTable();
+  }
+
+  ASSERT_GT(NumTableFilesAtLevel(0), options.l0_hard_limit);
+  ASSERT_EQ(NumTableFilesAtLevel(1), 0);
+  ASSERT_EQ(NumTableFilesAtLevel(2), 0);
+  ASSERT_EQ(NumTableFilesAtLevel(3), 0);
+}
+
+TEST(DBTest, NoSeekCompaction) {
+  ASSERT_EQ(config::kMaxMemCompactLevel, 2) << "Fix test to match config";
+
+  Options options = CurrentOptions();
+  options.disable_seek_compaction = true;
+  Reopen(&options);
+
+  const int N = 2 + options.l0_compaction_trigger - 1;
+
+  for (int i = 0; i < N; i++) {
+    Put("100", "v100");
+    Put("900", "v900");
+    dbfull()->TEST_CompactMemTable();
+  }
+
+  ASSERT_EQ(NumTableFilesAtLevel(0), options.l0_compaction_trigger - 1);
+  ASSERT_EQ(NumTableFilesAtLevel(1), 1);
+  ASSERT_EQ(NumTableFilesAtLevel(2), 1);
+  ASSERT_EQ(NumTableFilesAtLevel(3), 0);
+
+  for (int i = 0; i < 1000; i++) {
+    ASSERT_EQ("NOT_FOUND", Get("missing"));
+  }
+
+  ASSERT_EQ(NumTableFilesAtLevel(0), options.l0_compaction_trigger - 1);
+  ASSERT_EQ(NumTableFilesAtLevel(1), 1);
+  ASSERT_EQ(NumTableFilesAtLevel(2), 1);
+  ASSERT_EQ(NumTableFilesAtLevel(3), 0);
+
+  options = CurrentOptions();
+  options.disable_seek_compaction = false;
+  Reopen(&options);
+
+  for (int i = 0; i < 1000; i++) {
+    ASSERT_EQ("NOT_FOUND", Get("600"));
+  }
+
+  ASSERT_LT(NumTableFilesAtLevel(0), options.l0_compaction_trigger - 1);
+}
+
 TEST(DBTest, CompactionsGenerateMultipleFiles) {
   Options options = CurrentOptions();
   options.write_buffer_size = 100000000;  // Large write buffer

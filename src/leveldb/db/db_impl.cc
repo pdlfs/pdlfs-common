@@ -114,8 +114,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                                &internal_filter_policy_, raw_options)),
       owns_info_log_(options_.info_log != raw_options.info_log),
       owns_cache_(options_.block_cache != raw_options.block_cache),
-      disable_seek_compaction_(options_.disable_seek_compaction),
-      disable_compaction_(options_.disable_compaction),
+      allow_seek_compaction_(!options_.disable_seek_compaction),
+      allow_compaction_(!options_.disable_compaction),
       dbname_(dbname),
       db_lock_(NULL),
       shutting_down_(NULL),
@@ -141,8 +141,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
   versions_ =
       new VersionSet(dbname_, &options_, table_cache_, &internal_comparator_);
 
-  if (disable_compaction_) {
-    disable_seek_compaction_ = true;
+  if (!allow_compaction_) {
+    allow_seek_compaction_ = false;
   }
 }
 
@@ -483,7 +483,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     const Slice max_user_key = meta.largest.user_key();
     // If compaction has been disabled, all MemTable dumps should only
     // go to Level-0.
-    if (!disable_compaction_ && base != NULL) {
+    if (allow_compaction_ && base != NULL) {
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size, meta.seq_off,
@@ -618,8 +618,8 @@ void DBImpl::MaybeScheduleCompaction() {
   } else if (!bg_error_.ok()) {
     // Already got an error; no more changes
   } else if (imm_ == NULL && manual_compaction_ == NULL &&
-             (disable_compaction_ ||
-              !versions_->NeedsCompaction(!disable_seek_compaction_))) {
+             (!allow_compaction_ ||
+              !versions_->NeedsCompaction(allow_seek_compaction_))) {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
@@ -679,8 +679,8 @@ void DBImpl::BackgroundCompaction() {
         m->level, (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
         (m->end ? m->end->DebugString().c_str() : "(end)"),
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
-  } else if (!disable_compaction_) {
-    c = versions_->PickCompaction(!disable_seek_compaction_);
+  } else if (allow_compaction_) {
+    c = versions_->PickCompaction(allow_seek_compaction_);
   } else {
     c = NULL;
   }
@@ -1108,7 +1108,7 @@ Status DBImpl::InternalGet(const ReadOptions& options, const Slice& key,
   }
 
   if (have_stat_update && current->UpdateStats(stats)) {
-    if (!disable_seek_compaction_) {
+    if (allow_seek_compaction_) {
       MaybeScheduleCompaction();
     }
   }
@@ -1153,7 +1153,7 @@ Iterator* DBImpl::NewIterator(const ReadOptions& options) {
 void DBImpl::RecordReadSample(Slice key) {
   MutexLock l(&mutex_);
   if (versions_->current()->RecordReadSample(key)) {
-    if (!disable_seek_compaction_) {
+    if (allow_seek_compaction_) {
       MaybeScheduleCompaction();
     }
   }
@@ -1312,7 +1312,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // Yield previous error
       s = bg_error_;
       break;
-    } else if (!disable_compaction_ && allow_delay &&
+    } else if (allow_compaction_ && allow_delay &&
                versions_->NumLevelFiles(0) >= options_.l0_soft_limit) {
       // We are getting close to hitting a hard limit on the number of
       // L0 files.  Rather than delaying a single write by several
@@ -1333,7 +1333,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
       bg_cv_.Wait();
-    } else if (!disable_compaction_ &&
+    } else if (allow_compaction_ &&
                versions_->NumLevelFiles(0) >= options_.l0_hard_limit) {
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");
