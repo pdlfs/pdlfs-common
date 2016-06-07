@@ -9,9 +9,9 @@
  */
 
 #include "builder.h"
+#include "../table_stats.h"
 #include "table_cache.h"
 #include "version_edit.h"
-#include "../table_stats.h"
 
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"

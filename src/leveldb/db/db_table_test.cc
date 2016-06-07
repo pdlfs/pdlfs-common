@@ -13,10 +13,10 @@
 
 #include "../block.h"
 #include "../block_builder.h"
+#include "../format.h"
 #include "memtable.h"
 #include "options_internal.h"
 #include "write_batch_internal.h"
-#include "../format.h"
 
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/leveldb/db/db.h"

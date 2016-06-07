@@ -15,7 +15,11 @@
 #include <string>
 #include <vector>
 
-#include "block.h"
+#include "../block.h"
+#include "../iterator_wrapper.h"
+#include "../merger.h"
+#include "../table_stats.h"
+#include "../two_level_iterator.h"
 #include "builder.h"
 #include "db_impl.h"
 #include "db_iter.h"
@@ -23,10 +27,6 @@
 #include "table_cache.h"
 #include "version_set.h"
 #include "write_batch_internal.h"
-#include "../iterator_wrapper.h"
-#include "../merger.h"
-#include "../table_stats.h"
-#include "../two_level_iterator.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/dbfiles.h"

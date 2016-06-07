@@ -9,10 +9,10 @@
  */
 
 #include "version_set.h"
-#include "memtable.h"
-#include "table_cache.h"
 #include "../merger.h"
 #include "../two_level_iterator.h"
+#include "memtable.h"
+#include "table_cache.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/dbfiles.h"

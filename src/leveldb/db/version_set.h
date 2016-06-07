@@ -15,9 +15,9 @@
 #include <vector>
 
 #include "options_internal.h"
-#include "version_edit.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
 #include "pdlfs-common/port.h"
+#include "version_edit.h"
 
 // The representation of a DBImpl consists of a set of Versions.  The
 // newest version is called "current".  Older versions may be kept

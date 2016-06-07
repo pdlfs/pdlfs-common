@@ -61,4 +61,3 @@ class EmptyDB : public DB {
 };
 
 }  // namespace pdlfs
-
