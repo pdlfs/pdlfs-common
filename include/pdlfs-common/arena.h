@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <vector>
 
+#include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/port.h"
 
 namespace pdlfs {
