@@ -15,7 +15,7 @@
 
 /* old-style make files pass in config via -D on the command line */
 
-#else 
+#else
 
 #include "pdlfs-common/pdlfs_config_expand.h"
 

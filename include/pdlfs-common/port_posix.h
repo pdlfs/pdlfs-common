@@ -40,7 +40,7 @@
 #define PLATFORM_IS_LITTLE_ENDIAN false
 #endif
 #elif defined(PDLFS_OS_FREEBSD) || defined(PDLFS_OS_OPENBSD) || \
-        defined(PDLFS_OS_NETBSD)
+    defined(PDLFS_OS_NETBSD)
 #include <sys/endian.h>
 #include <sys/types.h>
 #define PLATFORM_IS_LITTLE_ENDIAN (_BYTE_ORDER == _LITTLE_ENDIAN)
@@ -54,16 +54,16 @@
 #ifdef SNAPPY
 #include <snappy.h>
 #endif
-#include <climits>
+#include <limits.h>
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
 #endif
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <string>
 
-#include "pdlfs-common/atomic_pointer.h"
+#include "pdlfs-common/atomic_pointer.h" // Platform-specific atomic pointer
 
 #ifndef PLATFORM_IS_LITTLE_ENDIAN
 #define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
@@ -71,7 +71,7 @@
 
 #if defined(PDLFS_OS_MACOSX) || defined(PDLFS_OS_SOLARIS) || \
     defined(PDLFS_OS_FREEBSD) || defined(PDLFS_OS_NETBSD) || \
-    defined(PDLFS_OS_OPENBSD) || defined(PDLFS_OS_HPUX) ||    \
+    defined(PDLFS_OS_OPENBSD) || defined(PDLFS_OS_HPUX) ||   \
     defined(PDLFS_OS_CYGWIN)
 // Use fread/fwrite/fflush on platforms without _unlocked variants
 #define fread_unlocked fread
@@ -125,7 +125,7 @@ class CondVar {
 };
 
 typedef pthread_once_t OnceType;
-#define PLATFORM_ONCE_INIT PTHREAD_ONCE_INIT
+#define PDLFS_ONCE_INIT PTHREAD_ONCE_INIT
 extern void InitOnce(OnceType* once, void (*initializer)());
 
 inline bool Snappy_Compress(const char* input, size_t length,

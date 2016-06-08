@@ -70,7 +70,7 @@ class BytewiseComparatorImpl : public Comparator {
 };
 }  // namespace
 
-static port::OnceType once = PLATFORM_ONCE_INIT;
+static port::OnceType once = PDLFS_ONCE_INIT;
 static const Comparator* bytewise;
 
 static void InitModule() { bytewise = new BytewiseComparatorImpl; }

@@ -49,8 +49,8 @@ namespace port {
 
 // Define MemoryBarrier() if available
 // Windows on x86
-#if defined(PDLFS_OS_WIN) && defined(COMPILER_MSVC) \
-        && defined(ARCH_CPU_X86_FAMILY)
+#if defined(PDLFS_OS_WIN) && defined(COMPILER_MSVC) && \
+    defined(ARCH_CPU_X86_FAMILY)
 // windows.h already provides a MemoryBarrier(void) macro
 // http://msdn.microsoft.com/en-us/library/ms684208(v=vs.85).aspx
 #define PLATFORM_HAVE_MEMORY_BARRIER
@@ -136,7 +136,7 @@ class AtomicPointer {
 };
 
 // AtomicPointer based on <cstdatomic>
-#elif defined(PLATFORM_ATOMIC_PRESENT)
+#elif defined(PDLFS_PLATFORM_ATOMIC_PRESENT)
 class AtomicPointer {
  private:
   std::atomic<void*> rep_;
