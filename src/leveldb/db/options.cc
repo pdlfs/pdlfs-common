@@ -49,6 +49,8 @@ ReadOptions::ReadOptions()
 
 WriteOptions::WriteOptions() : sync(false) {}
 
+FlushOptions::FlushOptions() : wait(true) {}
+
 InsertOptions::InsertOptions()
     : no_seq_adjustment(false),
       suggested_max_seq(0),

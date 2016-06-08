@@ -1015,7 +1015,8 @@ TEST(DBTest, NoSeekCompaction) {
   options.disable_seek_compaction = true;
   Reopen(&options);
 
-  const int N = 2 + options.l0_compaction_trigger - 1;
+  const int M = options.l0_compaction_trigger - 1;
+  const int N = 2 + M;
 
   for (int i = 0; i < N; i++) {
     Put("100", "v100");
@@ -1023,7 +1024,7 @@ TEST(DBTest, NoSeekCompaction) {
     dbfull()->TEST_CompactMemTable();
   }
 
-  ASSERT_EQ(NumTableFilesAtLevel(0), options.l0_compaction_trigger - 1);
+  ASSERT_EQ(NumTableFilesAtLevel(0), M);
   ASSERT_EQ(NumTableFilesAtLevel(1), 1);
   ASSERT_EQ(NumTableFilesAtLevel(2), 1);
   ASSERT_EQ(NumTableFilesAtLevel(3), 0);
@@ -1032,7 +1033,7 @@ TEST(DBTest, NoSeekCompaction) {
     ASSERT_EQ("NOT_FOUND", Get("missing"));
   }
 
-  ASSERT_EQ(NumTableFilesAtLevel(0), options.l0_compaction_trigger - 1);
+  ASSERT_EQ(NumTableFilesAtLevel(0), M);
   ASSERT_EQ(NumTableFilesAtLevel(1), 1);
   ASSERT_EQ(NumTableFilesAtLevel(2), 1);
   ASSERT_EQ(NumTableFilesAtLevel(3), 0);
@@ -1044,8 +1045,10 @@ TEST(DBTest, NoSeekCompaction) {
   for (int i = 0; i < 1000; i++) {
     ASSERT_EQ("NOT_FOUND", Get("600"));
   }
+  // Wait for compaction to finish
+  DelayMilliseconds(1000);
 
-  ASSERT_LT(NumTableFilesAtLevel(0), options.l0_compaction_trigger - 1);
+  ASSERT_LT(NumTableFilesAtLevel(0), M);
 }
 
 TEST(DBTest, CompactionsGenerateMultipleFiles) {

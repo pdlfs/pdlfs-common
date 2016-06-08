@@ -14,6 +14,7 @@
 #include <set>
 
 #include "options_internal.h"
+#include "write_batch_internal.h"
 
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/leveldb/db/db.h"
@@ -36,6 +37,8 @@ class DBImpl : public DB {
   virtual ~DBImpl();
 
   // Implementations of the DB interface
+  virtual Status SyncWAL();
+  virtual Status FlushMemTable(const FlushOptions&);
   virtual Status Put(const WriteOptions&, const Slice& key, const Slice& value);
   virtual Status Delete(const WriteOptions&, const Slice& key);
   virtual Status Write(const WriteOptions&, WriteBatch* updates);
@@ -159,6 +162,8 @@ class DBImpl : public DB {
 
   // Queue of writers.
   std::deque<Writer*> writers_;
+  WriteBatch flush_memtable_;  // Dummy batch representing a compaction request
+  WriteBatch sync_wal_;        // Dummy batch representing a WAL sync request
   WriteBatch* tmp_batch_;
 
   SnapshotList snapshots_;

@@ -50,6 +50,10 @@ class EmptyDB : public DB {
     }
   }
   virtual void CompactRange(const Slice* start, const Slice* end) {}
+  virtual Status FlushMemTable(const FlushOptions& o) {
+    return Status::BufferFull(Slice());
+  }
+  virtual Status SyncWAL() { return Status::BufferFull(Slice()); }
   virtual Status AddL0Tables(const InsertOptions& o, const std::string& dir) {
     return Status::BufferFull(Slice());
   }

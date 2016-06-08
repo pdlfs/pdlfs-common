@@ -240,6 +240,15 @@ struct WriteOptions {
   WriteOptions();
 };
 
+// Options that control flush operations
+struct FlushOptions {
+  // Wait synchronously until the flush operation finishes.
+  // Default: true
+  bool wait;
+
+  FlushOptions();
+};
+
 // During each bulk insertion, a set of table files are injected into
 // the database. The following are possible operations that can be
 // used to achieve this data injection.

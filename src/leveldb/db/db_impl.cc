@@ -20,13 +20,13 @@
 #include "../merger.h"
 #include "../table_stats.h"
 #include "../two_level_iterator.h"
+
 #include "builder.h"
 #include "db_impl.h"
 #include "db_iter.h"
 #include "memtable.h"
 #include "table_cache.h"
 #include "version_set.h"
-#include "write_batch_internal.h"
 
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/dbfiles.h"
@@ -203,6 +203,26 @@ Status DBImpl::NewDB() {
     s = SetCurrentFile(env_, dbname_, 1);
   } else {
     env_->DeleteFile(manifest);
+  }
+  return s;
+}
+
+Status DBImpl::SyncWAL() {
+  WriteOptions ignored;
+  return Write(ignored, &sync_wal_);
+}
+
+Status DBImpl::FlushMemTable(const FlushOptions& options) {
+  WriteOptions ignored;
+  Status s = Write(ignored, &flush_memtable_);
+  if (s.ok() && options.wait) {
+    MutexLock l(&mutex_);
+    while (imm_ != NULL && bg_error_.ok()) {
+      bg_cv_.Wait();
+    }
+    if (imm_ != NULL) {
+      s = bg_error_;
+    }
   }
   return s;
 }
@@ -1179,11 +1199,17 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 }
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
+  if (my_batch == NULL) {
+    // NULL batch is for memtable compaction
+    my_batch = &flush_memtable_;
+  }
+
   Writer w(&mutex_);
-  w.batch = my_batch;
   w.sync = options.sync;
   w.done = false;
+  w.batch = my_batch;
 
+  bool null_batch = (my_batch == &flush_memtable_) || (my_batch == &sync_wal_);
   MutexLock l(&mutex_);
   writers_.push_back(&w);
   while (!w.done && &w != writers_.front()) {
@@ -1194,10 +1220,11 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   }
 
   // May temporarily unlock and wait.
-  Status status = MakeRoomForWrite(my_batch == NULL);
+  Status status = MakeRoomForWrite(my_batch == &flush_memtable_);
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
-  if (status.ok() && my_batch != NULL) {  // NULL batch is for compactions
+
+  if (status.ok() && !null_batch) {
     WriteBatch* updates = BuildBatchGroup(&last_writer);
     WriteBatchInternal::SetSequence(updates, last_sequence + 1);
     last_sequence += WriteBatchInternal::Count(updates);
@@ -1227,9 +1254,25 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         RecordBackgroundError(status);
       }
     }
-    if (updates == tmp_batch_) tmp_batch_->Clear();
-
+    if (updates == tmp_batch_) {
+      tmp_batch_->Clear();
+    }
     versions_->SetLastSequence(last_sequence);
+
+  } else if (status.ok() && my_batch == &sync_wal_) {
+    bool sync_error = false;
+    mutex_.Unlock();
+    status = logfile_->Sync();
+    if (!status.ok()) {
+      sync_error = true;
+    }
+    mutex_.Lock();
+    if (sync_error) {
+      // The state of the log file is indeterminate: the log record we
+      // just added may or may not show up when the DB is re-opened.
+      // So we force the DB into a mode where all future writes fail.
+      RecordBackgroundError(status);
+    }
   }
 
   while (true) {
@@ -1240,7 +1283,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
       ready->done = true;
       ready->cv.Signal();
     }
-    if (ready == last_writer) break;
+    if (ready == last_writer) {
+      break;
+    }
   }
 
   // Notify new head of write queue
@@ -1274,12 +1319,17 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
   ++iter;  // Advance past "first"
   for (; iter != writers_.end(); ++iter) {
     Writer* w = *iter;
+    assert(w->batch != NULL);
+
     if (w->sync && !first->sync) {
       // Do not include a sync write into a batch handled by a non-sync write.
       break;
     }
 
-    if (w->batch != NULL) {
+    if (w->batch == &flush_memtable_ || w->batch == &sync_wal_) {
+      // Stop before the next flush or sync point
+      break;
+    } else {
       size += WriteBatchInternal::ByteSize(w->batch);
       if (size > max_size) {
         // Do not make batch too big
