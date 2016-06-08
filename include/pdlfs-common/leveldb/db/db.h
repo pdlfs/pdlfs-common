@@ -13,16 +13,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "pdlfs-common/leveldb/db/dbformat.h"
+#include "pdlfs-common/leveldb/db/options.h"
 #include "pdlfs-common/leveldb/iterator.h"
 
 namespace pdlfs {
-
-struct Options;
-struct ReadOptions;
-struct WriteOptions;
-struct InsertOptions;
-struct DumpOptions;
 
 class Snapshot;
 class WriteBatch;
@@ -164,6 +158,14 @@ class DB {
   //    db->CompactRange(NULL, NULL);
   virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
 
+  // Immediately force a minor compaction on the current MemTable.
+  // Return OK on success, or a non-OK status on errors.
+  virtual Status FlushMemTable(const FlushOptions& options) = 0;
+
+  // Call "fsync" on the write-ahead log file.
+  // Return OK on success, or a non-OK status on errors.
+  virtual Status SyncWAL() = 0;
+
   // Insert native Table files under a specified directory into Level-0.
   // Return OK on success, or a non-OK status on errors.
   virtual Status AddL0Tables(const InsertOptions& options,
@@ -186,7 +188,7 @@ class DB {
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
-Status DestroyDB(const std::string& name, const Options& options);
+Status DestroyDB(const std::string& dbname, const Options& options);
 
 // If a DB cannot be opened, you may attempt to call this method to
 // resurrect as much of the contents of the database as possible.
