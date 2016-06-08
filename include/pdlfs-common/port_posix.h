@@ -63,7 +63,7 @@
 #include <string.h>
 #include <string>
 
-#include "pdlfs-common/atomic_pointer.h" // Platform-specific atomic pointer
+#include "pdlfs-common/atomic_pointer.h"  // Platform-specific atomic pointer
 
 #ifndef PLATFORM_IS_LITTLE_ENDIAN
 #define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
