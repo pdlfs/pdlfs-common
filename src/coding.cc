@@ -12,6 +12,15 @@
 
 namespace pdlfs {
 
+void EncodeFixed16(char* buf, uint16_t value) {
+  if (port::kLittleEndian) {
+    memcpy(buf, &value, sizeof(value));
+  } else {
+    buf[0] = value & 0xff;
+    buf[1] = (value >> 8) & 0xff;
+  }
+}
+
 void EncodeFixed32(char* buf, uint32_t value) {
   if (port::kLittleEndian) {
     memcpy(buf, &value, sizeof(value));

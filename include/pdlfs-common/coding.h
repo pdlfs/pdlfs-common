@@ -51,6 +51,7 @@ extern int VarintLength(uint64_t v);
 
 // Lower-level versions of Put... that write directly into a character buffer
 // REQUIRES: dst has enough space for the value being written
+extern void EncodeFixed16(char* dst, uint16_t value);
 extern void EncodeFixed32(char* dst, uint32_t value);
 extern void EncodeFixed64(char* dst, uint64_t value);
 
@@ -62,6 +63,17 @@ extern char* EncodeVarint64(char* dst, uint64_t value);
 
 // Lower-level versions of Get... that read directly from a character buffer
 // without any bounds checking.
+inline uint16_t DecodeFixed16(const char* ptr) {
+  if (port::kLittleEndian) {
+    // Load the raw bytes
+    uint16_t result;
+    memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
+    return result;
+  } else {
+    return ((static_cast<uint16_t>(static_cast<unsigned char>(ptr[0]))) |
+            (static_cast<uint16_t>(static_cast<unsigned char>(ptr[1])) << 8));
+  }
+}
 
 inline uint32_t DecodeFixed32(const char* ptr) {
   if (port::kLittleEndian) {
