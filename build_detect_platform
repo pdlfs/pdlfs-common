@@ -115,6 +115,11 @@ case "$TARGET_OS" in
         exit 1
 esac
 
+COMMON_FLAGS="-pedantic -Wall -Wno-long-long -Wno-sign-compare $COMMON_FLAGS"
+
+COMMON_FLAGS="$COMMON_FLAGS -DPDLFS_PLATFORM_POSIX"
+COMMON_FLAGS="$COMMON_FLAGS -DPDLFS_MAKEFILE"
+
 # We want to make a list of all source files within the project
 # except for the test and benchmark files. By default, find will output a list
 # of all files matching either rule, so we need to append -print to make the
@@ -136,7 +141,6 @@ if [ "$CROSS_COMPILE" = "true" ]; then
     true
 else
     CXXOUTPUT="${TMPDIR}/pdlfs_common_build_detect_platform.$$"
-    COMMON_FLAGS="-Wpedantic -Wno-long-long -Wall -Wno-sign-compare $COMMON_FLAGS -DPDLFS_PLATFORM_POSIX"
 
     # Test whether glog is installed
     # https://github.com/google/glog/
@@ -193,8 +197,8 @@ EOF
     rm -f $CXXOUTPUT 2>/dev/null
 fi
 
-PLATFORM_CCFLAGS="-DPDLFS_MAKEFILE $PLATFORM_CCFLAGS $COMMON_FLAGS"
-PLATFORM_CXXFLAGS="-DPDLFS_MAKEFILE $PLATFORM_CXXFLAGS $COMMON_FLAGS"
+PLATFORM_CCFLAGS=`for f in $PLATFORM_CCFLAGS $COMMON_FLAGS; do echo $f; done | sort`
+PLATFORM_CXXFLAGS=`for f in $PLATFORM_CXXFLAGS $COMMON_FLAGS; do echo $f; done | sort`
 
 echo "CC=$CC" >> $OUTPUT
 echo "CXX=$CXX" >> $OUTPUT
