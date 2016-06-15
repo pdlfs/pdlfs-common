@@ -42,32 +42,30 @@ Status::Status(Code code, const Slice& msg, const Slice& msg2) {
 
 namespace {
 /* clang-format off */
-#define ERR_NUM(Err) static_cast<int>(Status::k##Err)
 static const char* kCodeString[] = {
-  [ERR_NUM(Ok)] = "OK",                                       /* 0 */
-  [ERR_NUM(NotFound)] = "Not found",                          /* 1 */
-  [ERR_NUM(AlreadyExists)] = "Already exists",                /* 2 */
-  [ERR_NUM(Corruption)] = "Corruption",                       /* 3 */
-  [ERR_NUM(NotSupported)] = "Not implemented",                /* 4 */
-  [ERR_NUM(InvalidArgument)] = "Invalid argument",            /* 5 */
-  [ERR_NUM(IOError)] = "IO error",                            /* 6 */
-  [ERR_NUM(BufferFull)] = "Buffer full",                      /* 7 */
-  [ERR_NUM(ReadOnly)] = "Read only",                          /* 8 */
-  [ERR_NUM(WriteOnly)] = "Write only",                        /* 9 */
-  [ERR_NUM(DeadLocked)] = "Dead locked",                      /* 10 */
-  [ERR_NUM(OptimisticLockFailed)] = "Optimistic lock failed", /* 11 */
-  [ERR_NUM(TryAgain)] = "Try again",                          /* 12 */
-  [ERR_NUM(Disconnected)] = "Disconnected",                   /* 13 */
-  [ERR_NUM(AssertionFailed)] = "Assertion failed",            /* 14 */
-  [ERR_NUM(AccessDenied)] = "Permission denied",              /* 15 */
-  [ERR_NUM(DirExpected)] = "Dir expected",                    /* 16 */
-  [ERR_NUM(FileExpected)] = "File expected",                  /* 17 */
-  [ERR_NUM(DirNotEmpty)] = "Dir not empty",                   /* 18 */
-  [ERR_NUM(DirNotAllocated)] = "Dir not allocated",           /* 19 */
-  [ERR_NUM(DirDisabled)] = "Dir disabled",                    /* 20 */
-  [ERR_NUM(DirMarkedDeleted)] = "Dir marked deleted",         /* 21 */
+  /* kOk */ "OK",                                       /* 0 */
+  /* kNotFound */ "Not found",                          /* 1 */
+  /* kAlreadyExists */ "Already exists",                /* 2 */
+  /* kCorruption */ "Corruption",                       /* 3 */
+  /* kNotSupported */ "Not implemented",                /* 4 */
+  /* kInvalidArgument */ "Invalid argument",            /* 5 */
+  /* kIOError */ "IO error",                            /* 6 */
+  /* kBufferFull */ "Buffer full",                      /* 7 */
+  /* kReadOnly */ "Read only",                          /* 8 */
+  /* kWriteOnly */ "Write only",                        /* 9 */
+  /* kDeadLocked */ "Dead locked",                      /* 10 */
+  /* kOptimisticLockFailed */ "Optimistic lock failed", /* 11 */
+  /* kTryAgain */ "Try again",                          /* 12 */
+  /* kDisconnected */ "Disconnected",                   /* 13 */
+  /* kAssertionFailed */ "Assertion failed",            /* 14 */
+  /* kAccessDenied */ "Permission denied",              /* 15 */
+  /* kDirExpected */ "Dir expected",                    /* 16 */
+  /* kFileExpected */ "File expected",                  /* 17 */
+  /* kDirNotEmpty */ "Dir not empty",                   /* 18 */
+  /* kDirNotAllocated */ "Dir not allocated",           /* 19 */
+  /* kDirDisabled */ "Dir disabled",                    /* 20 */
+  /* kDirMarkedDeleted */ "Dir marked deleted",         /* 21 */
 };
-#undef ERR_NUM
 /* clang-format on */
 }
 
