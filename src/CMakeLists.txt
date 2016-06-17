@@ -189,8 +189,12 @@ install (FILES
 # when requested.
 #
 enable_testing ()
+if (NOT TARGET build-tests)
+    add_custom_target (build-tests)
+endif ()
 if (NOT TARGET check)
     add_custom_target (check COMMAND ${CMAKE_CTEST_COMMAND})
+    add_dependencies (check build-tests)
 endif ()
 foreach (lcv ${pdlfs-all-tests})
 
@@ -201,7 +205,7 @@ foreach (lcv ${pdlfs-all-tests})
     add_executable (${id} EXCLUDE_FROM_ALL ${lcv})
     target_link_libraries (${id} pdlfs-common)
     add_test (${id} ${id})
-    add_dependencies (check ${id})
+    add_dependencies (build-tests ${id})
 
 endforeach ()
 
