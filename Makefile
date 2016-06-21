@@ -74,7 +74,9 @@ default: all
 
 all: $(STATIC_LIBOBJECTS)
 
-check: $(STATIC_PROGRAMS)
+tests: $(STATIC_PROGRAMS)
+
+check: tests
 	for t in $(notdir $(TESTS)); do echo "***** Running $$t"; $(STATIC_OUTDIR)/$$t || exit 1; done
 
 clean:
