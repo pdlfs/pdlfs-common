@@ -124,7 +124,7 @@ static int ComputeIndexFromHash(const char* hash, int n) {
   size_t idx;
   size_t nbytes = n / 8;
   for (idx = 0; idx < nbytes; idx++) {
-    result += (Reverse(hash[idx])) << (idx * 8);
+    result += Reverse(hash[idx]) << (idx * 8);
   }
   size_t nbits = n % 8;
   if (nbits > 0) {
@@ -181,9 +181,9 @@ struct DirIndex::Ref {
       assert(bit(0));
       size_t i = bitmap_size() - 1;
       size_t off = 7;
-      for (; ((bitmap_[i]) == 0); --i)
+      for (; bitmap_[i] == 0; --i)
         ;
-      for (; ((bitmap_[i] & kBits[off]) == 0); --off)
+      for (; (bitmap_[i] & kBits[off]) == 0; --off)
         ;
       return off + (i * 8);
     }
