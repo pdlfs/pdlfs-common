@@ -10,6 +10,7 @@
  */
 
 #include <stdint.h>
+#include <utility>
 
 #include "pdlfs-common/slice.h"
 
@@ -107,6 +108,12 @@ class DirIndex {
 
   // Return the server responsible for a given index.
   static int MapIndexToServer(int index, int zeroth_server, int num_servers);
+
+  // Return a random server for a specified directory.
+  static int RandomServer(const std::string& dir, int seed);
+
+  // Return a pair of random servers for a specified directory.
+  static std::pair<int, int> RandomServers(const std::string& dir, int seed);
 
  private:
   struct Ref;

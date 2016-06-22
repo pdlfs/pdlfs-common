@@ -544,4 +544,21 @@ DirIndex::DirIndex(int64_t d, int16_t s, const DirIndexOptions* options) {
 
 DirIndex::~DirIndex() { delete rep_; }
 
+// Return a random server for a specified directory.
+int DirIndex::RandomServer(const std::string& dir, int seed) {
+  return XXH32(dir.data(), dir.size(), seed);
+}
+
+// Return a pair of random servers for a specified directory.
+std::pair<int, int> DirIndex::RandomServers(const std::string& dir, int seed) {
+  uint64_t h = XXH64(dir.data(), dir.size(), seed);
+  char* tmp = reinterpret_cast<char*>(&h);
+  int s1;
+  int s2;
+  memcpy(&s1, tmp, 4);
+  memcpy(&s2, tmp + 4, 4);
+  std::pair<int, int> r = std::make_pair(s1, s2);
+  return r;
+}
+
 }  // namespace pdlfs
