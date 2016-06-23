@@ -127,6 +127,11 @@ class LRUCache {
       Unref(old);
     }
 
+    Compact();
+    return e;
+  }
+
+  void Compact() {
     while (usage_ > capacity_ && lru_.next != &lru_) {
       E* old = lru_.next;
       LRU_Remove(old);
@@ -138,8 +143,6 @@ class LRUCache {
         break;
       }
     }
-
-    return e;
   }
 
   E* Lookup(const Slice& key, uint32_t hash) {
@@ -166,6 +169,9 @@ class LRUCache {
     for (E* e = lru_.next; e != &lru_;) {
       E* next = e->next;
       if (e->refs == 1) {
+        // Calls are required to keep active references to all entries pinned
+        // by it so that all entries here are eligible to be deleted.
+        assert(!e->pinned_.Acquire_Load());
         table_.Remove(e->key(), e->hash);
         LRU_Remove(e);
         Unref(e);
@@ -177,6 +183,10 @@ class LRUCache {
   void Erase(const Slice& key, uint32_t hash) {
     E* e = table_.Remove(key, hash);
     if (e != NULL) {
+      // We require our callers to never explicitly erase pinned entries.
+      // The caller will have to make sure an entry is not pinned before
+      // it removes that entry.
+      assert(!e->pinned_.Acquire_Load());
       LRU_Remove(e);
       Unref(e);
     }
