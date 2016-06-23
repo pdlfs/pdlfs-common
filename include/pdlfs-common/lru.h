@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 
+#include "pdlfs-common/atomic_pointer.h"
 #include "pdlfs-common/hash.h"
 #include "pdlfs-common/map.h"
 #include "pdlfs-common/mutexlock.h"
@@ -22,6 +23,7 @@ template <typename T = void>
 struct LRUEntry {
   T* value;
   void (*deleter)(const Slice&, T* value);
+  port::AtomicPointer pinned_;
   LRUEntry<T>* next_hash;
   LRUEntry<T>* next;
   LRUEntry<T>* prev;
@@ -110,6 +112,7 @@ class LRUCache {
     E* e = static_cast<E*>(malloc(sizeof(E) - 1 + key.size()));
     e->value = value;
     e->deleter = deleter;
+    e->pinned_.NoBarrier_Store(NULL);
     e->charge = charge;
     e->key_length = key.size();
     e->hash = hash;
@@ -127,8 +130,13 @@ class LRUCache {
     while (usage_ > capacity_ && lru_.next != &lru_) {
       E* old = lru_.next;
       LRU_Remove(old);
-      table_.Remove(old->key(), old->hash);
-      Unref(old);
+      if (!old->pinned_.Acquire_Load()) {
+        table_.Remove(old->key(), old->hash);
+        Unref(old);
+      } else {
+        LRU_Append(old);
+        break;
+      }
     }
 
     return e;
