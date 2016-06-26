@@ -112,7 +112,7 @@ bool Stat::DecodeFrom(Slice* input) {
   }
 }
 
-Slice DirEntry::EncodeTo(char* scratch) const {
+Slice LookupEntry::EncodeTo(char* scratch) const {
   char* p = scratch;
 
   p = EncodeVarint64(p, InodeNo());
@@ -125,12 +125,12 @@ Slice DirEntry::EncodeTo(char* scratch) const {
   return Slice(scratch, p - scratch);
 }
 
-bool DirEntry::DecodeFrom(const Slice& encoding) {
+bool LookupEntry::DecodeFrom(const Slice& encoding) {
   Slice input = encoding;
   return DecodeFrom(&input);
 }
 
-bool DirEntry::DecodeFrom(Slice* input) {
+bool LookupEntry::DecodeFrom(Slice* input) {
   uint64_t ino;
   uint32_t zeroth_server;
   uint32_t mode;
@@ -153,7 +153,7 @@ bool DirEntry::DecodeFrom(Slice* input) {
   }
 }
 
-void DirEntry::CopyFrom(const Stat& stat) {
+void LookupEntry::CopyFrom(const Stat& stat) {
   SetInodeNo(stat.InodeNo());
   SetDirMode(stat.FileMode());
   SetZerothServer(stat.ZerothServer());

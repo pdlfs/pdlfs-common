@@ -77,22 +77,22 @@ TEST(StatTest, EncodeDecode2) {
   ASSERT_EQ(encoding, encoding2);
 }
 
-class DirEntryTest {};
+class LookupEntryTest {};
 
-TEST(DirEntryTest, EncodeDecode3) {
-  DirEntry ent;
+TEST(LookupEntryTest, EncodeDecode3) {
+  LookupEntry ent;
   ent.SetInodeNo(12345);
   ent.SetDirMode(678);
   ent.SetUserId(11);
   ent.SetGroupId(22);
   ent.SetZerothServer(777);
   ent.SetLeaseDue(55667788);
-  char tmp[sizeof(DirEntry)];
+  char tmp[sizeof(LookupEntry)];
   Slice encoding = ent.EncodeTo(tmp);
-  DirEntry ent2;
+  LookupEntry ent2;
   bool r = ent2.DecodeFrom(encoding);
   ASSERT_TRUE(r);
-  char tmp2[sizeof(DirEntry)];
+  char tmp2[sizeof(LookupEntry)];
   Slice encoding2 = ent2.EncodeTo(tmp2);
   ASSERT_EQ(encoding, encoding2);
 }

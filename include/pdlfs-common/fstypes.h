@@ -172,7 +172,7 @@ class Stat {
 // The result of lookup requests sent to clients during pathname resolution.
 // If the lease due date is not zero, the client may cache
 // and reuse the result until the specified due. Not used in tablefs.
-class DirEntry {
+class LookupEntry {
   char dir_ino_[8];
   char dir_mode_[4];
   char zeroth_server_[4];
@@ -198,7 +198,7 @@ class DirEntry {
   bool DecodeFrom(const Slice& encoding);
   bool DecodeFrom(Slice* input);
 
-  DirEntry() {
+  LookupEntry() {
 #ifndef NDEBUG
     memset(this, 0, sizeof(Stat));
 #endif
