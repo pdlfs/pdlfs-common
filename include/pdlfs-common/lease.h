@@ -79,7 +79,7 @@ class LeaseTable {
   // If mu is NULL, this LeaseTable requires external synchronization.
   // If mu is not NULL, this LeaseTable is implicitly synchronized via this
   // mutex and is thread-safe.
-  LeaseTable(size_t capacity = 4096, port::Mutex* mu = NULL);
+  explicit LeaseTable(size_t capacity = 4096, port::Mutex* mu = NULL);
   ~LeaseTable();
 
   void Release(Lease::Ref* ref);
