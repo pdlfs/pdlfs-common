@@ -512,16 +512,20 @@ int DirIndex::NewIndexForSplitting(int index) const {
   return i;
 }
 
-// Figure out the partition responsible for the given file,
-// according to the the current directory index states and the hash
-// value of the file name.
+// Determine the partition responsible for the given name from the
+// current state of the directory index.
 int DirIndex::GetIndex(const Slice& name) const {
-  assert(rep_ != NULL);
-  char hash[8];
-  DirIndex::Hash(name, hash);
+  char tmp[8];
+  Slice hash = DirIndex::Hash(name, tmp);
+  return HashToIndex(hash);
+}
 
+// Determine the partition responsible for the given hash from the
+// current state of the directory index.
+int DirIndex::HashToIndex(const Slice& hash) const {
+  assert(rep_ != NULL);
   assert(rep_->bit(0));
-  int i = ComputeIndexFromHash(hash, rep_->radix());
+  int i = ComputeIndexFromHash(hash.data(), rep_->radix());
   assert(i < options_->num_virtual_servers);
   while (!rep_->bit(i)) {
     i = ToParentIndex(i);
@@ -529,12 +533,14 @@ int DirIndex::GetIndex(const Slice& name) const {
   return i;
 }
 
-// Pickup a member partition server to hold the given file,
-// according to the current directory mapping status and the hash of
-// that file name. Only servers currently holding a partition can be
-// selected to accommodate new files.
+// Pickup a server to take care of the given name.
 int DirIndex::SelectServer(const Slice& name) const {
   return GetServerForIndex(GetIndex(name));
+}
+
+// Pickup a server to take care of the give hash.
+int DirIndex::HashToServer(const Slice& hash) const {
+  return GetServerForIndex(HashToIndex(hash));
 }
 
 // Return true if a file represented by the specified hash will be
