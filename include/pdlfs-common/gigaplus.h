@@ -119,8 +119,8 @@ class DirIndex {
   ~DirIndex();
 
  private:
-  struct Ref;
-  static bool ParseDirIndex(const Slice& input, bool checks, Ref* ref);
+  struct View;
+  static bool ParseDirIndex(const Slice& input, bool checks, View*);
   const DirIndexOptions* options_;
   struct Rep;
   Rep* rep_;

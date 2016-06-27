@@ -145,8 +145,8 @@ static int ComputeIndexFromHash(const char* hash, int n) {
 //     radix: int16_t
 static const size_t kHeadSize = 12;
 
-// Read-only reference to an existing directory index.
-struct DirIndex::Ref {
+// Read-only view to an existing directory index.
+struct DirIndex::View {
   int64_t dir_id() const { return DecodeFixed64(rep_); }
   int16_t zeroth_server() const { return DecodeFixed16(rep_ + 8); }
   int radix() const { return DecodeFixed16(rep_ + 10); }
@@ -198,19 +198,19 @@ struct DirIndex::Ref {
 };
 
 bool DirIndex::ParseDirIndex(const Slice& input, bool paranoid_checks,
-                             Ref* ref) {
+                             View* view) {
   if (input.size() < kHeadSize) {
     return false;
   } else {
-    ref->rep_ = input.data();
-    int r = ref->radix();
+    view->rep_ = input.data();
+    int r = view->radix();
     size_t bitmap_size = input.size() - kHeadSize;
-    ref->bitmap_ = Slice(ref->rep_ + kHeadSize, bitmap_size);
+    view->bitmap_ = Slice(view->rep_ + kHeadSize, bitmap_size);
     if (bitmap_size < ((1 << r) + 7) / 8) {
       return false;
-    } else if (!ref->bit(0)) {
+    } else if (!view->bit(0)) {
       return false;
-    } else if (paranoid_checks && r != ToRadix(ref->HighestBit())) {
+    } else if (paranoid_checks && r != ToRadix(view->HighestBit())) {
       return false;
     }
     return true;
@@ -312,7 +312,7 @@ struct DirIndex::Rep {
     }
   }
 
-  void Merge(const DirIndex::Ref& other) {
+  void Merge(const DirIndex::View& other) {
     DoMerge(other);
     assert(radix() == ToRadix(HighestBit()));
   }
@@ -417,12 +417,12 @@ int DirIndex::Radix() const {
 // for the same directory.
 bool DirIndex::Update(const Slice& other) {
   assert(rep_ != NULL);
-  Ref ref;
+  View view;
   bool checks = options_->paranoid_checks;
-  if (!ParseDirIndex(other, checks, &ref)) {
+  if (!ParseDirIndex(other, checks, &view)) {
     return false;
   } else {
-    rep_->Merge(ref);
+    rep_->Merge(view);
     return true;
   }
 }
@@ -438,13 +438,13 @@ bool DirIndex::Update(const DirIndex& other) {
 // Reset index states.
 bool DirIndex::Reset(const Slice& other) {
   assert(rep_ != NULL);
-  Ref ref;
+  View view;
   bool checks = options_->paranoid_checks;
-  if (!ParseDirIndex(other, checks, &ref)) {
+  if (!ParseDirIndex(other, checks, &view)) {
     return false;
   } else {
-    Rep* new_rep = new Rep(ref.dir_id(), ref.zeroth_server());
-    new_rep->Merge(ref);
+    Rep* new_rep = new Rep(view.dir_id(), view.zeroth_server());
+    new_rep->Merge(view);
     delete rep_;
     rep_ = new_rep;
     return true;
