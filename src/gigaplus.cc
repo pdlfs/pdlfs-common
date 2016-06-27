@@ -416,28 +416,37 @@ int DirIndex::Radix() const {
 // Update the directory index by merging another directory index
 // for the same directory.
 bool DirIndex::Update(const Slice& other) {
-  assert(rep_ != NULL);
-  View view;
-  bool checks = options_->paranoid_checks;
-  if (!ParseDirIndex(other, checks, &view)) {
-    return false;
+  if (rep_ == NULL) {
+    return Reset(other);
   } else {
-    rep_->Merge(view);
-    return true;
+    View view;
+    bool checks = options_->paranoid_checks;
+    if (!ParseDirIndex(other, checks, &view)) {
+      return false;
+    } else {
+      rep_->Merge(view);
+      return true;
+    }
   }
 }
 
 // Update the directory index by merging another directory index
 // for the same directory.
 bool DirIndex::Update(const DirIndex& other) {
-  assert(rep_ != NULL);
-  rep_->Merge(*other.rep_);
-  return true;
+  const Rep& other_rep = *other.rep_;
+  if (rep_ == NULL) {
+    Rep* new_rep = new Rep(other_rep.dir_id(), other_rep.zeroth_server());
+    new_rep->Merge(other_rep);
+    rep_ = new_rep;
+    return true;
+  } else {
+    rep_->Merge(other_rep);
+    return true;
+  }
 }
 
 // Reset index states.
 bool DirIndex::Reset(const Slice& other) {
-  assert(rep_ != NULL);
   View view;
   bool checks = options_->paranoid_checks;
   if (!ParseDirIndex(other, checks, &view)) {
