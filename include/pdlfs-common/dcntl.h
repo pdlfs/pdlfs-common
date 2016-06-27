@@ -1,7 +1,6 @@
 #pragma once
 
 /*
- * Copyright (c) 2011 The LevelDB Authors.
  * Copyright (c) 2015-2016 Carnegie Mellon University.
  *
  * All rights reserved.
