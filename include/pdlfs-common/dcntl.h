@@ -10,7 +10,6 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "pdlfs-common/lease.h"
 #include "pdlfs-common/lru.h"
 #include "pdlfs-common/mdb.h"
 #include "pdlfs-common/port.h"
@@ -37,6 +36,7 @@ struct Dir {
   uint64_t mtime;  // Last modification time
   int size;
 
+  int num_leases;   // Number of outstanding leases under this parent directory
   DirIndex* index;  // GIGA+ index
   class Tx;
   Tx* tx;  // Either NULL or points to an on-going write operation
@@ -115,8 +115,28 @@ class Dir::Tx {
   }
 };
 
-class DirCache {
-  // XXX
+// An LRU-cache of directory states.
+class DirTable {
+ public:
+  // If mu is NULL, this DirTable requires external synchronization.
+  // If mu is not NULL, this DirTable is implicitly synchronized via this
+  // mutex and is thread-safe.
+  explicit DirTable(size_t capacity = 4096, port::Mutex* mu = NULL);
+  ~DirTable();
+
+  void Release(Dir::Ref* ref);
+  Dir::Ref* Lookup(uint64_t ino);
+  Dir::Ref* Insert(uint64_t ino, Dir* dir);
+  void Erase(uint64_t ino);
+
+ private:
+  static Slice LRUKey(uint64_t, char* scratch);
+  LRUCache<Dir::Ref> lru_;
+  port::Mutex* mu_;
+
+  // No copying allowed
+  void operator=(const DirTable&);
+  DirTable(const DirTable&);
 };
 
 }  // namespace pdlfs

@@ -10,6 +10,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include "pdlfs-common/dcntl.h"
 #include "pdlfs-common/lru.h"
 #include "pdlfs-common/port.h"
 
@@ -32,8 +33,9 @@ struct Lease;
 enum LeaseState { kFreeState, kReadState, kWriteState };
 
 struct Lease {
-  Lease(port::Mutex* mu) : cv(mu), state(kFreeState) {}
+  Lease(port::Mutex* mu) : cv(mu) {}
   bool busy() const;
+  Dir* parent;
   typedef LeaseEntry Ref;
   port::CondVar cv;
   LeaseState state;
@@ -72,8 +74,12 @@ struct LeaseEntry {
   }
 };
 
+// An LRU-cache of directory lookup state leases.
 class LeaseTable {
  public:
+  // If mu is NULL, this LeaseTable requires external synchronization.
+  // If mu is not NULL, this LeaseTable is implicitly synchronized via this
+  // mutex and is thread-safe.
   LeaseTable(size_t capacity = 4096, port::Mutex* mu = NULL);
   ~LeaseTable();
 
@@ -83,10 +89,11 @@ class LeaseTable {
   void Erase(uint64_t parent, const Slice& name);
 
  private:
-  static Slice LookupKey(uint64_t, const Slice&, char* scratch);
+  static Slice LRUKey(uint64_t, const Slice&, char* scratch);
   LRUCache<Lease::Ref> lru_;
   port::Mutex* mu_;
 
+  // No copying allowed
   void operator=(const LeaseTable&);
   LeaseTable(const LeaseTable&);
 };

@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <errno.h>
 
+#include "logging.h"
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/lease.h"
@@ -52,7 +53,7 @@ void LeaseTable::Release(Lease::Ref* ref) {
   }
 }
 
-Slice LeaseTable::LookupKey(uint64_t parent, const Slice& name, char* scratch) {
+Slice LeaseTable::LRUKey(uint64_t parent, const Slice& name, char* scratch) {
   EncodeFixed64(scratch, parent);
   uint64_t nhash = XXH64(name.data(), name.size(), 0);
   EncodeFixed64(scratch + 8, nhash);
@@ -61,7 +62,7 @@ Slice LeaseTable::LookupKey(uint64_t parent, const Slice& name, char* scratch) {
 
 Lease::Ref* LeaseTable::Lookup(uint64_t parent, const Slice& name) {
   char tmp[16];
-  Slice key = LookupKey(parent, name, tmp);
+  Slice key = LRUKey(parent, name, tmp);
   uint32_t hash = Hash(key.data(), key.size(), 0);
 
   if (mu_ != NULL) {
@@ -75,14 +76,24 @@ Lease::Ref* LeaseTable::Lookup(uint64_t parent, const Slice& name) {
 }
 
 static void DeleteLease(const Slice& key, Lease* lease) {
-  assert(!lease->busy());
+#if defined(GLOG)
+  LOG_ASSERT(!lease->busy()) << "deleting active lease state!";
+#else
+  if (lease->busy()) {
+    fprintf(stderr, "Error: deleting active lease state!");
+    abort();
+  }
+#endif
+  Dir* parent = lease->parent;
+  parent->num_leases--;
+  assert(parent->num_leases >= 0);
   delete lease;
 }
 
 Lease::Ref* LeaseTable::Insert(uint64_t parent, const Slice& name,
                                Lease* lease) {
   char tmp[16];
-  Slice key = LookupKey(parent, name, tmp);
+  Slice key = LRUKey(parent, name, tmp);
   uint32_t hash = Hash(key.data(), key.size(), 0);
 
   if (mu_ != NULL) {
@@ -112,7 +123,7 @@ Lease::Ref* LeaseTable::Insert(uint64_t parent, const Slice& name,
 
 void LeaseTable::Erase(uint64_t parent, const Slice& name) {
   char tmp[16];
-  Slice key = LookupKey(parent, name, tmp);
+  Slice key = LRUKey(parent, name, tmp);
   uint32_t hash = Hash(key.data(), key.size(), 0);
 
   if (mu_ != NULL) {
