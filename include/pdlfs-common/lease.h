@@ -31,6 +31,8 @@ struct Lease;
 // operation finishes so a new expiration time may be set.
 enum LeaseState { kFreeState, kReadState, kWriteState };
 
+class LeaseTable;
+
 struct Lease {
   typedef LeaseEntry Ref;
   typedef RefGuard<LeaseTable, Ref> Guard;
