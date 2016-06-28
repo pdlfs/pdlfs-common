@@ -32,10 +32,11 @@ struct Lease;
 enum LeaseState { kFreeState, kReadState, kWriteState };
 
 struct Lease {
+  typedef LeaseEntry Ref;
+  typedef RefGuard<LeaseTable, Ref> Guard;
   Lease(port::Mutex* mu) : cv(mu) {}
   bool busy() const;
   Dir* parent;
-  typedef LeaseEntry Ref;
   port::CondVar cv;
   LeaseState state;
   uint64_t ino;

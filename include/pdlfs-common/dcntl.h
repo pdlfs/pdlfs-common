@@ -9,6 +9,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include "pdlfs-common/guard.h"
 #include "pdlfs-common/lru.h"
 #include "pdlfs-common/mdb.h"
 #include "pdlfs-common/port.h"
@@ -16,6 +17,7 @@
 namespace pdlfs {
 
 class DirIndex;
+class DirTable;
 
 struct Dir;
 struct DirEntry;
@@ -28,9 +30,10 @@ struct DirInfo {
 };
 
 struct Dir {
+  typedef DirEntry Ref;
+  typedef RefGuard<DirTable, Ref> Guard;
   Dir(port::Mutex* mu) : cv(mu) {}
   bool busy() const;
-  typedef DirEntry Ref;
   uint64_t ino;
   uint64_t mtime;  // Last modification time
   int size;
