@@ -21,11 +21,15 @@ TEST(KeyTest, KeyEncoding) {
     Key k3(13, 37, 67890, static_cast<KeyType>(255));
     ASSERT_EQ(k1.dir_id(), 0);
     ASSERT_EQ(int(k1.type()), 1);
+#if defined(DELTAFS)
     ASSERT_EQ(k2.snap_id(), 29);
+#endif
     ASSERT_EQ(k2.dir_id(), 12345);
     ASSERT_EQ(int(k2.type()), 127);
+#if defined(DELTAFS)
     ASSERT_EQ(k3.reg_id(), 13);
     ASSERT_EQ(k3.snap_id(), 37);
+#endif
     ASSERT_EQ(k3.dir_id(), 67890);
     ASSERT_EQ(int(k3.type()), 255);
   }
