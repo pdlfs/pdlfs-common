@@ -54,7 +54,7 @@ class DirIndex {
   DirIndex(const DirIndexOptions* options);
 
   // Discard the current index and override it with another index image.
-  bool Reset(const Slice& other);
+  bool TEST_Reset(const Slice& other);
 
   // Update the index by merging another index of the same directory.
   bool Update(const Slice& other);

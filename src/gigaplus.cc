@@ -423,7 +423,7 @@ int DirIndex::Radix() const {
 // for the same directory.
 bool DirIndex::Update(const Slice& other) {
   if (rep_ == NULL) {
-    return Reset(other);
+    return TEST_Reset(other);
   } else {
     View view;
     bool checks = options_->paranoid_checks;
@@ -450,7 +450,7 @@ void DirIndex::Update(const DirIndex& other) {
 }
 
 // Reset index states.
-bool DirIndex::Reset(const Slice& other) {
+bool DirIndex::TEST_Reset(const Slice& other) {
   View view;
   bool checks = options_->paranoid_checks;
   if (!ParseDirIndex(other, checks, &view)) {
