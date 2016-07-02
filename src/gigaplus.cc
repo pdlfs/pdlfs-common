@@ -419,6 +419,14 @@ int DirIndex::Radix() const {
   return rep_->radix();
 }
 
+// Exchange the contents of two DirIndex objects.
+void DirIndex::Swap(DirIndex& other) {
+  assert(options_ == other.options_);
+  Rep* my_rep = rep_;
+  rep_ = other.rep_;
+  other.rep_ = my_rep;
+}
+
 // Update the directory index by merging another directory index
 // for the same directory.
 bool DirIndex::Update(const Slice& other) {

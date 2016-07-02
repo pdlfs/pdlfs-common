@@ -53,6 +53,9 @@ class DirIndex {
   // Create an empty index whose state is about to be reset.
   DirIndex(const DirIndexOptions* options);
 
+  // Swap the states of two DirIndex instances.
+  void Swap(DirIndex& other);
+
   // Discard the current index and override it with another index image.
   bool TEST_Reset(const Slice& other);
 
