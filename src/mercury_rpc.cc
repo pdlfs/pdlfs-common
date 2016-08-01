@@ -7,6 +7,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/logging.h"
 #if defined(MERCURY)
 #include "mercury_rpc.h"
