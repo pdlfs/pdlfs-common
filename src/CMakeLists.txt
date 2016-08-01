@@ -137,6 +137,7 @@ set (pdlfs-all-tests ${pdlfs-common-tests} ${pdlfs-leveldb-tests})
 #
 add_library (pdlfs-common ${pdlfs-all-srcs})
 set_target_properties (pdlfs-common PROPERTIES OUTPUT_NAME "${PDLFS_NAME}")
+target_compile_definitions (pdlfs-common PUBLIC -DPDLFS_CONFIG=${PDLFS_NAME})
 target_include_directories (pdlfs-common PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../include>
