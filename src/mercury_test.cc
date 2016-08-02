@@ -45,7 +45,7 @@ class MercuryTest {
     options_.num_io_threads = 1;
     options_.env = env_;
     options_.fs = &fs_;
-    options_.uri = "bmi+tcp://localhost:10101";
+    options_.uri = "bmi+tcp://10101";
     options_.extra_workers = pool_;
     bool listen = true;
     rpc_ = new MercuryRPC(listen, options_);
