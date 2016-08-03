@@ -30,7 +30,7 @@
  * preprocessor magic to turn it into the correct #include...
  */
 #ifndef PDLFS_CONFIG
-#define PDLFS_CONFIG pdlfs - common /* the default name */
+#define PDLFS_CONFIG pdlfs-common /* the default name */
 #endif
 
 #define PDLFS_cat(X, Y) X##Y       /* concat */
