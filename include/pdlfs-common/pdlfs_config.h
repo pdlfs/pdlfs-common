@@ -28,13 +28,13 @@
  * preprocessor magic to turn it into the correct #include...
  */
 #ifndef PDLFS_CONFIG
-#define PDLFS_CONFIG pdlfs-common       /* the default name */
+#define PDLFS_CONFIG pdlfs - common /* the default name */
 #endif
 
-#define PDLFS_cat(X,Y) X ## Y          /* concat */
-#define PDLFS_str(X) PDLFS_hstr(X)     /* expand "X" before stringifying it */
-#define PDLFS_hstr(X) #X               /* stringify X */
-#define PDLFS_fn(X) pdlfs-common/PDLFS_cat(X, _config_expand.h)
+#define PDLFS_cat(X, Y) X##Y       /* concat */
+#define PDLFS_str(X) PDLFS_hstr(X) /* expand "X" before stringifying it */
+#define PDLFS_hstr(X) #X           /* stringify X */
+#define PDLFS_fn(X) pdlfs - common / PDLFS_cat(X, _config_expand.h)
 
 #include PDLFS_str(PDLFS_fn(PDLFS_CONFIG))
 
