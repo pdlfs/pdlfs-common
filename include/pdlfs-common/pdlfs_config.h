@@ -21,6 +21,8 @@
 
 #else /* PDLFS_MAKEFILE */
 
+/* clang-format off */
+
 /*
  * pull in the correct file expanded by cmake...  the file name
  * depends on what PDLFS_COMMON_LIBNAME we were compiled under.
@@ -34,7 +36,7 @@
 #define PDLFS_cat(X, Y) X##Y       /* concat */
 #define PDLFS_str(X) PDLFS_hstr(X) /* expand "X" before stringifying it */
 #define PDLFS_hstr(X) #X           /* stringify X */
-#define PDLFS_fn(X) pdlfs - common / PDLFS_cat(X, _config_expand.h)
+#define PDLFS_fn(X) pdlfs-common/PDLFS_cat(X, _config_expand.h)
 
 #include PDLFS_str(PDLFS_fn(PDLFS_CONFIG))
 
@@ -42,6 +44,8 @@
 #undef PDLFS_str
 #undef PDLFS_hstr
 #undef PDLFS_fn
+
+/* clang-format on */
 
 #endif /* PDLFS_MAKEFILE */
 
