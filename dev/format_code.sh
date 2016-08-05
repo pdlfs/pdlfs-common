@@ -8,13 +8,13 @@
 #
 
 fmt=
-for fmt in clang-format \
-           clang-format-3.9 \
+for fmt in clang-format clang-format-3.9 \
            clang-format-3.8 \
            clang-format-3.7 \
            clang-format-3.6 \
            clang-format-3.5 \
-           clang-format-3.4
+           clang-format-3.4 \
+           clang-format-3.3
 do
   full_fmt=`which $fmt`
   if test -n "$full_fmt"; then break; fi
