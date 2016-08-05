@@ -7,7 +7,10 @@
 # Aug-05-2016 zhengq@cs.cmu.edu
 #
 
-make clean -f ./dev/Makefile
-make -j4 -f ./dev/Makefile
+MAKE="make -f ./dev/Makefile"
+
+$MAKE clean
+$MAKE -j4
+$MAKE -j4 tests
 
 exit 0
