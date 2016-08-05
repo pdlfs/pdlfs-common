@@ -20,9 +20,11 @@ RadosOsd::~RadosOsd() {
 }
 
 Status RadosOsd::CloneIoCtx(rados_ioctx_t* result) {
-  int r = rados_ioctx_create2(cluster_, rados_ioctx_get_id(ioctx_), result);
+  char pool_name[100];
+  rados_ioctx_get_pool_name(ioctx_, pool_name, sizeof(pool_name));
+  int r = rados_ioctx_create(cluster_, pool_name, result);
   if (r != 0) {
-    return RadosError("rados_ioctx_create2", r);
+    return RadosError("rados_ioctx_create", r);
   } else {
     return Status::OK();
   }
