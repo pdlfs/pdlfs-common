@@ -12,16 +12,18 @@
 
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/osd_env.h"
+#include "pdlfs-common/port.h"
 #include "pdlfs-common/testharness.h"
 
 #include "rados_api.h"
 
-// The following tests are paired with "rados.sh".
-// Run "sh rados.sh start" to create a new Ceph cluster on the local machine
-// to prepare the environment necessary to back the tests.
-// Root permission is needed in order to run this script.
+// The following tests are paired with "$top_srcdir/dev/rados.sh".
+// Run "sh $top_srcdir/dev/rados.sh start" to create a new rados cluster
+// on the local machine to prepare an environment necessary
+// to run the following tests.
+// Root permission is required in order to run this script.
 // Otherwise, set the following flag to TRUE to run tests against a simulated
-// Ceph rados cluster.
+// rados cluster.
 #if defined(GFLAGS)
 #include <gflags/gflags.h>
 DEFINE_bool(useposixosd, true, "Use POSIX to simulate a ceph rados cluster");
@@ -32,7 +34,7 @@ static const bool FLAGS_useposixosd = true;
 namespace pdlfs {
 namespace rados {
 
-static const int kVerbose = 0;
+static int kVerbose = 5;
 
 static void TestReadWriteFile(Env* env, const Slice& dirname,
                               const Slice& fname) {
@@ -52,9 +54,17 @@ static void TestReadWriteFile(Env* env, const Slice& dirname,
   env->DeleteFile(fname);
 }
 
+// Make sure we only connect to rados once during the entire run.
+static port::OnceType once = PDLFS_ONCE_INIT;
+static RadosConn* rados_conn = NULL;
+static void OpenRadosConn() {
+  rados_conn = new RadosConn;
+  Status s = rados_conn->Open(RadosOptions());
+  ASSERT_OK(s);
+}
+
 class RadosTest {
  public:
-  RadosConn* rados_conn_;
   std::string root_;
   OSD* osd_;
   Env* env_;
@@ -65,17 +75,15 @@ class RadosTest {
     Status s;
     std::string pool_name = "metadata";
     root_ = test::NewTmpDirectory("rados_test");
-    rados_conn_ = new RadosConn;
+    port::InitOnce(&once, OpenRadosConn);
     if (FLAGS_useposixosd) {
       std::string osd_root = test::NewTmpDirectory("rados_test_objs");
       osd_ = NewOSDAdaptor(osd_root);
     } else {
-      s = rados_conn_->Open(RadosOptions());
-      ASSERT_OK(s);
-      s = rados_conn_->OpenOsd(&osd_, pool_name);
+      s = rados_conn->OpenOsd(&osd_, pool_name);
       ASSERT_OK(s);
     }
-    s = rados_conn_->OpenEnv(&env_, root_, pool_name, osd_);
+    s = rados_conn->OpenEnv(&env_, root_, pool_name, osd_);
     ASSERT_OK(s);
     env_->CreateDir(WorkingDir());
   }
@@ -84,29 +92,18 @@ class RadosTest {
     env_->DeleteDir(WorkingDir());
     delete env_;
     delete osd_;
-    delete rados_conn_;
   }
 
   void Reload() {
-    if (kVerbose > 0) {
-      fprintf(stderr, "Reloading ...\n");
-    }
+    Verbose(__LOG_ARGS__, kVerbose, "Reloading ... ");
     ASSERT_OK(env_->DetachDir(WorkingDir()));
     ASSERT_OK(env_->CreateDir(WorkingDir()));
-    if (kVerbose > 0) {
-      fprintf(stderr, "Reloading done\n");
-    }
   }
 
   void ReloadReadonly() {
-    if (kVerbose > 0) {
-      fprintf(stderr, "Reloading read-only ...\n");
-    }
+    Verbose(__LOG_ARGS__, kVerbose, "Reloading readonly ... ");
     ASSERT_OK(env_->DetachDir(WorkingDir()));
     ASSERT_OK(env_->AttachDir(WorkingDir()));
-    if (kVerbose > 0) {
-      fprintf(stderr, "Reloading read-only done\n");
-    }
   }
 };
 
