@@ -11,13 +11,10 @@
 
 #include <errno.h>
 
+#include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/fio.h"
-#include "pdlfs-common/map.h"
 #include "pdlfs-common/osd.h"
-
-#if defined(RADOS)
-#include <rados/librados.h>
 
 namespace pdlfs {
 namespace rados {
@@ -89,10 +86,8 @@ class RadosConn {
   void operator=(const RadosConn&);
   RadosConn(const RadosConn&);
 
-  rados_t cluster_;
+  void* cluster_;
 };
 
 }  // namespace rados
 }  // namespace pdlfs
-
-#endif  // RADOS

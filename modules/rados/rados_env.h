@@ -9,14 +9,11 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "pdlfs-common/dbfiles.h"
+#include "pdlfs-common/osd_env.h"
+
 #include "rados_api.h"
-#if defined(RADOS)
-#include <rados/librados.h>
 
 namespace pdlfs {
-class OSDEnv;
-
 namespace rados {
 
 class RadosEnv : public EnvWrapper {
@@ -159,5 +156,3 @@ class RadosUnsafeBufferedWritableFile : public WritableFile {
 
 }  // namespace rados
 }  // namespace pdlfs
-
-#endif  // RADOS

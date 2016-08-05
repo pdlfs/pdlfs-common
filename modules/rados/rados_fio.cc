@@ -9,9 +9,6 @@
 
 #if defined(RADOS)
 #include "rados_fio.h"
-#include "pdlfs-common/coding.h"
-#include "pdlfs-common/logging.h"
-#include "pdlfs-common/mutexlock.h"
 
 namespace pdlfs {
 namespace rados {

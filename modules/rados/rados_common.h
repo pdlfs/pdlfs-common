@@ -9,9 +9,15 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include "pdlfs-common/coding.h"
+#include "pdlfs-common/logging.h"
 #include "pdlfs-common/mutexlock.h"
-#if defined(RADOS)
+#include "pdlfs-common/port.h"
+
 #include "rados_api.h"
+
+#if defined(RADOS)
+#include <rados/librados.h>
 
 namespace pdlfs {
 namespace rados {

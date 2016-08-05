@@ -9,7 +9,6 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "pdlfs-common/port.h"
 #if defined(RADOS)
 #include "rados_api.h"
 #include "rados_common.h"
