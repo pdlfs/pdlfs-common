@@ -7,7 +7,7 @@
 # Aug-05-2016 zhengq@cs.cmu.edu
 #
 
-make clean -f .Makefile
-make -j8 -f .Makefile
+make clean -f ./dev/Makefile
+make -j4 -f ./dev/Makefile
 
 exit 0
