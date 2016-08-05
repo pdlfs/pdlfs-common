@@ -24,9 +24,9 @@
 // Ceph rados cluster.
 #if defined(GFLAGS)
 #include <gflags/gflags.h>
-DEFINE_bool(use_posix_osd, true, "Use POSIX to simulate a ceph rados cluster");
+DEFINE_bool(useposixosd, true, "Use POSIX to simulate a ceph rados cluster");
 #else
-static const bool FLAGS_use_posix_osd = true;
+static const bool FLAGS_useposixosd = true;
 #endif
 
 namespace pdlfs {
@@ -66,7 +66,7 @@ class RadosTest {
     std::string pool_name = "metadata";
     root_ = test::NewTmpDirectory("rados_test");
     rados_conn_ = new RadosConn;
-    if (FLAGS_use_posix_osd) {
+    if (FLAGS_useposixosd) {
       std::string osd_root = test::NewTmpDirectory("rados_test_objs");
       osd_ = NewOSDAdaptor(osd_root);
     } else {
