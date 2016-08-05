@@ -2,7 +2,7 @@
 
 #
 # designed to run in the top src directory:
-#   $ ./dev/build_project.sh
+#   $ ./dev/rebuild_project.sh
 #
 # Aug-05-2016 zhengq@cs.cmu.edu
 #
