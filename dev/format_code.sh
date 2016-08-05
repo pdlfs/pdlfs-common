@@ -1,4 +1,11 @@
-#!/bin/sh
+#!/bin/sh -x
+
+#
+# designed to run in the top src directory:
+#   $ ./dev/format_code.sh
+#
+# Aug-05-2016 zhengq@cs.cmu.edu
+#
 
 fmt=
 for fmt in clang-format \
@@ -18,9 +25,11 @@ if test -z "$full_fmt"; then
   exit 1
 fi
 
+STYLE_CONF="{BasedOnStyle: Google, DerivePointerAlignment: false}"
+
 # Reformat all headers
-find | grep '\.h$' | xargs $full_fmt -style="{BasedOnStyle: Google, DerivePointerAlignment: false}" -i
+find | grep '\.h$' | xargs $full_fmt -style="$STYLE_CONF" -i
 # Reformat all CXX sources
-find | grep '\.cc$' | xargs $full_fmt -style="{BasedOnStyle: Google, DerivePointerAlignment: false}" -i
+find | grep '\.cc$' | xargs $full_fmt -style="$STYLE_CONF" -i
 
 exit 0
