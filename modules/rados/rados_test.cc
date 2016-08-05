@@ -54,41 +54,44 @@ static void TestReadWriteFile(Env* env, const Slice& dirname,
 
 class RadosTest {
  public:
+  RadosConn* rados_conn_;
+  std::string root_;
   OSD* osd_;
   Env* env_;
-  RadosOptions opts_;
-  std::string root_;
 
   std::string WorkingDir() { return root_ + "/dbhome"; }
 
   RadosTest() {
+    Status s;
+    std::string pool_name = "metadata";
     root_ = test::NewTmpDirectory("rados_test");
+    rados_conn_ = new RadosConn;
     if (FLAGS_use_posix_osd) {
-      std::string osd_root = test::NewTmpDirectory("rados_test_osd");
+      std::string osd_root = test::NewTmpDirectory("rados_test_objs");
       osd_ = NewOSDAdaptor(osd_root);
     } else {
-      opts_.conf_path = "/tmp/pdlfs-rados/ceph.conf";
-      opts_.pool_name = "metadata";
-      opts_.client_mount_timeout = 1;
-      opts_.mon_op_timeout = 1;
-      opts_.osd_op_timeout = 1;
-      osd_ = NewRadosOSD(opts_);
+      s = rados_conn_->Open(RadosOptions());
+      ASSERT_OK(s);
+      s = rados_conn_->OpenOsd(&osd_, pool_name);
+      ASSERT_OK(s);
     }
-    env_ = NewRadosEnv(opts_, root_, osd_);
+    s = rados_conn_->OpenEnv(&env_, root_, pool_name, osd_);
+    ASSERT_OK(s);
     env_->CreateDir(WorkingDir());
   }
 
   ~RadosTest() {
     env_->DeleteDir(WorkingDir());
-    delete osd_;
     delete env_;
+    delete osd_;
+    delete rados_conn_;
   }
 
   void Reload() {
     if (kVerbose > 0) {
       fprintf(stderr, "Reloading ...\n");
     }
-    ASSERT_OK(SoftDeleteDir(env_, WorkingDir()));
+    ASSERT_OK(env_->DetachDir(WorkingDir()));
     ASSERT_OK(env_->CreateDir(WorkingDir()));
     if (kVerbose > 0) {
       fprintf(stderr, "Reloading done\n");
@@ -99,8 +102,8 @@ class RadosTest {
     if (kVerbose > 0) {
       fprintf(stderr, "Reloading read-only ...\n");
     }
-    ASSERT_OK(SoftDeleteDir(env_, WorkingDir()));
-    ASSERT_OK(SoftCreateDir(env_, WorkingDir()));
+    ASSERT_OK(env_->DetachDir(WorkingDir()));
+    ASSERT_OK(env_->AttachDir(WorkingDir()));
     if (kVerbose > 0) {
       fprintf(stderr, "Reloading read-only done\n");
     }
