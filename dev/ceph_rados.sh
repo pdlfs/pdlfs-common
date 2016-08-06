@@ -47,6 +47,8 @@ prepare_rados() {
   $SUDO sed "s/@localhost@/`hostname -s`/g; \
              s/@rados_run@/${RADOS_RUN//\//\\\/}/g" \
       $TEMPLATE_CEPH_CONF | $SUDO tee $CEPH_CONF
+  $SUDO rm -f /tmp/ceph.conf
+  $SUDO ln -fs $CEPH_CONF /tmp/ceph.conf
 }
 
 fix_pools() {
