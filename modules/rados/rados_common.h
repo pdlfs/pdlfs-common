@@ -26,9 +26,7 @@ namespace rados {
 class RadosOpCtx {
  public:
   RadosOpCtx(port::Mutex* mu) : mu_(mu), nrefs_(1), err_(0) {}
-
   bool ok() const { return err_ == 0; }
-
   int err() const { return err_; }
 
   void Ref() {
@@ -157,12 +155,14 @@ class RadosWritableFile : public WritableFile {
   std::string oid_;
   rados_ioctx_t rados_ioctx_;
   bool owns_ioctx_;
+  int err_;
 
  public:
   RadosWritableFile(const Slice& fname, rados_ioctx_t ioctx,
                     bool owns_ioctx = true)
-      : rados_ioctx_(ioctx), owns_ioctx_(owns_ioctx) {
+      : rados_ioctx_(ioctx), owns_ioctx_(owns_ioctx), err_(0) {
     oid_ = fname.ToString();
+    Truncate();
   }
 
   virtual ~RadosWritableFile() {
@@ -172,17 +172,44 @@ class RadosWritableFile : public WritableFile {
   }
 
   virtual Status Append(const Slice& buf) {
-    int r = rados_append(rados_ioctx_, oid_.c_str(), buf.data(), buf.size());
-    if (r != 0) {
-      return RadosError("rados_append", r);
+    if (err_ == 0) {
+      err_ = rados_append(rados_ioctx_, oid_.c_str(), buf.data(), buf.size());
+    }
+    if (err_ != 0) {
+      return RadosError("rados_append", err_);
+    } else {
+      return Status::OK();
+    }
+  }
+
+  Status Truncate() {
+    if (err_ == 0) {
+      err_ = rados_write_full(rados_ioctx_, oid_.c_str(), "", 0);
+    }
+    if (err_ != 0) {
+      return RadosError("rados_write_full", err_);
     } else {
       return Status::OK();
     }
   }
 
   virtual Status Close() { return Status::OK(); }
-  virtual Status Flush() { return Status::OK(); }
-  virtual Status Sync() { return Status::OK(); }
+
+  virtual Status Flush() {
+    if (err_ != 0) {
+      return RadosError("bad_file_state", err_);
+    } else {
+      return Status::OK();
+    }
+  }
+
+  virtual Status Sync() {
+    if (err_ != 0) {
+      return RadosError("bad_file_state", err_);
+    } else {
+      return Status::OK();
+    }
+  }
 };
 
 class RadosAsyncWritableFile : public WritableFile {
