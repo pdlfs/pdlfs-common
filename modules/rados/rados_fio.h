@@ -15,10 +15,11 @@
 
 namespace pdlfs {
 namespace rados {
-class RadosFio;  // File I/O implementation atop Rados.
+class RadosFio;  // File I/O implementation atop rados.
 
-struct RadosFobj {
-  rados_completion_t comp;  // Async write operation completion callbacks
+class RadosFobj {
+ public:
+  RadosFobj(RadosFio* fio) : fio(fio) {}
   RadosFio* fio;
   uint64_t mtime;  // Cached last file modification time
   uint64_t size;   // Cached file size
@@ -55,11 +56,10 @@ class RadosFio : public Fio {
 
   RadosFio() {}
   friend class RadosConn;
-  port::Mutex mutex_;
-  // Constant after construction
+  port::Mutex* mutex_;
+  bool force_sync_;  // If async I/O should be disabled
   rados_ioctx_t ioctx_;
   rados_t cluster_;
-  bool sync_;
 };
 
 }  // namespace rados
