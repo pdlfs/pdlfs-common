@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/osd_env.h"
 #include "pdlfs-common/port.h"
 #include "pdlfs-common/testharness.h"
@@ -36,21 +35,22 @@ namespace rados {
 
 static int kVerbose = 5;
 
-static void TestReadWriteFile(Env* env, const Slice& dirname,
-                              const Slice& fname) {
+static void TestRWEnvFile(Env* env, const Slice& dirname, const Slice& fname) {
   const char data[] = "xxxxxxxyyyyzz";
-  env->DeleteFile(fname);
-  ASSERT_OK(WriteStringToFile(env, Slice(data), fname));
-  ASSERT_TRUE(env->FileExists(fname));
-  std::string tmp;
-  ASSERT_OK(ReadFileToString(env, fname, &tmp));
-  ASSERT_EQ(Slice(tmp), Slice(data));
-  std::vector<std::string> names;
-  ASSERT_OK(env->GetChildren(dirname, &names));
-  Slice slice = fname;
-  slice.remove_prefix(dirname.size() + 1);
-  std::string name = slice.ToString();
-  ASSERT_TRUE(std::find(names.begin(), names.end(), name) != names.end());
+  for (int i = 0; i < 3; i++) {
+    env->DeleteFile(fname);
+    ASSERT_OK(WriteStringToFile(env, Slice(data), fname));
+    ASSERT_TRUE(env->FileExists(fname));
+    std::string tmp;
+    ASSERT_OK(ReadFileToString(env, fname, &tmp));
+    ASSERT_EQ(Slice(tmp), Slice(data));
+    std::vector<std::string> names;
+    ASSERT_OK(env->GetChildren(dirname, &names));
+    Slice slice = fname;
+    slice.remove_prefix(dirname.size() + 1);
+    std::string name = slice.ToString();
+    ASSERT_TRUE(std::find(names.begin(), names.end(), name) != names.end());
+  }
   env->DeleteFile(fname);
 }
 
@@ -94,16 +94,22 @@ class RadosTest {
     delete osd_;
   }
 
-  void Reload() {
+  // Reload the working dir.
+  // Check the existence of a specified file under the next context.
+  void Reload(const Slice& f) {
     Verbose(__LOG_ARGS__, kVerbose, "Reloading ... ");
     ASSERT_OK(env_->DetachDir(WorkingDir()));
     ASSERT_OK(env_->CreateDir(WorkingDir()));
+    ASSERT_TRUE(env_->FileExists(f));
   }
 
-  void ReloadReadonly() {
+  // Reload the working dir readonly.
+  // Check the existence of a specified file under the next context.
+  void ReloadReadonly(const Slice& f) {
     Verbose(__LOG_ARGS__, kVerbose, "Reloading readonly ... ");
     ASSERT_OK(env_->DetachDir(WorkingDir()));
     ASSERT_OK(env_->AttachDir(WorkingDir()));
+    ASSERT_TRUE(env_->FileExists(f));
   }
 };
 
@@ -158,35 +164,28 @@ TEST(RadosTest, SetCurrentFile) {
   ASSERT_OK(env_->DeleteFile(CurrentFileName(WorkingDir())));
 }
 
+TEST(RadosTest, ReadWriteFiles) {
+  TestRWEnvFile(env_, WorkingDir(), DescriptorFileName(WorkingDir(), 1));
+  TestRWEnvFile(env_, WorkingDir(), LogFileName(WorkingDir(), 2));
+  TestRWEnvFile(env_, WorkingDir(), TableFileName(WorkingDir(), 3));
+  TestRWEnvFile(env_, WorkingDir(), InfoLogFileName(WorkingDir()));
+  TestRWEnvFile(env_, WorkingDir(), OldInfoLogFileName(WorkingDir()));
+}
+
 TEST(RadosTest, Reloading) {
   std::string fname = TableFileName(WorkingDir(), 4);
   for (int i = 0; i < 3; i++) {
     WriteStringToFile(env_, "xxxxxxxxx", fname);
-    ASSERT_TRUE(env_->FileExists(fname));
-    ReloadReadonly();
-    ASSERT_TRUE(env_->FileExists(fname));
-    ReloadReadonly();
-    ASSERT_TRUE(env_->FileExists(fname));
-    ReloadReadonly();
-    ASSERT_TRUE(env_->FileExists(fname));
-    Reload();
-    ASSERT_TRUE(env_->FileExists(fname));
-    Reload();
-    ASSERT_TRUE(env_->FileExists(fname));
-    Reload();
-    ASSERT_TRUE(env_->FileExists(fname));
-    Reload();
+    ReloadReadonly(fname);
+    ReloadReadonly(fname);
+    ReloadReadonly(fname);
+    Reload(fname);
+    Reload(fname);
+    Reload(fname);
+    Reload(fname);
   }
 
   ASSERT_OK(env_->DeleteFile(fname));
-}
-
-TEST(RadosTest, ReadWriteFile) {
-  TestReadWriteFile(env_, WorkingDir(), DescriptorFileName(WorkingDir(), 1));
-  TestReadWriteFile(env_, WorkingDir(), LogFileName(WorkingDir(), 2));
-  TestReadWriteFile(env_, WorkingDir(), TableFileName(WorkingDir(), 3));
-  TestReadWriteFile(env_, WorkingDir(), InfoLogFileName(WorkingDir()));
-  TestReadWriteFile(env_, WorkingDir(), OldInfoLogFileName(WorkingDir()));
 }
 
 }  // namespace rados
