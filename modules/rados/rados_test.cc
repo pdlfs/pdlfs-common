@@ -75,11 +75,11 @@ class RadosTest {
     Status s;
     std::string pool_name = "metadata";
     root_ = test::NewTmpDirectory("rados_test");
-    port::InitOnce(&once, OpenRadosConn);
     if (FLAGS_useposixosd) {
       std::string osd_root = test::NewTmpDirectory("rados_test_objs");
       osd_ = NewOSDAdaptor(osd_root);
     } else {
+      port::InitOnce(&once, OpenRadosConn);
       s = rados_conn->OpenOsd(&osd_, pool_name);
       ASSERT_OK(s);
     }

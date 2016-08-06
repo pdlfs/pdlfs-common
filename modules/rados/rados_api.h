@@ -15,6 +15,7 @@
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/fio.h"
 #include "pdlfs-common/osd.h"
+#include "pdlfs-common/port.h"
 
 namespace pdlfs {
 namespace rados {
@@ -24,7 +25,7 @@ struct RadosOptions {
 
   // Path to the ceph configuration file.
   // Default: "/tmp/ceph.conf"
-  const char* conf_path;
+  std::string conf_path;
 
   // Timeouts (in seconds) excised when bootstrapping ceph rados.
   // Default: 5 sec
@@ -75,17 +76,19 @@ class RadosConn {
                  Env* base_env = NULL);
 
   // *result should be deleted when it is no longer needed.
-  Status OpenOsd(OSD** result, const std::string& pool_name = "metadata");
+  Status OpenOsd(OSD** result, const std::string& pool_name = "metadata",
+                 bool force_sync = false);
 
   // *result should be deleted when it is no longer needed.
   Status OpenFio(Fio** result, const std::string& pool_name = "data",
-                 bool sync = false);
+                 bool force_sync = false);
 
  private:
   // No copying allowed
   void operator=(const RadosConn&);
   RadosConn(const RadosConn&);
 
+  port::Mutex mutex_;
   void* cluster_;
 };
 

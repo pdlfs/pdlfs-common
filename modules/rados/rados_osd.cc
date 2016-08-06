@@ -86,8 +86,10 @@ Status RadosOsd::NewWritableObj(const Slice& name, WritableFile** result) {
   Status s;
   rados_ioctx_t ioctx;
   s = CloneIoCtx(&ioctx);
-  if (s.ok()) {
-    *result = new RadosAsyncWritableFile(name, &mutex_, ioctx);
+  if (!force_sync_) {
+    *result = new RadosAsyncWritableFile(name, mutex_, ioctx);
+  } else {
+    *result = new RadosWritableFile(name, ioctx);
   }
   return s;
 }
@@ -108,7 +110,12 @@ Status RadosOsd::Copy(const Slice& src, const Slice& dst) {
     rados_ioctx_t ioctx;
     s = CloneIoCtx(&ioctx);
     if (s.ok()) {
-      WritableFile* target = new RadosAsyncWritableFile(dst, &mutex_, ioctx);
+      WritableFile* target;
+      if (!force_sync_) {
+        target = new RadosAsyncWritableFile(dst, mutex_, ioctx);
+      } else {
+        target = new RadosWritableFile(dst, ioctx);
+      }
       char* buf = new char[1024 * 1024];  // 1m
       uint64_t off = 0;
       while (s.ok() && obj_size != 0) {

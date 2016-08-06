@@ -44,7 +44,7 @@ Status RadosConn::Open(const RadosOptions& options) {
 #else
   int r = rados_create(&cluster_, NULL);
   if (r == 0) {
-    r = rados_conf_read_file(cluster_, options.conf_path);
+    r = rados_conf_read_file(cluster_, options.conf_path.c_str());
     if (r == 0) {
       rados_conf_set_(cluster_, "rados_mon_op_timeout", options.mon_op_timeout);
       rados_conf_set_(cluster_, "rados_osd_op_timeout", options.osd_op_timeout);
@@ -86,7 +86,8 @@ Status RadosConn::OpenEnv(Env** result, const std::string& rados_root,
   return s;
 }
 
-Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name) {
+Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name,
+                          bool force_sync) {
 #if !defined(RADOS)
   return Status::NotSupported(Slice());
 #else
@@ -97,6 +98,8 @@ Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name) {
     s = RadosError("rados_ioctx_create", r);
   } else {
     RadosOsd* osd = new RadosOsd;
+    osd->force_sync_ = force_sync;
+    osd->mutex_ = &mutex_;
     osd->cluster_ = cluster_;
     osd->ioctx_ = ioctx;
     *result = osd;
@@ -107,7 +110,7 @@ Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name) {
 }
 
 Status RadosConn::OpenFio(Fio** result, const std::string& pool_name,
-                          bool sync) {
+                          bool force_sync) {
 #if !defined(RADOS)
   return Status::NotSupported(Slice());
 #else
@@ -118,9 +121,9 @@ Status RadosConn::OpenFio(Fio** result, const std::string& pool_name,
     s = RadosError("rados_ioctx_create", r);
   } else {
     RadosFio* fio = new RadosFio;
+    fio->sync_ = force_sync;
     fio->cluster_ = cluster_;
     fio->ioctx_ = ioctx;
-    fio->sync_ = sync;
     *result = fio;
   }
 

@@ -35,7 +35,8 @@ class RadosOsd : public OSD {
   RadosOsd() {}
   friend class RadosConn;
   Status CloneIoCtx(rados_ioctx_t*);
-  port::Mutex mutex_;
+  bool force_sync_; // If async I/Os are disabled
+  port::Mutex* mutex_;
   rados_ioctx_t ioctx_;
   rados_t cluster_;
 };

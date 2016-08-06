@@ -25,20 +25,19 @@ namespace rados {
 // Async I/O operation context.
 class RadosOpCtx {
  public:
-  explicit RadosOpCtx(port::Mutex* mu)
-      : cp_(NULL), mu_(mu), nrefs_(1), err_(0) {
-    rados_aio_create_completion(this, NULL, IO_safe, &cp_);
+  RadosOpCtx(port::Mutex* mu) : mu_(mu), nrefs_(1), err_(0) {}
+
+  bool ok() const { return err_ == 0; }
+
+  int err() const { return err_; }
+
+  void Ref() {
+    mu_->AssertHeld();
+    nrefs_++;
   }
 
-  bool ok() { return err_ == 0; }
-
-  int err() { return err_; }
-
-  rados_completion_t comp() { return cp_; }
-
-  void Ref() { nrefs_++; }
-
   void Unref() {
+    mu_->AssertHeld();
     assert(nrefs_ > 0);
     nrefs_--;
     if (nrefs_ == 0) {
@@ -46,40 +45,24 @@ class RadosOpCtx {
     }
   }
 
+  static void IO_safe(rados_completion_t comp, void* arg);
+
  private:
-  ~RadosOpCtx() {
-    if (cp_ != NULL) {
-      rados_aio_release(cp_);
-    }
-  }
-
-  static void IO_safe(rados_completion_t comp, void* arg) {
-    RadosOpCtx* ctx = reinterpret_cast<RadosOpCtx*>(arg);
-    if (ctx != NULL) {
-      MutexLock ml(ctx->mu_);
-      int err = rados_aio_get_return_value(comp);
-      if (ctx->err_ == 0 && err != 0) {
-        ctx->err_ = err;
-      }
-      ctx->Unref();
-    }
-  }
-
+  ~RadosOpCtx() {}
   // No copying allowed
   void operator=(const RadosOpCtx&);
   RadosOpCtx(const RadosOpCtx&);
-  rados_completion_t cp_;
   port::Mutex* mu_;
   int nrefs_;
   int err_;
 };
 
 inline Status RadosError(const char* err_ctx, int err_num) {
-  char tmp[50];
+  char tmp[100];
   if (err_num == -ENOENT) {
     return Status::NotFound(Slice());
   } else {
-    snprintf(tmp, sizeof(tmp), "%s: rados_err=%d", err_ctx, err_num);
+    snprintf(tmp, sizeof(tmp), "%s: %s", err_ctx, strerror(-err_num));
     return Status::IOError(tmp);
   }
 }
@@ -176,7 +159,8 @@ class RadosWritableFile : public WritableFile {
   bool owns_ioctx_;
 
  public:
-  RadosWritableFile(const Slice& fname, rados_ioctx_t ioctx, bool owns_ioctx)
+  RadosWritableFile(const Slice& fname, rados_ioctx_t ioctx,
+                    bool owns_ioctx = true)
       : rados_ioctx_(ioctx), owns_ioctx_(owns_ioctx) {
     oid_ = fname.ToString();
   }
@@ -210,15 +194,13 @@ class RadosAsyncWritableFile : public WritableFile {
   bool owns_ioctx_;
 
   Status Ref() {
-    Status s;
     MutexLock ml(mu_);
-    if (async_op_->ok()) {
-      async_op_->Ref();
+    if (!async_op_->ok()) {
+      return RadosError("rados_bg_io", async_op_->err());
     } else {
-      s = RadosError("rados_bg_io", async_op_->err());
+      async_op_->Ref();
+      return Status::OK();
     }
-
-    return s;
   }
 
  public:
@@ -242,38 +224,46 @@ class RadosAsyncWritableFile : public WritableFile {
   virtual Status Append(const Slice& buf) {
     Status s = Ref();
     if (s.ok()) {
-      rados_aio_append(rados_ioctx_, oid_.c_str(),
-                       async_op_->comp(),  // aio callback
-                       buf.data(), buf.size());
+      rados_completion_t comp;
+      rados_aio_create_completion(async_op_, NULL, RadosOpCtx::IO_safe, &comp);
+      rados_aio_append(rados_ioctx_, oid_.c_str(), comp, buf.data(),
+                       buf.size());
+      rados_aio_release(comp);
+      return s;
+    } else {
+      // No more writes if we get errors
+      return s;
     }
-
-    return s;
   }
 
   Status Truncate() {
     Status s = Ref();
     if (s.ok()) {
-      rados_aio_write_full(rados_ioctx_, oid_.c_str(),
-                           async_op_->comp(),  // aio callback
-                           "", 0);
+      rados_completion_t comp;
+      rados_aio_create_completion(async_op_, NULL, RadosOpCtx::IO_safe, &comp);
+      rados_aio_write_full(rados_ioctx_, oid_.c_str(), comp, "", 0);
+      rados_aio_release(comp);
+      return s;
+    } else {
+      // No more writes if we get errors
+      return s;
     }
-
-    return s;
   }
 
   virtual Status Close() { return Status::OK(); }
 
-  virtual Status Flush() { return Status::OK(); }
-
-  virtual Status Sync() {
-    Status s;
-    rados_aio_flush(rados_ioctx_);
+  virtual Status Flush() {
     MutexLock ml(mu_);
     if (!async_op_->ok()) {
-      s = RadosError("rados_bg_io", async_op_->err());
+      return RadosError("rados_bg_io", async_op_->err());
+    } else {
+      return Status::OK();
     }
+  }
 
-    return s;
+  virtual Status Sync() {
+    rados_aio_flush(rados_ioctx_);
+    return Flush();
   }
 };
 
