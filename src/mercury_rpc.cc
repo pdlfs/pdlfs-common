@@ -110,7 +110,7 @@ struct RPCState {
   hg_return_t ret;
   void* out;
 };
-}  // namespace
+}
 
 hg_return_t MercuryRPC::Client::SaveReply(const hg_cb_info* info) {
   RPCState* state = reinterpret_cast<RPCState*>(info->arg);
@@ -125,12 +125,14 @@ hg_return_t MercuryRPC::Client::SaveReply(const hg_cb_info* info) {
 }
 
 void MercuryRPC::Client::Call(Message& in, Message& out) {
-  hg_addr_t hg_addr;
-  hg_return_t r = rpc_->Lookup(addr_, &hg_addr);
+  AddrEntry* entry = NULL;
+  hg_return_t r = rpc_->Lookup(addr_, &entry);
   if (r != HG_SUCCESS) throw EHOSTUNREACH;
+  assert(entry != NULL);
+  hg_addr_t addr = entry->value->rep;
   hg_handle_t handle;
   hg_return_t ret =
-      HG_Create(rpc_->hg_context_, hg_addr, rpc_->hg_rpc_id_, &handle);
+      HG_Create(rpc_->hg_context_, addr, rpc_->hg_rpc_id_, &handle);
   if (ret == HG_SUCCESS) {
     RPCState state;
     state.out = &out;
@@ -145,6 +147,7 @@ void MercuryRPC::Client::Call(Message& in, Message& out) {
     }
     HG_Destroy(handle);
   }
+  rpc_->Release(entry);
   if (ret != HG_SUCCESS) {
     throw ENETUNREACH;
   }
@@ -162,17 +165,17 @@ void MercuryRPC::Unref() {
 
 MercuryRPC::MercuryRPC(bool listen, const RPCOptions& options)
     : listen_(listen),
-      env_(options.env),
-      fs_(options.fs),
-      refs_(0),
-      pool_(options.extra_workers),
+      lookup_cv_(&mutex_),
+      addr_cache_(128),
       shutting_down_(NULL),
       bg_cv_(&mutex_),
       bg_loop_running_(false),
       bg_error_(false),
-      lookup_cv_(&mutex_) {
+      refs_(0),
+      pool_(options.extra_workers),
+      env_(options.env),
+      fs_(options.fs) {
   assert(!options.uri.empty());
-
   hg_class_ = HG_Init(options.uri.c_str(), (listen) ? HG_TRUE : HG_FALSE);
   if (hg_class_) hg_context_ = HG_Context_create(hg_class_);
   if (hg_class_ == NULL || hg_context_ == NULL) {
@@ -211,11 +214,9 @@ MercuryRPC::~MercuryRPC() {
   while (bg_loop_running_) {
     bg_cv_.Wait();
   }
+  addr_cache_.Prune();  // Purge all cached addrs
+  assert(addr_cache_.Empty());
   mutex_.Unlock();
-
-  for (AddrTable::iterator it = addrs_.begin(); it != addrs_.end(); ++it) {
-    HG_Addr_free(hg_class_, it->second);
-  }
 
   HG_Context_destroy(hg_context_);
   HG_Finalize(hg_class_);
@@ -223,66 +224,62 @@ MercuryRPC::~MercuryRPC() {
 
 namespace {
 struct LookupState {
-  const std::string* addr;
-  MercuryRPC* rpc;
+  LookupState() : lookup_done(NULL) {}
+  port::AtomicPointer lookup_done;
+  port::CondVar* lookup_cv;
   hg_return_t ret;
-  bool ok;
+  hg_addr_t addr;
 };
-}  // namespace
+}
 
-hg_return_t MercuryRPC::SaveAddr(const hg_cb_info* info) {
+static hg_return_t SaveAddr(const hg_cb_info* info) {
   LookupState* state = reinterpret_cast<LookupState*>(info->arg);
-  MercuryRPC* const rpc = state->rpc;
   state->ret = info->ret;
-
-  MutexLock l(&rpc->mutex_);
   if (state->ret == HG_SUCCESS) {
-    hg_addr_t result = info->info.lookup.addr;
-    if (rpc->addrs_.find(*state->addr) == rpc->addrs_.end()) {
-      rpc->addrs_.insert(std::make_pair(*state->addr, result));
-    } else {
-      HG_Addr_free(rpc->hg_class_, result);
-    }
+    state->addr = info->info.lookup.addr;
   }
 
-  state->ok = true;
-  rpc->lookup_cv_.SignalAll();
+  state->lookup_done.Release_Store(state);
+  state->lookup_cv->SignalAll();
   return HG_SUCCESS;
 }
 
-hg_return_t MercuryRPC::Lookup(const std::string& addr, hg_addr_t* result) {
+static void FreeAddr(const Slice& k, MercuryRPC::Addr* addr) {
+  HG_Addr_free(addr->clazz, addr->rep);
+  delete addr;
+}
+
+hg_return_t MercuryRPC::Lookup(const std::string& target, AddrEntry** result) {
   MutexLock l(&mutex_);
-  AddrTable::iterator it = addrs_.find(addr);
-  if (it != addrs_.end()) {
-    *result = it->second;
-    return HG_SUCCESS;
-  } else {
+  uint32_t hash = Hash(target.data(), target.size(), 0);
+  AddrEntry* e = addr_cache_.Lookup(target, hash);
+  if (e == NULL) {
     LookupState state;
-    state.rpc = this;
-    state.addr = &addr;
-    state.ok = false;
-    HG_Addr_lookup(hg_context_, SaveAddr, &state, addr.c_str(),
+    state.lookup_cv = &lookup_cv_;
+    state.addr = NULL;
+    HG_Addr_lookup(hg_context_, SaveAddr, &state, target.c_str(),
                    HG_OP_ID_IGNORE);
-    while (!state.ok) {
+    while (!state.lookup_done.NoBarrier_Load()) {
       lookup_cv_.Wait();
     }
     if (state.ret == HG_SUCCESS) {
-      it = addrs_.find(addr);
-      assert(it != addrs_.end());
-      *result = it->second;
+      Addr* addr = new Addr(hg_class_, state.addr);
+      e = addr_cache_.Insert(target, hash, addr, 1, FreeAddr);
     }
+    *result = e;
     return state.ret;
+  } else {
+    *result = e;
+    return HG_SUCCESS;
   }
 }
 
 std::string MercuryRPC::ToString(hg_addr_t addr) {
-  std::string rv;
   char tmp[64];
   tmp[0] = 0;  // XXX: in case HG_Addr_to_string_fails()
   hg_size_t len = sizeof(tmp);
   HG_Addr_to_string(hg_class_, tmp, &len, addr);  // XXX: ignored ret val
-  rv = tmp;
-  return rv;
+  return tmp;
 }
 
 void MercuryRPC::TEST_LoopForever(void* arg) {

@@ -15,8 +15,8 @@
 #include <map>
 #include <string>
 
+#include "pdlfs-common/lru.h"
 #include "pdlfs-common/mutexlock.h"
-#include "pdlfs-common/port.h"
 #include "pdlfs-common/rpc.h"
 
 namespace pdlfs {
@@ -24,11 +24,14 @@ namespace rpc {
 
 class MercuryRPC {
  public:
-  void Ref();
-  void Unref();
+  struct Addr;
   std::string ToString(hg_addr_t addr);
-  hg_return_t Lookup(const std::string& addr, hg_addr_t* result);
-  MercuryRPC(bool listen, const RPCOptions&);
+  typedef LRUEntry<Addr> AddrEntry;
+  hg_return_t Lookup(const std::string& addr, AddrEntry** result);
+  void Release(AddrEntry* e) { addr_cache_.Release(e); }
+  MercuryRPC(bool listen, const RPCOptions& options);
+  void Unref();
+  void Ref();
 
   hg_class_t* hg_class_;
   hg_context_t* hg_context_;
@@ -48,19 +51,23 @@ class MercuryRPC {
   hg_id_t hg_rpc_id_;
 
   void RegisterRPC() {
-    hg_rpc_id_ = HG_Register_name(hg_class_, "fs_call", RPCMessageCoder,
+    hg_rpc_id_ = HG_Register_name(hg_class_, "RPC", RPCMessageCoder,
                                   RPCMessageCoder, RPCCallbackDecorator);
     if (listen_) {
       HG_Register_data(hg_class_, hg_rpc_id_, this, NULL);
     }
   }
 
-  // Start or stop the background looping thread.
+  // Progress RPC and trigger callback in a single thread
+  static void TEST_LoopForever(void* arg);
   Status TEST_Start();
   Status TEST_Stop();
 
  private:
   ~MercuryRPC();
+  // No copying allowed
+  void operator=(const MercuryRPC&);
+  MercuryRPC(const MercuryRPC&);
 
   static inline MercuryRPC* registered_data(hg_handle_t handle) {
     hg_info* info = HG_Get_info(handle);
@@ -70,26 +77,33 @@ class MercuryRPC {
     return rpc;
   }
 
-  Env* env_;
-  If* fs_;
-  int refs_;
-  ThreadPool* pool_;
-
   port::Mutex mutex_;
+  port::CondVar lookup_cv_;
+  LRUCache<AddrEntry> addr_cache_;
   port::AtomicPointer shutting_down_;
   port::CondVar bg_cv_;
   bool bg_loop_running_;
   bool bg_error_;
+  int refs_;
 
-  port::CondVar lookup_cv_;
-  typedef std::map<std::string, hg_addr_t> AddrTable;
-  AddrTable addrs_;
-  static hg_return_t SaveAddr(const hg_cb_info* info);
-  static void TEST_LoopForever(void* arg);
+  // Constant after construction
+  ThreadPool* pool_;
+  Env* env_;
+  If* fs_;
+};
 
-  // No copying allowed
-  void operator=(const MercuryRPC&);
-  MercuryRPC(const MercuryRPC&);
+// ====================
+// Mercury addr
+// ====================
+
+struct MercuryRPC::Addr {
+  hg_class_t* clazz;
+  hg_addr_t rep;
+
+  Addr(hg_class_t* hgz, hg_addr_t hga) {
+    clazz = hgz;
+    rep = hga;
+  }
 };
 
 // ====================
