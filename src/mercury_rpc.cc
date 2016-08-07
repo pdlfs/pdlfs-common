@@ -111,7 +111,7 @@ struct RPCState {
 };
 }
 
-hg_return_t MercuryRPC::Client::SaveReply(const hg_cb_info* info) {
+static hg_return_t SaveReply(const hg_cb_info* info) {
   RPCState* state = reinterpret_cast<RPCState*>(info->arg);
   hg_handle_t handle = info->info.forward.handle;
   state->ret = info->ret;
@@ -277,6 +277,7 @@ void MercuryRPC::LocalLooper::BGLoop() {
   mutex_.Lock();
   int id = bg_id_++;
   mutex_.Unlock();
+  const int timeout = 500; // in milliseconds
   hg_context_t* ctx = rpc_->hg_context_;
   hg_return_t ret = HG_SUCCESS;
   int size = max_bg_loops_;
@@ -292,7 +293,7 @@ void MercuryRPC::LocalLooper::BGLoop() {
     }
 
     if (id == 0) {
-      ret = HG_Progress(ctx, 1000);
+      ret = HG_Progress(ctx, timeout);
     }
 
     if (ret == HG_SUCCESS) {
@@ -300,7 +301,7 @@ void MercuryRPC::LocalLooper::BGLoop() {
         unsigned int actual_count = 1;
         while (actual_count != 0 && !shutting_down_.Acquire_Load()) {
           if (id != 0) {
-            ret = HG_Trigger(ctx, 100, 1, &actual_count);
+            ret = HG_Trigger(ctx, timeout, 1, &actual_count);
           } else {
             ret = HG_Trigger(ctx, 0, 1, &actual_count);
           }

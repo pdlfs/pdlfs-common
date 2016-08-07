@@ -112,7 +112,7 @@ class MercuryRPC::LocalLooper {
   int bg_id_;
 
   // Constant after construction
-  bool ignore_rpc_error_;  // Keep looping if we get errors from mercury
+  bool ignore_rpc_error_;  // Keep looping even if we receive rpc errors
   int max_bg_loops_;
   MercuryRPC* rpc_;
 
@@ -183,9 +183,9 @@ class MercuryRPC::Client : public If {
   }
 
  private:
-  static hg_return_t SaveReply(const hg_cb_info* info);
-  MercuryRPC* const rpc_;
-  std::string addr_;  // To-be-resolved target RPC address
+  MercuryRPC* rpc_;
+  std::string addr_;  // Unresolved target address
+
   port::Mutex mu_;
   port::CondVar cv_;
   // No copying allowed
