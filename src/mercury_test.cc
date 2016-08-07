@@ -59,30 +59,61 @@ class MercuryServer : public If {
 class MercuryTest {
  public:
   MercuryServer* server_;
+  port::Mutex mu_;
+  port::CondVar bg_cv_;
+  int num_bg_;
 
-  MercuryTest() {
+  explicit MercuryTest() : bg_cv_(&mu_), num_bg_(0) {
     server_ = new MercuryServer();
   }
 
-  ~MercuryTest() {
-    delete server_;
+  ~MercuryTest() { delete server_; }
+
+  void ThreadBody() {
+    Random rnd(301);
+    for (int i = 0; i < 1000; ++i) {
+      std::string buf;
+      If::Message input;
+      input.contents = test::RandomString(&rnd, 4000, &buf);
+      input.op = rnd.Uniform(128);
+      input.err = rnd.Uniform(128);
+      If::Message output;
+      server_->self_->Call(input, output);
+      ASSERT_EQ(input.contents, output.contents);
+      ASSERT_EQ(input.op, output.op);
+      ASSERT_EQ(input.err, output.err);
+    }
+    mu_.Lock();
+    num_bg_--;
+    bg_cv_.SignalAll();
+    mu_.Unlock();
+  }
+
+  static void ThreadWrapper(void* arg) {
+    MercuryTest* test = reinterpret_cast<MercuryTest*>(arg);
+    test->ThreadBody();
   }
 };
 
 TEST(MercuryTest, SendReceive) {
-  Random rnd(301);
-  std::string buf;
-  for (int i = 0; i < 1000; ++i) {
-    If::Message input;
-    If::Message output;
-    input.op = rnd.Uniform(128);
-    input.err = rnd.Uniform(128);
-    input.contents = test::RandomString(&rnd, 4000, &buf);
-    server_->self_->Call(input, output);
-    ASSERT_EQ(input.op, output.op);
-    ASSERT_EQ(input.err, output.err);
-    ASSERT_EQ(input.contents, output.contents);
+  // Single thread
+  num_bg_ = 1;
+  server_->env_->StartThread(ThreadWrapper, this);
+  mu_.Lock();
+  while (num_bg_ != 0) {
+    bg_cv_.Wait();
   }
+  mu_.Unlock();
+  // Multi thread
+  num_bg_ = 4;
+  for (int i = 0; i < num_bg_; ++i) {
+    server_->env_->StartThread(ThreadWrapper, this);
+  }
+  mu_.Lock();
+  while (num_bg_ != 0) {
+    bg_cv_.Wait();
+  }
+  mu_.Unlock();
 }
 
 }  // namespace rpc
