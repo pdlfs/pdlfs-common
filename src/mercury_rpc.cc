@@ -277,7 +277,7 @@ void MercuryRPC::LocalLooper::BGLoop() {
   mutex_.Lock();
   int id = bg_id_++;
   mutex_.Unlock();
-  const int timeout = 500; // in milliseconds
+  const int timeout = 500;  // in milliseconds
   hg_context_t* ctx = rpc_->hg_context_;
   hg_return_t ret = HG_SUCCESS;
   int size = max_bg_loops_;
@@ -318,8 +318,8 @@ void MercuryRPC::LocalLooper::BGLoop() {
     }
 
     if (ret != HG_SUCCESS) {
-      Error(__LOG_ARGS__, "error during mercury rpc looping: %s",
-            HG_Error_to_string(ret));
+      Error(__LOG_ARGS__, "error during mercury rpc looping: %s (errno=%d)",
+            HG_Error_to_string(ret), ret);
       if (ignore_rpc_error_) {
         ret = HG_SUCCESS;
       }

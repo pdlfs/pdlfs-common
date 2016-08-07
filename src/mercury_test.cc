@@ -16,63 +16,69 @@
 namespace pdlfs {
 namespace rpc {
 
-class EchoFS : public If {
+class MercuryServer : public If {
  public:
-  EchoFS() {}
-  virtual ~EchoFS() {}
+  MercuryServer() {
+    env_ = Env::Default();
+    pool_ = ThreadPool::NewFixed(2);
+    RPCOptions options;
+    options.env = env_;
+    options.extra_workers = pool_;
+    options.num_io_threads = 2;
+    options.uri = "bmi+tcp://10101";
+    options.fs = this;
+    bool listen = true;
+    rpc_ = new MercuryRPC(listen, options);
+    looper_ = new MercuryRPC::LocalLooper(rpc_, options);
+    self_ = new MercuryRPC::Client(rpc_, "bmi+tcp://localhost:10101");
+    looper_->Start();
+    rpc_->Ref();
+  }
+
+  virtual ~MercuryServer() {
+    rpc_->Unref();
+    looper_->Stop();
+    delete self_;
+    delete looper_;
+    delete pool_;
+  }
 
   virtual void Call(Message& in, Message& out) {
     out.op = in.op;
     out.err = in.err;
     out.contents = in.contents;
   }
+
+  ThreadPool* pool_;
+  MercuryRPC::LocalLooper* looper_;
+  MercuryRPC::Client* self_;
+  MercuryRPC* rpc_;
+  Env* env_;
 };
 
 class MercuryTest {
  public:
-  std::string buf_;
-  RPCOptions options_;
-  EchoFS fs_;
-  MercuryRPC* rpc_;
-  ThreadPool* pool_;
-  MercuryRPC::LocalLooper* looper_;
-  MercuryRPC::Client* client_;
-  Env* env_;
+  MercuryServer* server_;
 
   MercuryTest() {
-    pool_ = ThreadPool::NewFixed(2);
-    env_ = Env::Default();
-    options_.num_io_threads = 2;
-    options_.env = env_;
-    options_.fs = &fs_;
-    options_.uri = "bmi+tcp://10101";
-    options_.extra_workers = pool_;
-    bool listen = true;
-    rpc_ = new MercuryRPC(listen, options_);
-    looper_ = new MercuryRPC::LocalLooper(rpc_, options_);
-    client_ = new MercuryRPC::Client(rpc_, "tcp://localhost:10101");
-    looper_->Start();
-    rpc_->Ref();
+    server_ = new MercuryServer();
   }
 
   ~MercuryTest() {
-    delete client_;
-    looper_->Stop();
-    delete looper_;
-    rpc_->Unref();
-    delete pool_;
+    delete server_;
   }
 };
 
 TEST(MercuryTest, SendReceive) {
   Random rnd(301);
+  std::string buf;
   for (int i = 0; i < 1000; ++i) {
     If::Message input;
     If::Message output;
     input.op = rnd.Uniform(128);
     input.err = rnd.Uniform(128);
-    input.contents = test::RandomString(&rnd, 4000, &buf_);
-    client_->Call(input, output);
+    input.contents = test::RandomString(&rnd, 4000, &buf);
+    server_->self_->Call(input, output);
     ASSERT_EQ(input.op, output.op);
     ASSERT_EQ(input.err, output.err);
     ASSERT_EQ(input.contents, output.contents);
