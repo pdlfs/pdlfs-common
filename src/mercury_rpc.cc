@@ -171,53 +171,22 @@ MercuryRPC::MercuryRPC(bool listen, const RPCOptions& options)
     : listen_(listen),
       lookup_cv_(&mutex_),
       addr_cache_(128),
-      shutting_down_(NULL),
-      bg_cv_(&mutex_),
-      bg_loop_running_(false),
-      bg_error_(false),
       refs_(0),
       pool_(options.extra_workers),
       env_(options.env),
       fs_(options.fs) {
-  assert(!options.uri.empty());
   hg_class_ = HG_Init(options.uri.c_str(), (listen) ? HG_TRUE : HG_FALSE);
   if (hg_class_) hg_context_ = HG_Context_create(hg_class_);
   if (hg_class_ == NULL || hg_context_ == NULL) {
     Error(__LOG_ARGS__, "hg init call failed");
     abort();
-  }
-
-  RegisterRPC();
-}
-
-Status MercuryRPC::TEST_Start() {
-  MutexLock l(&mutex_);
-  if (bg_loop_running_) {
-    return Status::AlreadyExists(Slice());
   } else {
-    bg_loop_running_ = true;
-    env_->StartThread(TEST_LoopForever, this);
-    return Status::OK();
+    RegisterRPC();
   }
-}
-
-Status MercuryRPC::TEST_Stop() {
-  MutexLock l(&mutex_);
-  shutting_down_.Release_Store(this);
-  // Wait until the background thread stops
-  while (bg_loop_running_) {
-    bg_cv_.Wait();
-  }
-  return Status::OK();
 }
 
 MercuryRPC::~MercuryRPC() {
   mutex_.Lock();
-  shutting_down_.Release_Store(this);
-  // Wait until the background thread stops
-  while (bg_loop_running_) {
-    bg_cv_.Wait();
-  }
   addr_cache_.Prune();  // Purge all cached addrs
   assert(addr_cache_.Empty());
   mutex_.Unlock();
@@ -300,74 +269,59 @@ std::string MercuryRPC::ToString(hg_addr_t addr) {
   return tmp;
 }
 
-void MercuryRPC::TEST_LoopForever(void* arg) {
-  MercuryRPC* rpc = reinterpret_cast<MercuryRPC*>(arg);
-  port::AtomicPointer* shutting_down = &rpc->shutting_down_;
-
-  hg_return_t ret;
-  unsigned int actual_count;
-  bool error = false;
-
-  while (!error && !shutting_down->Acquire_Load()) {
-    do {
-      actual_count = 0;
-      ret = HG_Trigger(rpc->hg_context_, 0, 1, &actual_count);
-      if (ret != HG_SUCCESS && ret != HG_TIMEOUT) {
-        error = true;
-      }
-    } while (!error && actual_count != 0 && !shutting_down->Acquire_Load());
-
-    if (!error && !shutting_down->Acquire_Load()) {
-      ret = HG_Progress(rpc->hg_context_, 1000);
-      if (ret != HG_SUCCESS && ret != HG_TIMEOUT) {
-        error = true;
-      }
-    }
-  }
-
-  rpc->mutex_.Lock();
-  rpc->bg_loop_running_ = false;
-  rpc->bg_error_ = error;
-  rpc->bg_cv_.SignalAll();
-  rpc->mutex_.Unlock();
-
-  if (error) {
-    Error(__LOG_ARGS__, "Error in local RPC bg_loop [errno=%d]", ret);
-  }
-}
-
+// If there is a single looping thread, both HG_Progress and HG_Trigger
+// are called within that thread. If there are more than 1 threads,
+// the first thread only calls HG_Progress and the rest threads
+// call HG_Trigger.
 void MercuryRPC::LocalLooper::BGLoop() {
+  mutex_.Lock();
+  int id = bg_id_++;
+  mutex_.Unlock();
   hg_context_t* ctx = rpc_->hg_context_;
   hg_return_t ret = HG_SUCCESS;
+  int size = max_bg_loops_;
 
   while (true) {
     if (shutting_down_.Acquire_Load() || ret != HG_SUCCESS) {
       mutex_.Lock();
+      assert(bg_loops_ > 0);
       bg_loops_--;
-      assert(bg_loops_ >= 0);
       bg_cv_.SignalAll();
       mutex_.Unlock();
-
-      if (ret != HG_SUCCESS) {
-        Error(__LOG_ARGS__, "Error in local RPC bg_loop [errno=%d]", ret);
-      }
       return;
     }
 
-    ret = HG_Progress(ctx, 1000);  // Timeouts in 1000 ms
+    if (id == 0) {
+      ret = HG_Progress(ctx, 1000);
+    }
+
     if (ret == HG_SUCCESS) {
-      unsigned int actual_count = 1;
-      while (actual_count != 0 && !shutting_down_.Acquire_Load()) {
-        ret = HG_Trigger(ctx, 0, 1, &actual_count);
-        if (ret == HG_TIMEOUT) {
-          ret = HG_SUCCESS;
-          break;
-        } else if (ret != HG_SUCCESS) {
-          break;
+      if (size <= 1 || id > 0) {
+        unsigned int actual_count = 1;
+        while (actual_count != 0 && !shutting_down_.Acquire_Load()) {
+          if (id != 0) {
+            ret = HG_Trigger(ctx, 100, 1, &actual_count);
+          } else {
+            ret = HG_Trigger(ctx, 0, 1, &actual_count);
+          }
+          if (ret == HG_TIMEOUT) {
+            ret = HG_SUCCESS;
+            break;
+          } else if (ret != HG_SUCCESS) {
+            break;
+          }
         }
       }
     } else if (ret == HG_TIMEOUT) {
       ret = HG_SUCCESS;
+    }
+
+    if (ret != HG_SUCCESS) {
+      Error(__LOG_ARGS__, "error during mercury rpc looping: %s",
+            HG_Error_to_string(ret));
+      if (ignore_rpc_error_) {
+        ret = HG_SUCCESS;
+      }
     }
   }
 }

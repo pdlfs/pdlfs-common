@@ -58,11 +58,6 @@ class MercuryRPC {
     }
   }
 
-  // Progress RPC and trigger callback in a single thread
-  static void TEST_LoopForever(void* arg);
-  Status TEST_Start();
-  Status TEST_Stop();
-
  private:
   ~MercuryRPC();
   // No copying allowed
@@ -77,13 +72,10 @@ class MercuryRPC {
     return rpc;
   }
 
+  // State below is protected by mutex_
   port::Mutex mutex_;
   port::CondVar lookup_cv_;
   LRUCache<AddrEntry> addr_cache_;
-  port::AtomicPointer shutting_down_;
-  port::CondVar bg_cv_;
-  bool bg_loop_running_;
-  bool bg_error_;
   int refs_;
 
   // Constant after construction
@@ -112,12 +104,17 @@ struct MercuryRPC::Addr {
 
 class MercuryRPC::LocalLooper {
  private:
-  MercuryRPC* const rpc_;
-  port::AtomicPointer shutting_down_;
+  // State below is protected by mutex_
   port::Mutex mutex_;
+  port::AtomicPointer shutting_down_;
   port::CondVar bg_cv_;
-  int max_bg_loops_;
   int bg_loops_;
+  int bg_id_;
+
+  // Constant after construction
+  bool ignore_rpc_error_;  // Keep looping if we get errors from mercury
+  int max_bg_loops_;
+  MercuryRPC* rpc_;
 
   void BGLoop();
   static void BGLoopWrapper(void* arg) {
@@ -127,11 +124,13 @@ class MercuryRPC::LocalLooper {
 
  public:
   LocalLooper(MercuryRPC* rpc, const RPCOptions& options)
-      : rpc_(rpc),
-        shutting_down_(NULL),
+      : shutting_down_(NULL),
         bg_cv_(&mutex_),
+        bg_loops_(0),
+        bg_id_(0),
+        ignore_rpc_error_(false),
         max_bg_loops_(options.num_io_threads),
-        bg_loops_(0) {
+        rpc_(rpc) {
     rpc_->Ref();
   }
 
