@@ -103,10 +103,9 @@ hg_return_t MercuryRPC::RPCCallback(hg_handle_t handle) {
 
 namespace {
 struct RPCState {
-  bool reply_received;
-  port::Mutex* mutex;
-  port::CondVar* cv;
-  hg_handle_t handle;
+  bool rpc_done;
+  port::Mutex* rpc_mu;
+  port::CondVar* rpc_cv;
   hg_return_t ret;
   void* out;
 };
@@ -114,13 +113,16 @@ struct RPCState {
 
 hg_return_t MercuryRPC::Client::SaveReply(const hg_cb_info* info) {
   RPCState* state = reinterpret_cast<RPCState*>(info->arg);
-  MutexLock l(state->mutex);
+  hg_handle_t handle = info->info.forward.handle;
   state->ret = info->ret;
   if (state->ret == HG_SUCCESS) {
-    state->ret = HG_Get_output(state->handle, state->out);
+    state->ret = HG_Get_output(handle, state->out);
   }
-  state->reply_received = true;
-  state->cv->SignalAll();
+
+  state->rpc_mu->Lock();
+  state->rpc_done = true;
+  state->rpc_cv->SignalAll();
+  state->rpc_mu->Unlock();
   return HG_SUCCESS;
 }
 
@@ -135,15 +137,17 @@ void MercuryRPC::Client::Call(Message& in, Message& out) {
       HG_Create(rpc_->hg_context_, addr, rpc_->hg_rpc_id_, &handle);
   if (ret == HG_SUCCESS) {
     RPCState state;
+    state.rpc_done = false;
+    state.rpc_mu = &mu_;
+    state.rpc_cv = &cv_;
     state.out = &out;
-    state.mutex = &mu_;
-    state.cv = &cv_;
-    state.reply_received = false;
-    state.handle = handle;
-    MutexLock l(state.mutex);
     ret = HG_Forward(handle, SaveReply, &state, &in);
     if (ret == HG_SUCCESS) {
-      while (!state.reply_received) state.cv->Wait();
+      MutexLock ml(&mu_);
+      while (!state.rpc_done) {
+        cv_.Wait();
+      }
+      ret = state.ret;
     }
     HG_Destroy(handle);
   }
@@ -224,8 +228,8 @@ MercuryRPC::~MercuryRPC() {
 
 namespace {
 struct LookupState {
-  LookupState() : lookup_done(NULL) {}
-  port::AtomicPointer lookup_done;
+  bool lookup_done;
+  port::Mutex* lookup_mu;
   port::CondVar* lookup_cv;
   hg_return_t ret;
   hg_addr_t addr;
@@ -239,8 +243,10 @@ static hg_return_t SaveAddr(const hg_cb_info* info) {
     state->addr = info->info.lookup.addr;
   }
 
-  state->lookup_done.Release_Store(state);
+  state->lookup_mu->Lock();
+  state->lookup_done = true;
   state->lookup_cv->SignalAll();
+  state->lookup_mu->Unlock();
   return HG_SUCCESS;
 }
 
@@ -250,28 +256,40 @@ static void FreeAddr(const Slice& k, MercuryRPC::Addr* addr) {
 }
 
 hg_return_t MercuryRPC::Lookup(const std::string& target, AddrEntry** result) {
-  MutexLock l(&mutex_);
+  MutexLock ml(&mutex_);
   uint32_t hash = Hash(target.data(), target.size(), 0);
   AddrEntry* e = addr_cache_.Lookup(target, hash);
   if (e == NULL) {
+    mutex_.Unlock();
     LookupState state;
+    state.lookup_done = false;
+    state.lookup_mu = &mutex_;
     state.lookup_cv = &lookup_cv_;
     state.addr = NULL;
-    HG_Addr_lookup(hg_context_, SaveAddr, &state, target.c_str(),
-                   HG_OP_ID_IGNORE);
-    while (!state.lookup_done.NoBarrier_Load()) {
-      lookup_cv_.Wait();
-    }
-    if (state.ret == HG_SUCCESS) {
-      Addr* addr = new Addr(hg_class_, state.addr);
-      e = addr_cache_.Insert(target, hash, addr, 1, FreeAddr);
+    hg_return_t ret = HG_Addr_lookup(hg_context_, SaveAddr, &state,
+                                     target.c_str(), HG_OP_ID_IGNORE);
+    mutex_.Lock();
+    if (ret == HG_SUCCESS) {
+      while (!state.lookup_done) {
+        lookup_cv_.Wait();
+      }
+      ret = state.ret;
+      if (ret == HG_SUCCESS) {
+        Addr* addr = new Addr(hg_class_, state.addr);
+        e = addr_cache_.Insert(target, hash, addr, 1, FreeAddr);
+      }
     }
     *result = e;
-    return state.ret;
+    return ret;
   } else {
     *result = e;
     return HG_SUCCESS;
   }
+}
+
+void MercuryRPC::Release(AddrEntry* entry) {
+  MutexLock ml(&mutex_);
+  addr_cache_.Release(entry);
 }
 
 std::string MercuryRPC::ToString(hg_addr_t addr) {

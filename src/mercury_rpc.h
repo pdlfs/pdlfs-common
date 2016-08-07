@@ -27,8 +27,8 @@ class MercuryRPC {
   struct Addr;
   std::string ToString(hg_addr_t addr);
   typedef LRUEntry<Addr> AddrEntry;
+  void Release(AddrEntry* entry);
   hg_return_t Lookup(const std::string& addr, AddrEntry** result);
-  void Release(AddrEntry* e) { addr_cache_.Release(e); }
   MercuryRPC(bool listen, const RPCOptions& options);
   void Unref();
   void Ref();
