@@ -201,9 +201,13 @@ void MercuryRPC::Client::Call(Message& in, Message& out) {
   }
 }
 
-void MercuryRPC::Ref() { ++refs_; }
+void MercuryRPC::Ref() {
+  MutexLock ml(&mutex_);
+  ++refs_;
+}
 
 void MercuryRPC::Unref() {
+  MutexLock ml(&mutex_);
   --refs_;
   assert(refs_ >= 0);
   if (refs_ <= 0) {
@@ -302,6 +306,18 @@ hg_return_t MercuryRPC::Lookup(const std::string& target, AddrEntry** result) {
     *result = e;
     return HG_SUCCESS;
   }
+}
+
+MercuryRPC::AddrEntry* MercuryRPC::LookupCache(const std::string& target) {
+  MutexLock ml(&mutex_);
+  uint32_t hash = Hash(target.data(), target.size(), 0);
+  return addr_cache_.Lookup(target, hash);
+}
+
+MercuryRPC::AddrEntry* MercuryRPC::Bind(const std::string& target, Addr* addr) {
+  MutexLock ml(&mutex_);
+  uint32_t hash = Hash(target.data(), target.size(), 0);
+  return addr_cache_.Insert(target, hash, addr, 1, FreeAddr);
 }
 
 void MercuryRPC::Release(AddrEntry* entry) {
