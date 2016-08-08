@@ -119,12 +119,14 @@ RPC* RPC::Open(const RPCOptions& raw_options) {
           (unsigned long long)options.rpc_timeout);
   Verbose(__LOG_ARGS__, 1, "rpc.num_io_threads=%d", options.num_io_threads);
   Verbose(__LOG_ARGS__, 1, "rpc.extra_workers=%s",
-          options.extra_workers->ToDebugString().c_str());
+          options.extra_workers != NULL
+              ? options.extra_workers->ToDebugString().c_str()
+              : "NULL");
 #endif
 #if defined(MERCURY)
   return new rpc::RPCImpl(options);
 #else
-  char msg[] = "Not possible: no rpc impl available\n";
+  char msg[] = "No rpc implementation is available\n";
   fwrite(msg, 1, sizeof(msg), stderr);
   abort();
 #endif

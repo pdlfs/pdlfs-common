@@ -32,8 +32,17 @@ struct RPCOptions {
   RPCMode mode;  // Default: kServerClient
   std::string uri;
   uint64_t rpc_timeout;       // In microseconds, Default: 5 secs
+
+  // Total number of threads used to drive RPC work and execute
+  // RPC callback functions. RPC implementation may choose to dedicate
+  // some of them to only drive RPC work and the rest to
+  // execute RPC callback functions.
   int num_io_threads;         // Default: 1
+
+  // If not NULL, RPC callback functions will be redirected to
+  // the pool instead of I/O threads for execution.
   ThreadPool* extra_workers;  // Default: NULL
+
   rpc::If* fs;
   Env* env;  // Default: NULL, which indicates Env::Default() should be used
 };
