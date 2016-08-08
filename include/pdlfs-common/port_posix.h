@@ -114,7 +114,8 @@ class Mutex {
 class CondVar {
  public:
   explicit CondVar(Mutex* mu);
-  void TimedWait(uint64_t micro);
+  // Return true iff we run out of time, false otherwise.
+  bool TimedWait(uint64_t micro);
   void Wait();
   void Signal();
   void SignalAll();
