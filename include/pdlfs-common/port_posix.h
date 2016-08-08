@@ -48,7 +48,7 @@
 #else
 #include <endian.h>
 #endif
-
+#include <errno.h>
 #include <pthread.h>
 #ifdef SNAPPY
 #include <snappy.h>
