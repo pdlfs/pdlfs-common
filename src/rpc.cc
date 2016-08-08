@@ -87,7 +87,7 @@ class RPCImpl : public RPC {
   virtual Status Start() { return looper_->Start(); }
   virtual Status Stop() { return looper_->Stop(); }
 
-  virtual If* OpenClientStub(const std::string& addr) {
+  virtual If* OpenClientFor(const std::string& addr) {
     return new MercuryRPC::Client(rpc_, addr);
   }
 
@@ -98,8 +98,8 @@ class RPCImpl : public RPC {
   }
 
   virtual ~RPCImpl() {
-    delete looper_;
     rpc_->Unref();
+    delete looper_;
   }
 };
 #endif
@@ -115,7 +115,11 @@ RPC* RPC::Open(const RPCOptions& raw_options) {
   }
 #if VERBOSE >= 1
   Verbose(__LOG_ARGS__, 1, "rpc.uri=%s", options.uri.c_str());
+  Verbose(__LOG_ARGS__, 1, "rpc.timeout=%llu",
+          (unsigned long long)options.rpc_timeout);
   Verbose(__LOG_ARGS__, 1, "rpc.num_io_threads=%d", options.num_io_threads);
+  Verbose(__LOG_ARGS__, 1, "rpc.extra_workers=%s",
+          options.extra_workers->ToDebugString().c_str());
 #endif
 #if defined(MERCURY)
   return new rpc::RPCImpl(options);

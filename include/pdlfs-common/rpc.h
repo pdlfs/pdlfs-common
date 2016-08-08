@@ -44,13 +44,14 @@ class RPC {
   virtual ~RPC();
 
   // RPC implementation should ensure the results of the following calls
-  // are thread-safe so no external synchronization is needed.
+  // are thread-safe so that no explicit synchronization is needed
+  // to make RPC calls.
   static RPC* Open(const RPCOptions&);
-  virtual rpc::If* OpenClientStub(const std::string& uri) = 0;
+  virtual rpc::If* OpenClientFor(const std::string& addr) = 0;
 
-  // The following calls shall return immediately.
-  // One or more background looping threads maybe be created or destroyed
-  // after these calls.
+  // RPC implementation must not use the caller thread to process
+  // RPC events. Instead, one or more background looping threads should
+  // be created (or destroyed) as a result of the following calls.
   virtual Status Start() = 0;
   virtual Status Stop() = 0;
 
