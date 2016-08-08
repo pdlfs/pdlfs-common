@@ -51,7 +51,7 @@ class MercuryRPC {
   hg_id_t hg_rpc_id_;
 
   void RegisterRPC() {
-    hg_rpc_id_ = HG_Register_name(hg_class_, "RPC", RPCMessageCoder,
+    hg_rpc_id_ = HG_Register_name(hg_class_, "deltafs_rpc", RPCMessageCoder,
                                   RPCMessageCoder, RPCCallbackDecorator);
     if (listen_) {
       HG_Register_data(hg_class_, hg_rpc_id_, this, NULL);
@@ -72,13 +72,30 @@ class MercuryRPC {
     return rpc;
   }
 
+  struct Timer {
+    Timer* prev;
+    Timer* next;
+    hg_handle_t handle;
+    uint64_t due;
+  };
+
+  friend class Client;
+  friend class LocalLooper;
+  void AddTimerFor(hg_handle_t handle, Timer*);
+  void RemoveTimer(Timer* timer);
+  void CheckTimers();
+
   // State below is protected by mutex_
   port::Mutex mutex_;
   port::CondVar lookup_cv_;
   LRUCache<AddrEntry> addr_cache_;
+  void Remove(Timer*);
+  void Append(Timer*);
+  Timer timers_;
   int refs_;
 
   // Constant after construction
+  uint64_t rpc_timeout_;
   ThreadPool* pool_;
   Env* env_;
   If* fs_;

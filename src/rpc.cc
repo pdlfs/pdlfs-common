@@ -22,7 +22,8 @@ namespace pdlfs {
 
 RPCOptions::RPCOptions()
     : mode(kServerClient),
-      num_io_threads(1),  // TODO: can we really use multiple I/O threads?
+      rpc_timeout(5000000LLU),
+      num_io_threads(1),
       extra_workers(NULL),
       fs(NULL),
       env(NULL) {}

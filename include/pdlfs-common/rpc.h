@@ -31,6 +31,7 @@ struct RPCOptions {
   RPCOptions();
   RPCMode mode;  // Default: kServerClient
   std::string uri;
+  uint64_t rpc_timeout;       // In microseconds, Default: 5 secs
   int num_io_threads;         // Default: 1
   ThreadPool* extra_workers;  // Default: NULL
   rpc::If* fs;

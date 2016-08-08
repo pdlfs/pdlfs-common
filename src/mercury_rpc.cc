@@ -101,6 +101,47 @@ hg_return_t MercuryRPC::RPCCallback(hg_handle_t handle) {
   return ret;
 }
 
+void MercuryRPC::Append(Timer* t) {
+  t->next = &timers_;
+  t->prev = timers_.prev;
+  t->prev->next = t;
+  t->next->prev = t;
+}
+
+void MercuryRPC::Remove(Timer* t) {
+  t->next->prev = t->prev;
+  t->prev->next = t->next;
+}
+
+void MercuryRPC::CheckTimers() {
+  MutexLock ml(&mutex_);
+  uint64_t now = env_->NowMicros();
+  for (Timer* t = timers_.next; t != &timers_;) {
+    Timer* next = t->next;
+    if (now >= t->due) {
+      Remove(t);
+      HG_Cancel(t->handle);
+      t->next = NULL;
+      t->prev = NULL;
+    }
+    t = next;
+  }
+}
+
+void MercuryRPC::AddTimerFor(hg_handle_t handle, Timer* timer) {
+  MutexLock ml(&mutex_);
+  timer->handle = handle;
+  timer->due = env_->NowMicros() + rpc_timeout_;
+  Append(timer);
+}
+
+void MercuryRPC::RemoveTimer(Timer* timer) {
+  MutexLock ml(&mutex_);
+  if (timer->next != NULL && timer->prev != NULL) {
+    Remove(timer);
+  }
+}
+
 namespace {
 struct RPCState {
   bool rpc_done;
@@ -141,7 +182,10 @@ void MercuryRPC::Client::Call(Message& in, Message& out) {
     state.rpc_mu = &mu_;
     state.rpc_cv = &cv_;
     state.out = &out;
+    Timer timer;
+    rpc_->AddTimerFor(handle, &timer);
     ret = HG_Forward(handle, SaveReply, &state, &in);
+    rpc_->RemoveTimer(&timer);
     if (ret == HG_SUCCESS) {
       MutexLock ml(&mu_);
       while (!state.rpc_done) {
@@ -172,6 +216,7 @@ MercuryRPC::MercuryRPC(bool listen, const RPCOptions& options)
       lookup_cv_(&mutex_),
       addr_cache_(128),
       refs_(0),
+      rpc_timeout_(options.rpc_timeout),
       pool_(options.extra_workers),
       env_(options.env),
       fs_(options.fs) {
@@ -183,6 +228,9 @@ MercuryRPC::MercuryRPC(bool listen, const RPCOptions& options)
   } else {
     RegisterRPC();
   }
+
+  timers_.prev = &timers_;
+  timers_.next = &timers_;
 }
 
 MercuryRPC::~MercuryRPC() {
@@ -315,6 +363,10 @@ void MercuryRPC::LocalLooper::BGLoop() {
       }
     } else if (ret == HG_TIMEOUT) {
       ret = HG_SUCCESS;
+    }
+
+    if (id == 0 && ret == HG_SUCCESS) {
+      rpc_->CheckTimers();
     }
 
     if (ret != HG_SUCCESS) {
