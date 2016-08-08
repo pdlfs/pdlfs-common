@@ -42,6 +42,17 @@ void CondVar::Wait() {
   PthreadCall("pthread_cond_wait", pthread_cond_wait(&cv_, &mu_->mu_));
 }
 
+void CondVar::TimedWait(uint64_t micro) {
+  struct timespec abstime;
+  clock_gettime(CLOCK_REALTIME_COARSE, &abstime);
+  uint64_t nano = abstime.tv_nsec;
+  nano += 1000 * micro;
+  abstime.tv_nsec = nano % 1000000000LLU;
+  abstime.tv_sec += nano / 1000000000LLU;
+  PthreadCall("pthread_cond_timedwait",
+              pthread_cond_timedwait(&cv_, &mu_->mu_, &abstime));
+}
+
 void CondVar::Signal() {
   PthreadCall("pthread_cond_signal", pthread_cond_signal(&cv_));
 }

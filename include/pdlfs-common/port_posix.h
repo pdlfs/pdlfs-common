@@ -60,6 +60,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <string>
 
 #include "pdlfs-common/atomic_pointer.h"  // Platform-specific atomic pointer
@@ -113,10 +114,11 @@ class Mutex {
 class CondVar {
  public:
   explicit CondVar(Mutex* mu);
-  ~CondVar();
+  void TimedWait(uint64_t micro);
   void Wait();
   void Signal();
   void SignalAll();
+  ~CondVar();
 
  private:
   pthread_cond_t cv_;
