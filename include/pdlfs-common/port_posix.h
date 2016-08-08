@@ -10,6 +10,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include <string>
 #undef PLATFORM_IS_LITTLE_ENDIAN
 #if defined(PDLFS_OS_MACOSX)
 #include <machine/endian.h>
@@ -60,8 +61,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <time.h>
-#include <string>
 
 #include "pdlfs-common/atomic_pointer.h"  // Platform-specific atomic pointer
 
@@ -96,11 +97,10 @@ class CondVar;
 class Mutex {
  public:
   Mutex();
-  ~Mutex();
-
+  void AssertHeld() {}
   void Lock();
   void Unlock();
-  void AssertHeld() {}
+  ~Mutex();
 
  private:
   friend class CondVar;
