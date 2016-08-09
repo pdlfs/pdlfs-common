@@ -30,13 +30,9 @@ void MargoRPC::RegisterRPC() {
   }
 }
 
-void MargoRPC::Ref() {
-  MutexLock ml(&mutex_);
-  ++refs_;
-}
+void MargoRPC::Ref() { ++refs_; }
 
 void MargoRPC::Unref() {
-  MutexLock ml(&mutex_);
   --refs_;
   assert(refs_ >= 0);
   if (refs_ <= 0) {
@@ -49,7 +45,7 @@ MargoRPC::MargoRPC(bool listen, const RPCOptions& options)
       rpc_timeout_(options.rpc_timeout),
       refs_(0) {
   margo_id_ = MARGO_INSTANCE_NULL;
-  if (!ABT_initialized()) {
+  if (ABT_initialized() != 0) {
     Error(__LOG_ARGS__, "ABT not yet initialized");
     abort();
   } else {
@@ -100,6 +96,29 @@ hg_return_t MargoRPC::Lookup(const std::string& target, AddrEntry** result) {
   } else {
     *result = e;
     return HG_SUCCESS;
+  }
+}
+
+void MargoRPC::Client::Call(Message& in, Message& out) {
+  AddrEntry* entry = NULL;
+  hg_return_t r = rpc_->Lookup(addr_, &entry);
+  if (r != HG_SUCCESS) throw EHOSTUNREACH;
+  assert(entry != NULL);
+  hg_addr_t addr = entry->value->rep;
+  hg_handle_t handle;
+  hg_return_t ret =
+      HG_Create(rpc_->hg_->hg_context_, addr, rpc_->hg_rpc_id_, &handle);
+  if (ret == HG_SUCCESS) {
+    ret = margo_forward_timed(rpc_->margo_id_, handle, &in,
+                              rpc_->rpc_timeout_ / 1000);
+    if (ret == HG_SUCCESS) {
+      ret = HG_Get_output(handle, &out);
+    }
+    HG_Destroy(handle);
+  }
+  rpc_->Release(entry);
+  if (ret != HG_SUCCESS) {
+    throw ENETUNREACH;
   }
 }
 
