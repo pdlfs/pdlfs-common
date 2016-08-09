@@ -20,3 +20,5 @@
 #cmakedefine PDLFS_OS_OPENBSD
 #cmakedefine PDLFS_OS_HPUX
 
+#cmakedefine PDLFS_HAS_DLFCN_H
+
