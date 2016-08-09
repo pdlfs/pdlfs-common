@@ -201,13 +201,9 @@ void MercuryRPC::Client::Call(Message& in, Message& out) {
   }
 }
 
-void MercuryRPC::Ref() {
-  MutexLock ml(&mutex_);
-  ++refs_;
-}
+void MercuryRPC::Ref() { ++refs_; }
 
 void MercuryRPC::Unref() {
-  MutexLock ml(&mutex_);
   --refs_;
   assert(refs_ >= 0);
   if (refs_ <= 0) {

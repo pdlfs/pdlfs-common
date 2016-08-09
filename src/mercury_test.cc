@@ -60,16 +60,16 @@ class MercuryTest {
  public:
   MercuryServer* server_;
   port::Mutex mu_;
-  port::CondVar bg_cv_;
-  int num_bg_;
+  port::CondVar cv_;
+  int num_tasks_;
 
-  explicit MercuryTest() : bg_cv_(&mu_), num_bg_(0) {
+  explicit MercuryTest() : cv_(&mu_), num_tasks_(0) {
     server_ = new MercuryServer();
   }
 
   ~MercuryTest() { delete server_; }
 
-  void ThreadBody() {
+  void BGTask() {
     Random rnd(301);
     for (int i = 0; i < 1000; ++i) {
       std::string buf;
@@ -84,36 +84,36 @@ class MercuryTest {
       ASSERT_EQ(input.err, output.err);
     }
     mu_.Lock();
-    num_bg_--;
-    bg_cv_.SignalAll();
+    assert(num_tasks_ > 0);
+    num_tasks_--;
+    cv_.SignalAll();
     mu_.Unlock();
   }
 
-  static void ThreadWrapper(void* arg) {
+  static void BGTaskWrapper(void* arg) {
     MercuryTest* test = reinterpret_cast<MercuryTest*>(arg);
-    test->ThreadBody();
+    test->BGTask();
+  }
+
+  void RunTasks(int num_tasks) {
+    assert(num_tasks_ == 0);
+    fprintf(stderr, "%d client threads\n", num_tasks);
+    num_tasks_ = num_tasks;
+    for (int i = 0; i < num_tasks_; ++i) {
+      server_->env_->StartThread(BGTaskWrapper, this);
+    }
+    mu_.Lock();
+    while (num_tasks_ != 0) {
+      cv_.Wait();
+    }
+    mu_.Unlock();
   }
 };
 
 TEST(MercuryTest, SendReceive) {
-  // Single thread
-  num_bg_ = 1;
-  server_->env_->StartThread(ThreadWrapper, this);
-  mu_.Lock();
-  while (num_bg_ != 0) {
-    bg_cv_.Wait();
-  }
-  mu_.Unlock();
-  // Multi thread
-  num_bg_ = 4;
-  for (int i = 0; i < num_bg_; ++i) {
-    server_->env_->StartThread(ThreadWrapper, this);
-  }
-  mu_.Lock();
-  while (num_bg_ != 0) {
-    bg_cv_.Wait();
-  }
-  mu_.Unlock();
+  RunTasks(1);
+  RunTasks(4);
+  RunTasks(8);
 }
 
 }  // namespace rpc
