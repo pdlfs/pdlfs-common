@@ -192,7 +192,7 @@ EOF
 EOF
     if [ "$?" = 0 ]; then
         COMMON_FLAGS="$COMMON_FLAGS -DMARGO"
-        PLATFORM_LIBS="$PLATFORM_LIBS -lmargo -labt-snoozer -labt"
+        PLATFORM_LIBS="$PLATFORM_LIBS -lmargo -labt-snoozer -labt -lev"
     fi
 
     # Test whether mercury rpc is installed
