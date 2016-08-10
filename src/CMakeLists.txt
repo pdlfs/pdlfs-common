@@ -41,13 +41,10 @@ set (pdlfs-leveldb-tests bloom_test.cc db/autocompact_test.cc
 #
 include (CMakePackageConfigHelpers)
 include (CheckCXXCompilerFlag)
-include (CheckIncludeFile)
 
 set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set (THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package (Threads REQUIRED)
-
-check_include_file (dlfcn.h PDLFS_HAS_DLFCN_H)      # for dlopen()
 
 if (TARGET mercury AND PDLFS_MERCURY_RPC)
     list (APPEND PDLFS_REQUIRED_PACKAGES mercury)   # for *-config.cmake
