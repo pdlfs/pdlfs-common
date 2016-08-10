@@ -28,6 +28,7 @@ include build_config.mk
 
 TESTS = \
 	src/arena_test \
+	src/blkdb_test \
 	src/coding_test \
 	src/crc32c_test \
 	src/dbfiles_test \
@@ -116,6 +117,9 @@ $(STATIC_ALLOBJS): | STATIC_OBJDIRS
 
 $(STATIC_OUTDIR)/arena_test:src/arena_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/arena_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/blkdb_test:src/blkdb_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/blkdb_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(STATIC_OUTDIR)/coding_test:src/coding_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/coding_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
