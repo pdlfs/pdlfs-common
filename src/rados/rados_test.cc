@@ -15,7 +15,7 @@
 #include "pdlfs-common/port.h"
 #include "pdlfs-common/testharness.h"
 
-#include "rados_api.h"
+#include "rados_conn.h"
 
 // The following tests are paired with "$top_srcdir/dev/rados.sh".
 // Run "sh $top_srcdir/dev/rados.sh start" to create a new rados cluster
@@ -34,7 +34,7 @@ static const bool FLAGS_useposixosd = true;
 namespace pdlfs {
 namespace rados {
 
-static int kVerbose = 5;
+static const int kVerbose = 5;
 
 static void TestRWEnvFile(Env* env, const Slice& dirname, const Slice& fname) {
   const char data[] = "xxxxxxxyyyyzz";
