@@ -147,6 +147,17 @@ Status RadosFio::Open(const Slice& fentry_encoding, bool create_if_missing,
   return s;
 }
 
+Status RadosFio::Drop(const Slice& fentry_encoding) {
+  Status s;
+  std::string oid = ToOid(fentry_encoding);
+  int r = rados_remove(ioctx_, oid.c_str());
+  if (r != 0) {
+    return RadosError("rados_remove", r);
+  } else {
+    return s;
+  }
+}
+
 Status RadosFio::GetInfo(const Slice& fentry_encoding, Handle* fh, bool* dirty,
                          uint64_t* mtime, uint64_t* size) {
   Status s;
@@ -217,12 +228,12 @@ Status RadosFio::Write(const Slice& fentry_encoding, Handle* fh,
   } else {
     uint64_t off = fobj->off;
     uint64_t end = off + buf.size();
-    if (!force_sync_) {
-      fobj->nrefs++;  // IO callback
-    }
     rados_ioctx_t fctx = fobj->fctx;
     if (fctx == NULL) {
       fctx = ioctx_;
+    }
+    if (!force_sync_) {
+      fobj->nrefs++;
     }
     mutex_->Unlock();
     std::string oid = ToOid(fentry_encoding);
@@ -265,12 +276,12 @@ Status RadosFio::Pwrite(const Slice& fentry_encoding, Handle* fh,
     s = RadosError("rados_bg_io", fobj->err);
   } else {
     uint64_t end = off + buf.size();
-    if (!force_sync_) {
-      fobj->nrefs++;  // IO callback
-    }
     rados_ioctx_t fctx = fobj->fctx;
     if (fctx == NULL) {
       fctx = ioctx_;
+    }
+    if (!force_sync_) {
+      fobj->nrefs++;
     }
     mutex_->Unlock();
     std::string oid = ToOid(fentry_encoding);

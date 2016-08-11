@@ -146,7 +146,7 @@ Status BlkDB::Open(const Slice& fentry, bool create_if_missing,
     if (found) {
       if (truncate_if_exists) {
         // Truncating a stream involving deleting a whole range of DB
-        // records so we currently don't support it.
+        // records and we currently don't support it.
         s = Status::NotSupported(Slice());
       }
     } else {
@@ -192,6 +192,12 @@ Status BlkDB::Open(const Slice& fentry, bool create_if_missing,
 
   delete iter;
   return s;
+}
+
+Status BlkDB::Drop(const Slice& fentry) {
+  // Dropping a stream involving deleting a whole range of DB
+  // records and we currently don't support it.
+  return Status::NotSupported(Slice());
 }
 
 // Commit the latest modification time and size of the stream to the DB,

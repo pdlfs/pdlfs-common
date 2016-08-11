@@ -69,6 +69,7 @@ class BlkDB : public Fio {
   virtual Status Flush(const Slice& fentry, Handle* fh,
                        bool force_sync = false);
   virtual Status Close(const Slice& fentry, Handle* fh);
+  virtual Status Drop(const Slice& fentry);
 
  private:
   Status WriteTo(Stream*, const Slice& fentry, const Slice& data, uint64_t off);

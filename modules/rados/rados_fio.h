@@ -48,6 +48,7 @@ class RadosFio : public Fio {
   virtual Status Flush(const Slice& fentry, Handle* fh,
                        bool force_sync = false);
   virtual Status Close(const Slice& fentry, Handle* fh);
+  virtual Status Drop(const Slice& fentry);
 
  private:
   void UpdateAndUnref(RadosFobj*, int err);
