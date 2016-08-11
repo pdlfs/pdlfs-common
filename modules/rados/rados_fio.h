@@ -19,8 +19,9 @@ class RadosFio;  // File I/O implementation atop rados.
 
 class RadosFobj {
  public:
-  RadosFobj(RadosFio* fio) : fio(fio) {}
+  RadosFobj(RadosFio* fio) : fio(fio), fctx(NULL) {}
   RadosFio* fio;
+  rados_ioctx_t fctx;
   uint64_t mtime;  // Cached last file modification time
   uint64_t size;   // Cached file size
   uint64_t off;    // Current read/write position
@@ -57,6 +58,7 @@ class RadosFio : public Fio {
   RadosFio() {}
   friend class RadosConn;
   port::Mutex* mutex_;
+  std::string pool_name_;
   bool force_sync_;  // If async I/O should be disabled
   rados_ioctx_t ioctx_;
   rados_t cluster_;
