@@ -33,7 +33,7 @@ Status RadosOsd::CreateIoCtx(rados_ioctx_t* result) {
 bool RadosOsd::Exists(const Slice& name) {
   uint64_t ignored_size;
   time_t ignored_mtime;
-  int r = rados_stat(ioctx_, name.data(), &ignored_size, &ignored_mtime);
+  int r = rados_stat(ioctx_, name.c_str(), &ignored_size, &ignored_mtime);
   if (r != 0) {
     return false;
   } else {
@@ -43,7 +43,7 @@ bool RadosOsd::Exists(const Slice& name) {
 
 Status RadosOsd::Size(const Slice& name, uint64_t* obj_size) {
   time_t ignored_mtime;
-  int r = rados_stat(ioctx_, name.data(), obj_size, &ignored_mtime);
+  int r = rados_stat(ioctx_, name.c_str(), obj_size, &ignored_mtime);
   if (r != 0) {
     return RadosError("rados_stat", r);
   } else {
@@ -95,7 +95,7 @@ Status RadosOsd::NewWritableObj(const Slice& name, WritableFile** result) {
 }
 
 Status RadosOsd::Delete(const Slice& name) {
-  int r = rados_remove(ioctx_, name.data());
+  int r = rados_remove(ioctx_, name.c_str());
   if (r != 0) {
     return RadosError("rados_remove", r);
   } else {
@@ -119,7 +119,7 @@ Status RadosOsd::Copy(const Slice& src, const Slice& dst) {
       char* buf = new char[1024 * 1024];  // 1m
       uint64_t off = 0;
       while (s.ok() && obj_size != 0) {
-        int nbytes = rados_read(ioctx_, src.data(), buf, 1024 * 1024, off);
+        int nbytes = rados_read(ioctx_, src.c_str(), buf, 1024 * 1024, off);
         if (nbytes > 0) {
           s = target->Append(Slice(buf, nbytes));
         } else if (nbytes < 0) {
@@ -144,7 +144,7 @@ Status RadosOsd::Copy(const Slice& src, const Slice& dst) {
 }
 
 Status RadosOsd::Put(const Slice& name, const Slice& buf) {
-  int r = rados_write_full(ioctx_, name.data(), buf.data(), buf.size());
+  int r = rados_write_full(ioctx_, name.c_str(), buf.data(), buf.size());
   if (r != 0) {
     return RadosError("rados_write_full", r);
   } else {
@@ -154,12 +154,12 @@ Status RadosOsd::Put(const Slice& name, const Slice& buf) {
 
 Status RadosOsd::Get(const Slice& name, std::string* data) {
   uint64_t obj_size;
-  Status s = Size(name.data(), &obj_size);
+  Status s = Size(name, &obj_size);
   if (s.ok() && obj_size != 0) {
     char* buf = new char[obj_size];
     uint64_t off = 0;
     while (s.ok() && obj_size != 0) {
-      int nbytes = rados_read(ioctx_, name.data(), buf, obj_size, off);
+      int nbytes = rados_read(ioctx_, name.c_str(), buf, obj_size, off);
       if (nbytes > 0) {
         data->append(buf, nbytes);
       } else if (nbytes < 0) {

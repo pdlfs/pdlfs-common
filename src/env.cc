@@ -43,7 +43,7 @@ EnvWrapper::~EnvWrapper() {}
 
 Env* Env::Open(const Slice& env_name, const Slice& env_conf) {
   if (env_name == "rados") {
-    return reinterpret_cast<Env*>(PDLFS_Load_rados_env(env_conf.data()));
+    return reinterpret_cast<Env*>(PDLFS_Load_rados_env(env_conf.c_str()));
   } else {
     return NULL;
   }
