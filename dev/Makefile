@@ -103,7 +103,7 @@ $(STATIC_OUTDIR)/src/leveldb: | $(STATIC_OUTDIR)
 $(STATIC_OUTDIR)/src/leveldb/db: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
-$(STATIC_OUTDIR)/modules/rados: | $(STATIC_OUTDIR)
+$(STATIC_OUTDIR)/src/rados: | $(STATIC_OUTDIR)
 	mkdir -p $@
 
 .PHONY: STATIC_OBJDIRS
@@ -111,7 +111,7 @@ STATIC_OBJDIRS: \
 	$(STATIC_OUTDIR)/src \
 	$(STATIC_OUTDIR)/src/leveldb \
 	$(STATIC_OUTDIR)/src/leveldb/db \
-	$(STATIC_OUTDIR)/modules/rados
+	$(STATIC_OUTDIR)/src/rados
 
 $(STATIC_ALLOBJS): | STATIC_OBJDIRS
 
