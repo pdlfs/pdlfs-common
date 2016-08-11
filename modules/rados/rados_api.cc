@@ -98,6 +98,7 @@ Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name,
     s = RadosError("rados_ioctx_create", r);
   } else {
     RadosOsd* osd = new RadosOsd;
+    osd->pool_name_ = pool_name;
     osd->force_sync_ = force_sync;
     osd->mutex_ = &mutex_;
     osd->cluster_ = cluster_;

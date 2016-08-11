@@ -34,9 +34,10 @@ class RadosOsd : public OSD {
  private:
   RadosOsd() {}
   friend class RadosConn;
-  Status CloneIoCtx(rados_ioctx_t*);
-  bool force_sync_;  // If async I/O should be disabled
+  Status CreateIoCtx(rados_ioctx_t*);
   port::Mutex* mutex_;
+  std::string pool_name_;
+  bool force_sync_;  // If async I/O should be disabled
   rados_ioctx_t ioctx_;
   rados_t cluster_;
 };

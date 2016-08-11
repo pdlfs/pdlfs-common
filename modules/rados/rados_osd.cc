@@ -19,10 +19,8 @@ RadosOsd::~RadosOsd() {
   rados_ioctx_destroy(ioctx_);
 }
 
-Status RadosOsd::CloneIoCtx(rados_ioctx_t* result) {
-  char pool_name[100];
-  rados_ioctx_get_pool_name(ioctx_, pool_name, sizeof(pool_name));
-  int r = rados_ioctx_create(cluster_, pool_name, result);
+Status RadosOsd::CreateIoCtx(rados_ioctx_t* result) {
+  int r = rados_ioctx_create(cluster_, pool_name_.c_str(), result);
   if (r != 0) {
     return RadosError("rados_ioctx_create", r);
   } else {
@@ -85,7 +83,7 @@ Status RadosOsd::NewRandomAccessObj(const Slice& name,
 Status RadosOsd::NewWritableObj(const Slice& name, WritableFile** result) {
   Status s;
   rados_ioctx_t ioctx;
-  s = CloneIoCtx(&ioctx);
+  s = CreateIoCtx(&ioctx);
   if (!force_sync_) {
     *result = new RadosAsyncWritableFile(name, mutex_, ioctx);
   } else {
@@ -108,7 +106,7 @@ Status RadosOsd::Copy(const Slice& src, const Slice& dst) {
   Status s = Size(src, &obj_size);
   if (s.ok()) {
     rados_ioctx_t ioctx;
-    s = CloneIoCtx(&ioctx);
+    s = CreateIoCtx(&ioctx);
     if (s.ok()) {
       WritableFile* target;
       if (!force_sync_) {
