@@ -7,7 +7,9 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "rados_api.h"
+#include "pdlfs-common/pdlfs_config.h"
+
+#include "rados_conn.h"
 #include "rados_common.h"
 #include "rados_env.h"
 #include "rados_fio.h"

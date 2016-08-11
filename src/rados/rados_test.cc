@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/osd_env.h"
 #include "pdlfs-common/port.h"
 #include "pdlfs-common/testharness.h"

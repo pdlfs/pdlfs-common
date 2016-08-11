@@ -15,7 +15,7 @@
 #include "pdlfs-common/mutexlock.h"
 #include "pdlfs-common/strutil.h"
 
-#include "rados_api.h"
+#include "rados_conn.h"
 #include "rados_dl.h"
 
 #if defined(__cplusplus)
