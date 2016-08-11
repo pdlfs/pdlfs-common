@@ -54,6 +54,11 @@ if (TARGET mercury AND PDLFS_MERCURY_RPC)
     list (APPEND pdlfs-xtra-incs ${MERCURY_INCLUDE_DIR})
 endif ()
 
+if (TARGET rados AND PDLFS_RADOS)
+    list (APPEND pdlfs-xtra-libs rados)
+    list (APPEND PDLFS_EXTRA_COMPONENTS rados)
+endif ()
+
 #
 # we allow the library binary to be installed and "find_package"'d 
 # under an alternate name (though header files are still under pdlfs-common).
