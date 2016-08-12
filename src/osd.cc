@@ -31,16 +31,19 @@ MountOptions::MountOptions()
 UnmountOptions::UnmountOptions() : deletion(false) {}
 
 static bool ResolvePath(const Slice& path, Slice* parent, Slice* base) {
-  const char* a = path.c_str();
-  const char* b = strrchr(a, '/');
-
-  *base = Slice(b + 1, a + path.size() - b - 1);
-  if (b - a != 0) {
-    *parent = Slice(a, b - a);
+  if (path.size() > 1 && path[0] == '/') {
+    const char* a = path.c_str();
+    const char* b = strrchr(a, '/');
+    *base = Slice(b + 1, a + path.size() - b - 1);
+    if (b - a != 0) {
+      *parent = Slice(a, b - a);
+    } else {
+      *parent = Slice("/");
+    }
+    return !base->empty();
   } else {
-    *parent = Slice("/");
+    return false;
   }
-  return true;
 }
 
 bool OSDEnv::FileSetExists(const Slice& dirname) {
