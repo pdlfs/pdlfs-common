@@ -321,7 +321,8 @@ class PosixEnv : public Env {
       status = IOError(src, errno);
     }
     if (status.ok()) {
-      if ((w = open(target.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1) {
+      if ((w = open(target.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0644)) ==
+          -1) {
         status = IOError(target, errno);
       }
     }
