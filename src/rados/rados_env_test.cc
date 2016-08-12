@@ -66,12 +66,6 @@ static void OpenRadosConn() {
 
 class RadosTest {
  public:
-  std::string root_;
-  OSD* osd_;
-  Env* env_;
-
-  std::string WorkingDir() { return root_ + "/dbhome"; }
-
   RadosTest() {
     Status s;
     std::string pool_name = "metadata";
@@ -112,6 +106,14 @@ class RadosTest {
     ASSERT_OK(env_->AttachDir(WorkingDir()));
     ASSERT_TRUE(env_->FileExists(f));
   }
+
+  std::string WorkingDir() {
+    return root_ + "/dbhome";  // emulating a leveldb home
+  }
+
+  std::string root_;
+  OSD* osd_;
+  Env* env_;
 };
 
 TEST(RadosTest, OSD_PutAndExists) {

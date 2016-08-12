@@ -13,9 +13,9 @@
 # to switch between compilation modes.
 
 # (A) Production use (optimized mode)
-OPT ?= -O2 -DVERBOSE=1 -DNDEBUG
+# OPT ?= -O2 -DVERBOSE=1 -DNDEBUG
 # (B) Debug mode, w/ full line-level debugging symbols
-# OPT ?= -g2 -DVERBOSE=10
+OPT ?= -g2 -DVERBOSE=10
 # (C) Profiling mode: opt, but w/debugging symbols
 # OPT ?= -O2 -g2 -DVERBOSE=1 -DNDEBUG
 #-----------------------------------------------
@@ -55,7 +55,8 @@ TESTS = \
 	src/leveldb/db/autocompact_test \
 	src/leveldb/db/corruption_test \
 	src/leveldb/db/bulk_test \
-	src/rados/rados_test
+	src/rados/rados_env_test \
+	src/rados/rados_fio_test
 
 # Put the object files in a subdirectory, but the application at the top of the object dir.
 PROGNAMES := $(notdir $(TESTS))
@@ -199,8 +200,11 @@ $(STATIC_OUTDIR)/autocompact_test:src/leveldb/db/autocompact_test.cc $(STATIC_LI
 $(STATIC_OUTDIR)/bulk_test:src/leveldb/db/bulk_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/bulk_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
-$(STATIC_OUTDIR)/rados_test:src/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
-	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/rados/rados_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+$(STATIC_OUTDIR)/rados_env_test:src/rados/rados_env_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/rados/rados_env_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/rados_fio_test:src/rados/rados_fio_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/rados/rados_fio_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(STATIC_OUTDIR)/%.o: %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
