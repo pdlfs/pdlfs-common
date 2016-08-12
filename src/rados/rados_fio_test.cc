@@ -49,7 +49,7 @@ class RadosFioTest {
     return tmp;
   }
 
-  File* Open(int id, bool ocreat = false) {
+  File* Open(int id, bool ocreat = false, bool otrunc = false) {
     Fentry ent;
     ent.pid = DirId(0, 0, 0);
     DirIndex::PutHash(&ent.nhash, Name(id));
@@ -62,8 +62,8 @@ class RadosFioTest {
     char tmp[100];
     Slice encoding = ent.EncodeTo(tmp);
     Fio::Handle* fh;
-    Status s =
-        fio_->Open(encoding, ocreat, false, &ignored_mtime, &ignored_size, &fh);
+    Status s = fio_->Open(encoding, ocreat, otrunc, &ignored_mtime,
+                          &ignored_size, &fh);
     if (!s.ok()) {
       return NULL;
     } else {
@@ -74,7 +74,7 @@ class RadosFioTest {
     }
   }
 
-  File* Creat(int id) { return Open(id, true); }
+  File* Creat(int id) { return Open(id, true, true); }
 
   void Write(File* f, const Slice& buf, uint64_t off) {
     ASSERT_OK(fio_->Pwrite(f->fentry_encoding, f->fh, buf, off));
