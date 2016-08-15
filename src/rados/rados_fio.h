@@ -27,8 +27,8 @@ class RadosFobj {
   uint64_t mtime;  // Cached last file modification time
   uint64_t size;   // Cached file size
   uint64_t off;    // Current read/write position
-  int nrefs;
-  int err;
+  int bg_err;
+  int refs;
 };
 
 class RadosFio : public Fio {
@@ -47,6 +47,7 @@ class RadosFio : public Fio {
                       uint64_t size, char* scratch);
   virtual Status Pread(const Slice& fentry, Handle* fh, Slice* result,
                        uint64_t off, uint64_t size, char* scratch);
+  virtual Status Truncate(const Slice& fentry, Handle* fh, uint64_t size);
   virtual Status Flush(const Slice& fentry, Handle* fh,
                        bool force_sync = false);
   virtual Status Close(const Slice& fentry, Handle* fh);

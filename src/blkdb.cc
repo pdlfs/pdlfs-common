@@ -56,6 +56,8 @@ BlkDB::~BlkDB() {
   }
 }
 
+// Set *dirty to true iff both *mtime and *size
+// have been committed to the header, otherwise set *dirty to false.
 Status BlkDB::GetInfo(const Slice& fentry, Handle* fh, bool* dirty,
                       uint64_t* mtime, uint64_t* size) {
   Status s;
@@ -197,6 +199,10 @@ Status BlkDB::Open(const Slice& fentry, bool create_if_missing,
 Status BlkDB::Drop(const Slice& fentry) {
   // Dropping a stream involving deleting a whole range of DB
   // records and we currently don't support it.
+  return Status::NotSupported(Slice());
+}
+
+Status BlkDB::Truncate(const Slice& fentry, Handle* fh, uint64_t size) {
   return Status::NotSupported(Slice());
 }
 

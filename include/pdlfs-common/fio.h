@@ -47,6 +47,7 @@ class Fio {
                       uint64_t size, char* scratch) = 0;
   virtual Status Pread(const Slice& fentry, Handle* fh, Slice* result,
                        uint64_t off, uint64_t size, char* scratch) = 0;
+  virtual Status Truncate(const Slice& fentry, Handle* fh, uint64_t size) = 0;
   virtual Status Flush(const Slice& fentry, Handle* fh,
                        bool force_sync = false) = 0;
   virtual Status Close(const Slice& fentry, Handle* fh) = 0;
