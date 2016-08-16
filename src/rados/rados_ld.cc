@@ -76,8 +76,8 @@ static void ParseOptions(std::map<std::string, std::string>* options,
                          const char* conf_str) {
   std::vector<std::string> confs;
   pdlfs::SplitString(conf_str, ';', &confs);
-  std::vector<std::string>::iterator it;
-  for (it = confs.begin(); it != confs.end(); ++it) {
+  for (std::vector<std::string>::iterator it = confs.begin(); it != confs.end();
+       ++it) {
     std::vector<std::string> pair;
     pdlfs::SplitString(*it, '=', &pair);
     if (pair.size() == 2) {
@@ -124,13 +124,23 @@ void* PDLFS_Load_rados_fio(const char* conf_str) {
   ParseOptions(&options, conf_str);
   conn_t* conn = OpenRadosConn(options);
   if (conn != NULL) {
-    pdlfs::Status s = conn->OpenFio(&fio);
+    std::string pool_name = "data";
+    for (std::map<std::string, std::string>::iterator it = options.begin();
+         it != options.end(); ++it) {
+      pdlfs::Slice key = it->first;
+      if (key == "pool_name") {
+        pool_name = it->second;
+      }
+    }
+    pdlfs::Status s = conn->OpenFio(&fio, pool_name);
     if (!s.ok()) {
       pdlfs::Error(__LOG_ARGS__, "cannot open rados fio: %s",
                    s.ToString().c_str());
       fio = NULL;
     }
   }
+#else
+  pdlfs::Error(__LOG_ARGS__, "rados not built");
 #endif
   return fio;
 }
