@@ -57,8 +57,8 @@ class BlkDB : public Fio {
   virtual Status Open(const Slice& fentry, bool create_if_missing,
                       bool truncate_if_exists, uint64_t* mtime, uint64_t* size,
                       Handle** fh);
-  virtual Status GetInfo(const Slice& fentry, Handle* fh, bool* dirty,
-                         uint64_t* mtime, uint64_t* size);
+  virtual Status Stat(const Slice& fentry, Handle* fh, uint64_t* mtime,
+                      uint64_t* size, bool skip_cache = false);
   virtual Status Write(const Slice& fentry, Handle* fh, const Slice& data);
   virtual Status Pwrite(const Slice& fentry, Handle* fh, const Slice& data,
                         uint64_t off);

@@ -15,7 +15,11 @@
 
 namespace pdlfs {
 
-static Slice UntypedKeyPrefix(const Slice& fentry_encoding) {
+static inline Status NoMoreUpdates() {
+  return Status::IOError("Bad file state");
+}
+
+static inline Slice UntypedKeyPrefix(const Slice& fentry_encoding) {
   return Fentry::ExtractUntypedKeyPrefix(fentry_encoding);
 }
 
@@ -56,24 +60,17 @@ BlkDB::~BlkDB() {
   }
 }
 
-// Set *dirty to true iff both *mtime and *size
-// have been committed to the header, otherwise set *dirty to false.
-Status BlkDB::GetInfo(const Slice& fentry, Handle* fh, bool* dirty,
-                      uint64_t* mtime, uint64_t* size) {
+Status BlkDB::Stat(const Slice& fentry, Handle* fh, uint64_t* mtime,
+                   uint64_t* size, bool skip_cache) {
   Status s;
   assert(fh != NULL);
   const Stream* stream = reinterpret_cast<Stream*>(fh);
   MutexLock ml(&mutex_);
   if (stream->nflus < 0 || stream->nwrites < 0) {
-    s = Status::IOError(Slice());
+    s = NoMoreUpdates();
   } else {
     *mtime = stream->mtime;
     *size = stream->size;
-    if (stream->nflus >= stream->nwrites) {
-      *dirty = false;
-    } else {
-      *dirty = true;
-    }
   }
   return s;
 }
@@ -206,7 +203,7 @@ Status BlkDB::Truncate(const Slice& fentry, Handle* fh, uint64_t size) {
   return Status::NotSupported(Slice());
 }
 
-// Commit the latest modification time and size of the stream to the DB,
+// Write an updated header record to the db
 // but not necessarily to the underlying storage, unless "force_sync" is true.
 // Return OK on success. If the stream has not changed since its last
 // flush, no action is taken, unless "force_sync" is true.
@@ -216,7 +213,7 @@ Status BlkDB::Flush(const Slice& fentry, Handle* fh, bool force_sync) {
   Stream* stream = reinterpret_cast<Stream*>(fh);
   MutexLock ml(&mutex_);
   if (stream->nflus < 0 || stream->nwrites < 0) {
-    s = Status::IOError(Slice());
+    s = NoMoreUpdates();
   } else if (force_sync || stream->nflus < stream->nwrites) {
     int32_t nwrites = stream->nwrites;
     int32_t nflus = stream->nflus;
@@ -251,13 +248,12 @@ Status BlkDB::Flush(const Slice& fentry, Handle* fh, bool force_sync) {
 }
 
 Status BlkDB::Close(const Slice& fentry, Handle* fh) {
-  Status s;
   assert(fh != NULL);
   Stream* stream = reinterpret_cast<Stream*>(fh);
   MutexLock ml(&mutex_);
   while (stream->nflus < stream->nwrites) {
     mutex_.Unlock();
-    s = Flush(fentry, fh);
+    Status s = Flush(fentry, fh);
     mutex_.Lock();
     if (!s.ok()) {
       break;
@@ -267,7 +263,7 @@ Status BlkDB::Close(const Slice& fentry, Handle* fh) {
     delete stream->iter;
   }
   delete stream;
-  return s;
+  return Status::OK();
 }
 
 // REQUIRES: mutex_ has been locked.
@@ -309,7 +305,7 @@ Status BlkDB::Write(const Slice& fentry, Handle* fh, const Slice& data) {
   Stream* stream = reinterpret_cast<Stream*>(fh);
   MutexLock ml(&mutex_);
   if (stream->nflus < 0 || stream->nwrites < 0) {
-    s = Status::IOError(Slice());
+    s = NoMoreUpdates();
   } else {
     uint64_t off = stream->off;
     s = WriteTo(stream, fentry, data, off);
@@ -327,7 +323,7 @@ Status BlkDB::Pwrite(const Slice& fentry, Handle* fh, const Slice& data,
   Stream* stream = reinterpret_cast<Stream*>(fh);
   MutexLock ml(&mutex_);
   if (stream->nflus < 0 || stream->nwrites < 0) {
-    s = Status::IOError(Slice());
+    s = NoMoreUpdates();
   } else {
     s = WriteTo(stream, fentry, data, off);
   }
