@@ -63,9 +63,9 @@ class RadosFio : public Fio {
   RadosFio(port::Mutex* mu) : mutex_(mu), rwl_(mu) {}
   friend class RadosConn;
   port::Mutex* mutex_;
-  RWLock rwl_;
+  RWLock rwl_;  // Enforce serialized execution on some operations
   std::string pool_name_;
-  bool force_sync_;  // If async I/O should be disabled
+  bool force_sync_;  // If async I/O should be avoided
   rados_ioctx_t ioctx_;
   rados_t cluster_;
 };
