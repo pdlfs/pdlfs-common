@@ -82,7 +82,7 @@ Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
   Status s;
   char buf[16];
   EncodeFixed64(buf, id_);
-  EncodeFixed64(buf, fnum);
+  EncodeFixed64(buf + 8, fnum);
   Slice key(buf, 16);
 
   *handle = cache_->Lookup(key);
@@ -338,7 +338,7 @@ Status TableCache::Get(const ReadOptions& options, uint64_t fnum,
 void TableCache::Evict(uint64_t fnum) {
   char buf[16];
   EncodeFixed64(buf, id_);
-  EncodeFixed64(buf, fnum);
+  EncodeFixed64(buf + 8, fnum);
   Slice key(buf, 16);
   cache_->Erase(key);
 }
