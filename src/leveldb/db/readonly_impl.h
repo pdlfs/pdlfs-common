@@ -58,6 +58,7 @@ class ReadonlyDBImpl : public ReadonlyDB {
   const InternalKeyComparator internal_comparator_;
   const InternalFilterPolicy internal_filter_policy_;
   const Options options_;  // options_.comparator == &internal_comparator_
+  bool owns_table_cache_;
   const std::string dbname_;
 
   // table_cache_ provides its own synchronization
