@@ -29,6 +29,7 @@ ReadonlyDBImpl::ReadonlyDBImpl(const Options& raw_options,
       internal_filter_policy_(raw_options.filter_policy),
       options_(SanitizeOptions(dbname, &internal_comparator_,
                                &internal_filter_policy_, raw_options, false)),
+      owns_cache_(options_.block_cache != raw_options.block_cache),
       owns_table_cache_(options_.table_cache != raw_options.table_cache),
       dbname_(dbname),
       logfile_(NULL),
@@ -45,6 +46,9 @@ ReadonlyDBImpl::~ReadonlyDBImpl() {
   delete logfile_;
   delete table_cache_;
 
+  if (owns_cache_) {
+    delete options_.block_cache;
+  }
   if (owns_table_cache_) {
     delete options_.table_cache;
   }
