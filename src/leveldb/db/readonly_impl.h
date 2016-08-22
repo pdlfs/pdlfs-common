@@ -47,6 +47,8 @@ class ReadonlyDBImpl : public ReadonlyDB {
                       SequenceNumber* max_seq);
 
  private:
+  friend class ReadonlyDB;
+
   Status InternalGet(const ReadOptions&, const Slice& key, Buffer* buf);
   Iterator* NewInternalIterator(const ReadOptions&,
                                 SequenceNumber* latest_snapshot);

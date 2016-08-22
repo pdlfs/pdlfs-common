@@ -52,7 +52,7 @@ ReadonlyDBImpl::~ReadonlyDBImpl() {
 }
 
 Status ReadonlyDBImpl::Load() {
-  MutexLock ml(&mutex_);
+  mutex_.AssertHeld();
   if (log_ != NULL) {
     return Reload();
   }
@@ -92,7 +92,7 @@ Status ReadonlyDBImpl::Load() {
 }
 
 Status ReadonlyDBImpl::Reload() {
-  MutexLock ml(&mutex_);
+  mutex_.AssertHeld();
   if (log_ == NULL) {
     return Load();
   }
@@ -257,7 +257,9 @@ Status ReadonlyDB::Open(const Options& options, const std::string& dbname,
   *dbptr = NULL;
 
   ReadonlyDBImpl* impl = new ReadonlyDBImpl(options, dbname);
+  impl->mutex_.Lock();
   Status s = impl->Load();
+  impl->mutex_.Unlock();
   if (s.ok()) {
     *dbptr = impl;
   } else {
