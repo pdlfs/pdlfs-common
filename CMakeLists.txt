@@ -84,7 +84,7 @@ if (PDLFS_MARGO_RPC)
 endif ()
 
 if (PDLFS_RADOS)
-    find_package(Rados MODULE REQUIRED)
+    find_package(RADOS MODULE REQUIRED)
     if (NOT RADOS_FOUND)
         message (FATAL_ERROR
         "-- rados not found try setting -D RADOS_{INCLUDE,LIBRARY}_DIR")

@@ -38,6 +38,14 @@ set (pdlfs-leveldb-tests bloom_test.cc db/autocompact_test.cc
      db/version_set_test.cc db/write_batch_test.cc filter_block_test.cc
      skiplist_test.cc table_test.cc)
 
+# rados directory and tests
+if (PDLFS_RADOS)
+    set (pdlfs-rados-srcs rados_common.cc rados_conn.cc rados_env.cc
+         rados_fio.cc rados_ld.cc rados_osd.cc)
+    set (pdlfs-rados-tests rados_env_test.cc rados_fio_test.cc)
+endif ()
+
+
 #
 # configure/load in standard modules we plan to use and probe the enviroment
 #
@@ -62,8 +70,8 @@ if (TARGET mercury AND PDLFS_MERCURY_RPC)
 endif ()
 
 if (TARGET rados AND PDLFS_RADOS)
+    list (APPEND PDLFS_REQUIRED_PACKAGES RADOS)
     list (APPEND pdlfs-xtra-libs rados)
-    list (APPEND PDLFS_EXTRA_COMPONENTS rados)
 endif ()
 
 #
@@ -137,12 +145,19 @@ string(REGEX REPLACE "([^;]+)" "leveldb/\\1" pdlfs-leveldb-srcs
                                           "${pdlfs-leveldb-srcs}")
 string(REGEX REPLACE "([^;]+)" "leveldb/\\1" pdlfs-leveldb-tests
                                           "${pdlfs-leveldb-tests}")
+string(REGEX REPLACE "([^;]+)" "rados/\\1" pdlfs-rados-srcs
+                                          "${pdlfs-rados-srcs}")
+string(REGEX REPLACE "([^;]+)" "rados/\\1" pdlfs-rados-tests
+                                          "${pdlfs-rados-tests}")
+
 
 #
 # generate complete list of files and tests from the parts
 #
-set (pdlfs-all-srcs ${pdlfs-common-srcs} ${pdlfs-leveldb-srcs})
-set (pdlfs-all-tests ${pdlfs-common-tests} ${pdlfs-leveldb-tests})
+set (pdlfs-all-srcs ${pdlfs-common-srcs} ${pdlfs-leveldb-srcs}
+                    ${pdlfs-rados-srcs})
+set (pdlfs-all-tests ${pdlfs-common-tests} ${pdlfs-leveldb-tests}
+                     ${pdlfs-rados-tests})
 
 #
 # create the library target (user can specify shared vs. static
@@ -234,7 +249,8 @@ install (EXPORT pdlfs-targets
 install (FILES "${CMAKE_CURRENT_BINARY_DIR}/${PDLFS_NAME}-config.cmake"
                "${CMAKE_CURRENT_BINARY_DIR}/${PDLFS_NAME}-config-version.cmake"
          DESTINATION ${pdlfs-pkg-loc} )
-install (FILES "../cmake/xpkg-import.cmake" DESTINATION ${pdlfs-pkg-loc})
+install (FILES "../cmake/xpkg-import.cmake" "../cmake/FindRADOS.cmake"
+         DESTINATION ${pdlfs-pkg-loc})
 install (DIRECTORY ../include/pdlfs-common
          DESTINATION include
          FILES_MATCHING PATTERN "*.h")
