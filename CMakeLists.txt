@@ -112,12 +112,12 @@ if (PDLFS_GFLAGS)
         message (FATAL_ERROR
         "-- gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
     endif ()
-    message (STATUS "-- gflags enabled")
+    message ("-- gflags enabled")
 endif ()
 
 if (PDLFS_GLOG)
     xpkg_import_module (libglog REQUIRED libglog)
-    message (STATUS "-- glog enabled")
+    message ("-- glog enabled")
 endif ()
 
 if (PDLFS_MERCURY_RPC)
@@ -146,6 +146,31 @@ if (PDLFS_SNAPPY)
         "-- snappy not found try setting -D SNAPPY_{INCLUDE,LIBRARY}_DIR")
     endif ()
     message (STATUS "-- snappy enabled")
+endif ()
+
+#
+# sanitizer config (XXX: does not probe compiler to see if sanitizer flags
+# are supported... )
+#
+set (as_flags "-fsanitize=address -O1 -fno-omit-frame-pointer")
+set (ts_flags "-fsanitize=thread  -O1 -fno-omit-frame-pointer")
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if (${DEBUG_SANITIZER} STREQUAL "Address")
+        set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${as_flags}")
+        set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${as_flags}")
+    elseif (${DEBUG_SANITIZER} STREQUAL "Thread")
+        set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${ts_flags}")
+        set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${ts_flags}")
+    endif ()
+endif ()
+
+if (PDLFS_SNAPPY)
+    find_package(Snappy MODULE REQUIRED)
+    if (NOT SNAPPY_FOUND)
+        message (FATAL_ERROR
+        "-- snappy not found try setting -D SNAPPY_{INCLUDE,LIBRARY}_DIR")
+    endif ()
+    message ("-- snappy enabled")
 endif ()
 
 #
