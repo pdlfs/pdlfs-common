@@ -88,6 +88,11 @@ if (TARGET rados AND PDLFS_RADOS)
     list (APPEND pdlfs-xtra-libs rados)
 endif ()
 
+if (TARGET snappy AND PDLFS_SNAPPY)
+    list (APPEND PDLFS_REQUIRED_PACKAGES Snappy)
+    list (APPEND pdlfs-xtra-libs snappy)
+endif ()
+
 #
 # we allow the library binary to be installed and "find_package"'d
 # under an alternate name (though header files are still under pdlfs-common).
@@ -269,7 +274,7 @@ install (FILES "${CMAKE_CURRENT_BINARY_DIR}/${PDLFS_NAME}-config.cmake"
                "${CMAKE_CURRENT_BINARY_DIR}/${PDLFS_NAME}-config-version.cmake"
          DESTINATION ${pdlfs-pkg-loc} )
 install (FILES "../cmake/xpkg-import.cmake" "../cmake/FindRADOS.cmake"
-         "../cmake/FindGFlags.cmake"
+         "../cmake/FindGFlags.cmake" "../cmake/FindSnappy.cmake"
          DESTINATION ${pdlfs-pkg-loc})
 install (DIRECTORY ../include/pdlfs-common
          DESTINATION include

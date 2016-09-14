@@ -41,6 +41,9 @@
 #   -DPDLFS_RADOS=ON                       -- compile in RADOS env
 #     - RADOS_INCLUDE_DIR: optional hint for finding rado/librados.h
 #     - RADOS_LIBRARY_DIR: optional hint for finding rados lib
+#   -DPDLFS_SNAPPY=ON                      -- compile in snappy compression
+#     - SNAPPY_INCLUDE_DIR: optional hint for finding snappy.h
+#     - SNAPPY_LIBRARY_DIR: optional hint for finding snappy lib
 #
 #
 # note: package config files for external packages must be preinstalled in 
@@ -92,6 +95,8 @@ set (PDLFS_MERCURY_RPC "OFF" CACHE
      BOOL "Compile in Mercury RPC interface")
 set (PDLFS_RADOS "OFF" CACHE
      BOOL "Compile in RADOS object store")
+set (PDLFS_SNAPPY "OFF" CACHE
+     BOOL "Enable SNAPPY (libsnappy-dev) for compression")
 
 #
 # external packages
@@ -131,6 +136,15 @@ if (PDLFS_RADOS)
         "-- rados not found try setting -D RADOS_{INCLUDE,LIBRARY}_DIR")
     endif ()
     message ("-- rados enabled")
+endif ()
+
+if (PDLFS_SNAPPY)
+    find_package(Snappy MODULE REQUIRED)
+    if (NOT SNAPPY_FOUND)
+        message (FATAL_ERROR
+        "-- snappy not found try setting -D SNAPPY_{INCLUDE,LIBRARY}_DIR")
+    endif ()
+    message ("-- snappy enabled")
 endif ()
 
 #

@@ -21,6 +21,7 @@
 #cmakedefine PDLFS_MARGO_RPC
 #cmakedefine PDLFS_MERCURY_RPC
 #cmakedefine PDLFS_RADOS
+#cmakedefine PDLFS_SNAPPY
 
 #ifdef PDLFS_GFLAGS
 #define GFLAGS    /* XXXCDC: backward compat hack */
@@ -36,4 +37,7 @@
 #endif
 #ifdef PDLFS_RADOS
 #define RADOS     /* XXXCDC: backward compat hack */
+#endif
+#ifdef PDLFS_SNAPPY
+#define SNAPPY     /* XXXCDC: backward compat hack */
 #endif
