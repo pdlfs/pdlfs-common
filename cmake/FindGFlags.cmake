@@ -17,8 +17,6 @@ include (FindPackageHandleStandardArgs)
 
 find_path (GFLAGS_INCLUDE gflags/gflags.h HINTS ${GFLAGS_INCLUDE_DIR})
 find_library (GFLAGS_LIBRARY gflags HINTS ${GFLAGS_LIBRARY_DIR})
-message ("GF: INC: ${GFLAGS_INCLUDE}")
-message ("GF: LIB: ${GFLAGS_LIBRARY}")
 
 find_package_handle_standard_args (GFlags DEFAULT_MSG 
     GFLAGS_INCLUDE GFLAGS_LIBRARY)
