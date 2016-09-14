@@ -60,6 +60,11 @@ set (THREADS_PREFER_PTHREAD_FLAG TRUE)
 # (3.1 was released late 2014)
 find_package (Threads REQUIRED)
 
+if (TARGET libglog AND PDLFS_GLOG)
+    list (APPEND PDLFS_REQUIRED_XPKGIMPORTS libglog)
+    list (APPEND pdlfs-xtra-libs libglog)
+endif ()
+
 if (TARGET margo AND PDLFS_MARGO_RPC)
     list (APPEND PDLFS_REQUIRED_XPKGIMPORTS margo)  # for *-config.cmake
     list (APPEND pdlfs-xtra-libs margo)             # for build
