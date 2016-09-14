@@ -32,6 +32,9 @@
 #   -DPDLFS_COMMON_LIBNAME=pdlfs-common    -- name for binary lib files
 #
 # pdlfs-common config compile time options flags:
+#   -DPDLFS_GFLAGS=ON                      -- use gflags for arg parsing
+#     - GFLAGS_INCLUDE_DIR: optional hint for finding gflags/gflags.h
+#     - GFLAGS_LIBRARY_DIR: optional hint for finding gflags lib
 #   -DPDLFS_GLOG=ON                        -- use glog for logging
 #   -DPDLFS_MARGO_RPC=ON                   -- compile in margo rpc code
 #   -DPDLFS_MERCURY_RPC=ON                 -- compile in mercury rpc code
@@ -79,6 +82,8 @@ set (BUILD_TESTS "OFF" CACHE BOOL "Build test programs")
 set (PDLFS_PLATFORM "POSIX" CACHE STRING "Select platform (e.g. POSIX)")
 set (PDLFS_OS "${CMAKE_SYSTEM_NAME}" CACHE 
               STRING "Select operating system (uname -s)")
+set (PDLFS_GFLAGS "OFF" CACHE
+     BOOL "Use GFLAGS (libgflags-dev) for arg parsing")
 set (PDLFS_GLOG "OFF" CACHE
      BOOL "Use GLOG (libgoogle-glog-dev) for logging")
 set (PDLFS_MARGO_RPC "OFF" CACHE
@@ -94,6 +99,15 @@ set (PDLFS_RADOS "OFF" CACHE
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
      "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include (xpkg-import)
+
+if (PDLFS_GFLAGS)
+    find_package(GFlags MODULE REQUIRED)
+    if (NOT GFLAGS_FOUND)
+        message (FATAL_ERROR
+        "-- gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
+    endif ()
+    message ("-- gflags enabled")
+endif ()
 
 if (PDLFS_GLOG)
     xpkg_import_module (libglog REQUIRED libglog)
