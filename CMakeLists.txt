@@ -136,7 +136,7 @@ if (PDLFS_RADOS)
         message (FATAL_ERROR
         "-- rados not found try setting -D RADOS_{INCLUDE,LIBRARY}_DIR")
     endif ()
-    message ("STATUS -- rados enabled")
+    message (STATUS "-- rados enabled")
 endif ()
 
 if (PDLFS_SNAPPY)
