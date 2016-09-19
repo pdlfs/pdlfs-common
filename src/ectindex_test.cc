@@ -65,24 +65,6 @@ TEST(ECTTest, Trie_1) {
   ASSERT_GE(trie.Locate("z"), 0);
 }
 
-TEST(ECTTest, Trie_3) {
-  TrieWrapper trie(3);
-  trie.Insert("abc");
-  trie.Insert("efg");
-  trie.Insert("hij");
-  trie.Flush();
-  ASSERT_EQ(trie.Locate("aaa"), 0);
-  ASSERT_EQ(trie.Locate("abc"), 0);
-  ASSERT_EQ(trie.Locate("azz"), 0);
-  ASSERT_EQ(trie.Locate("eaa"), 1);
-  ASSERT_EQ(trie.Locate("efg"), 1);
-  ASSERT_EQ(trie.Locate("ezz"), 1);
-  ASSERT_EQ(trie.Locate("haa"), 2);
-  ASSERT_EQ(trie.Locate("hij"), 2);
-  ASSERT_GE(trie.Locate("hzz"), 2);
-  ASSERT_GE(trie.Locate("zzz"), 2);
-}
-
 TEST(ECTTest, Trie_5) {
   TrieWrapper trie(5);
   trie.Insert("fghdc");

@@ -17,20 +17,16 @@
 #include "huffman.h"
 #include "sign_interleave.h"
 
-static const bool kHuffmanEncoding = false;
-
 namespace pdlfs {
 namespace ectrie {
 
-template <bool WeakOrdering = false, unsigned int HuffmanCodingLimit = 16,
-          typename RefType = uint8_t>
+template <typename RefType = uint8_t>
 class trie {
  public:
   explicit trie() {
     if (kHuffmanEncoding) {
-      // prepare huffman coding for n <= HuffmanCodingLimit
-      for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
-        if (!WeakOrdering) {
+      for (unsigned int n = 2; n <= kHuffmanCodingLimit; n++) {
+        if (!kWeakOrdering) {
           huffman_tree_generator<uint64_t> gen(n + 1);
 
           uint64_t v = 1;
@@ -62,11 +58,11 @@ class trie {
 #if 0
   template <typename DistType>
   void recreate_huffman_from_dist(DistType& dist) {
-    assert(!WeakOrdering);
+    assert(!kWeakOrdering);
 
-    for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) delete huff_[n - 2];
+    for (unsigned int n = 2; n <= kHuffmanCodingLimit; n++) delete huff_[n - 2];
 
-    for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
+    for (unsigned int n = 2; n <= kHuffmanCodingLimit; n++) {
       huffman_tree_generator<uint64_t> gen(n + 1);
 
       for (unsigned int k = 0; k <= n; k++) gen[k] = dist[n][k];
@@ -81,7 +77,7 @@ class trie {
 
   virtual ~trie() {
     if (kHuffmanEncoding) {
-      for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
+      for (unsigned int n = 2; n <= kHuffmanCodingLimit; n++) {
         delete huff_[n - 2];
         huff_[n - 2] = NULL;
       }
@@ -129,10 +125,10 @@ class trie {
     }
 
     // replace (n, 0) split with (0, n) split if weak ordering is used
-    if (WeakOrdering && left == n) left = 0;
+    if (kWeakOrdering && left == n) left = 0;
 
     // encode the left tree size
-    if (kHuffmanEncoding && n <= HuffmanCodingLimit) {
+    if (kHuffmanEncoding && n <= kHuffmanCodingLimit) {
       huff_[n - 2]->encode(out_buf, left);
     } else {
       exp_golomb<>::encode<size_t>(
@@ -163,7 +159,7 @@ class trie {
 
     // decode the left tree size
     size_t left;
-    if (kHuffmanEncoding && n <= HuffmanCodingLimit) {
+    if (kHuffmanEncoding && n <= kHuffmanCodingLimit) {
       left = huff_[n - 2]->decode(in_buf, in_out_buf_iter);
     } else {
       left = sign_interleave::decode<size_t>(
@@ -176,7 +172,7 @@ class trie {
     // find the number of keys on the left to the key (considering weak
     // ordering)
     if (!bit_access::get(key, depth) &&
-        (!WeakOrdering || (WeakOrdering && left != 0))) {
+        (!kWeakOrdering || (kWeakOrdering && left != 0))) {
       return locate_rec(in_buf, in_out_buf_iter, key, key_len, off, left,
                         dest_base, dest_keys_per_block, depth + 1);
     } else {
@@ -204,7 +200,7 @@ class trie {
 
     // decode the left tree size
     size_t left;
-    if (kHuffmanEncoding && n <= HuffmanCodingLimit) {
+    if (kHuffmanEncoding && n <= kHuffmanCodingLimit) {
       left = huff_[n - 2]->decode(in_buf, in_out_buf_iter);
     } else {
       left = sign_interleave::decode<size_t>(
@@ -220,8 +216,11 @@ class trie {
              dest_base, dest_keys_per_block, depth + 1);
   }
 
- protected:
-  huffman<RefType>* huff_[HuffmanCodingLimit - 1];
+ private:
+  static const bool kHuffmanEncoding = false;
+  static const unsigned int kHuffmanCodingLimit = 16;
+  huffman<RefType>* huff_[kHuffmanCodingLimit - 1];
+  static const bool kWeakOrdering = false;
 };
 
 }  // namespace ectrie
