@@ -112,22 +112,22 @@ if (PDLFS_GFLAGS)
         message (FATAL_ERROR
         "-- gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
     endif ()
-    message ("-- gflags enabled")
+    message (STATUS "-- gflags enabled")
 endif ()
 
 if (PDLFS_GLOG)
     xpkg_import_module (libglog REQUIRED libglog)
-    message ("-- glog enabled")
+    message (STATUS "-- glog enabled")
 endif ()
 
 if (PDLFS_MERCURY_RPC)
     find_package(mercury CONFIG REQUIRED)
-    message ("-- mercury rpc enabled")
+    message (STATUS "-- mercury rpc enabled")
 endif ()
 
 if (PDLFS_MARGO_RPC)
     xpkg_import_module (margo REQUIRED margo)
-    message ("-- margo rpc enabled")
+    message (STATUS "-- margo rpc enabled")
 endif ()
 
 if (PDLFS_RADOS)
@@ -136,7 +136,7 @@ if (PDLFS_RADOS)
         message (FATAL_ERROR
         "-- rados not found try setting -D RADOS_{INCLUDE,LIBRARY}_DIR")
     endif ()
-    message ("-- rados enabled")
+    message ("STATUS -- rados enabled")
 endif ()
 
 if (PDLFS_SNAPPY)
@@ -145,7 +145,7 @@ if (PDLFS_SNAPPY)
         message (FATAL_ERROR
         "-- snappy not found try setting -D SNAPPY_{INCLUDE,LIBRARY}_DIR")
     endif ()
-    message ("-- snappy enabled")
+    message (STATUS "-- snappy enabled")
 endif ()
 
 #
