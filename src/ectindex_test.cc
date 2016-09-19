@@ -20,7 +20,7 @@ namespace pdlfs {
 
 class ECTTest {};
 
-class ECTWrapper {
+class TrieWrapper {
  private:
   const size_t key_len_;
   std::vector<std::string> key_buffer_;
@@ -28,9 +28,9 @@ class ECTWrapper {
   ECT* ect_;
 
  public:
-  ECTWrapper(size_t key_len) : key_len_(key_len), ect_(NULL) {}
+  TrieWrapper(size_t key_len) : key_len_(key_len), ect_(NULL) {}
 
-  ~ECTWrapper() { delete ect_; }
+  ~TrieWrapper() { delete ect_; }
 
   size_t Locate(const Slice& key) { return ect_->Find(key); }
 
@@ -50,14 +50,14 @@ class ECTWrapper {
 };
 
 TEST(ECTTest, EmptyTrie) {
-  ECTWrapper trie(1);
+  TrieWrapper trie(1);
   trie.Flush();
   ASSERT_GE(trie.Locate("x"), 0);
   ASSERT_GE(trie.Locate("z"), 0);
 }
 
 TEST(ECTTest, Trie_1) {
-  ECTWrapper trie(1);
+  TrieWrapper trie(1);
   trie.Insert("y");
   trie.Flush();
   ASSERT_EQ(trie.Locate("x"), 0);
@@ -66,7 +66,7 @@ TEST(ECTTest, Trie_1) {
 }
 
 TEST(ECTTest, Trie_3) {
-  ECTWrapper trie(3);
+  TrieWrapper trie(3);
   trie.Insert("abc");
   trie.Insert("efg");
   trie.Insert("hij");
@@ -79,12 +79,12 @@ TEST(ECTTest, Trie_3) {
   ASSERT_EQ(trie.Locate("ezz"), 1);
   ASSERT_EQ(trie.Locate("haa"), 2);
   ASSERT_EQ(trie.Locate("hij"), 2);
-  ASSERT_EQ(trie.Locate("hzz"), 2);
+  ASSERT_GE(trie.Locate("hzz"), 2);
   ASSERT_GE(trie.Locate("zzz"), 2);
 }
 
 TEST(ECTTest, Trie_5) {
-  ECTWrapper trie(5);
+  TrieWrapper trie(5);
   trie.Insert("fghdc");
   trie.Insert("fzhdc");
   trie.Insert("zdfgr");
@@ -111,7 +111,7 @@ TEST(ECTTest, Trie_5) {
 }
 
 TEST(ECTTest, Trie_8) {
-  ECTWrapper trie(8);
+  TrieWrapper trie(8);
   trie.Insert("12345678");
   trie.Insert("23456789");
   trie.Insert("34567891");

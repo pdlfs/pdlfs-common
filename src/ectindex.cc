@@ -23,10 +23,10 @@ namespace {
 
 class EntropyCodedTrie : public ECT {
  private:
-  typedef ectrie::bit_vector<> buffer_type;
-  buffer_type bitvector_;
-  typedef ectrie::trie<> trie_type;
-  trie_type trie_;
+  typedef ectrie::bit_vector<> bitvec_t;
+  bitvec_t bitvector_;
+  typedef ectrie::trie<> trie_t;
+  trie_t trie_;
   size_t key_len_;
   size_t n_;
 

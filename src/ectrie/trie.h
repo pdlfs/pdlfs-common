@@ -17,7 +17,7 @@
 #include "huffman.h"
 #include "sign_interleave.h"
 
-#define HUFFMAN  // If key are distributed unifor this will compress better
+static const bool kHuffmanEncoding = false;
 
 namespace pdlfs {
 namespace ectrie {
@@ -26,36 +26,40 @@ template <bool WeakOrdering = false, unsigned int HuffmanCodingLimit = 16,
           typename RefType = uint8_t>
 class trie {
  public:
-  trie() {
-    // prepare huffman coding for n <= HuffmanCodingLimit
-    for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
-      if (!WeakOrdering) {
-        huffman_tree_generator<uint64_t> gen(n + 1);
+  explicit trie() {
+    if (kHuffmanEncoding) {
+      // prepare huffman coding for n <= HuffmanCodingLimit
+      for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
+        if (!WeakOrdering) {
+          huffman_tree_generator<uint64_t> gen(n + 1);
 
-        uint64_t v = 1;
-        gen[0] = v;
-        for (unsigned int k = 1; k <= n; k++) gen[k] = v = v * (n - k + 1) / k;
+          uint64_t v = 1;
+          gen[0] = v;
+          for (unsigned int k = 1; k <= n; k++)
+            gen[k] = v = v * (n - k + 1) / k;
 
-        huffman_tree<RefType> t(n + 1);
-        gen.generate(t);
+          huffman_tree<RefType> t(n + 1);
+          gen.generate(t);
 
-        huff_[n - 2] = new huffman<RefType>(t);
-      } else {
-        huffman_tree_generator<uint64_t> gen(n);
+          huff_[n - 2] = new huffman<RefType>(t);
+        } else {
+          huffman_tree_generator<uint64_t> gen(n);
 
-        uint64_t v = 1;
-        gen[0] = v * 2;
-        for (unsigned int k = 1; k <= n - 1; k++)
-          gen[k] = v = v * (n - k + 1) / k;
+          uint64_t v = 1;
+          gen[0] = v * 2;
+          for (unsigned int k = 1; k <= n - 1; k++)
+            gen[k] = v = v * (n - k + 1) / k;
 
-        huffman_tree<RefType> t(n);
-        gen.generate(t);
+          huffman_tree<RefType> t(n);
+          gen.generate(t);
 
-        huff_[n - 2] = new huffman<RefType>(t);
+          huff_[n - 2] = new huffman<RefType>(t);
+        }
       }
     }
   }
 
+#if 0
   template <typename DistType>
   void recreate_huffman_from_dist(DistType& dist) {
     assert(!WeakOrdering);
@@ -73,11 +77,14 @@ class trie {
       huff_[n - 2] = new huffman<RefType>(t);
     }
   }
+#endif
 
   virtual ~trie() {
-    for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
-      delete huff_[n - 2];
-      huff_[n - 2] = NULL;
+    if (kHuffmanEncoding) {
+      for (unsigned int n = 2; n <= HuffmanCodingLimit; n++) {
+        delete huff_[n - 2];
+        huff_[n - 2] = NULL;
+      }
     }
   }
 
@@ -124,14 +131,13 @@ class trie {
     // replace (n, 0) split with (0, n) split if weak ordering is used
     if (WeakOrdering && left == n) left = 0;
 
-// encode the left tree size
-#ifdef HUFFMAN
-    if (n <= HuffmanCodingLimit)
+    // encode the left tree size
+    if (kHuffmanEncoding && n <= HuffmanCodingLimit) {
       huff_[n - 2]->encode(out_buf, left);
-    else
-#endif
+    } else {
       exp_golomb<>::encode<size_t>(
           out_buf, sign_interleave::encode<size_t>(left - n / 2));
+    }
 
     encode_rec(out_buf, arr, key_len, off, left, dest_base, dest_keys_per_block,
                depth + 1);
@@ -157,14 +163,14 @@ class trie {
 
     // decode the left tree size
     size_t left;
-#ifdef HUFFMAN
-    if (n <= HuffmanCodingLimit)
+    if (kHuffmanEncoding && n <= HuffmanCodingLimit) {
       left = huff_[n - 2]->decode(in_buf, in_out_buf_iter);
-    else
-#endif
+    } else {
       left = sign_interleave::decode<size_t>(
                  exp_golomb<>::decode<size_t>(in_buf, in_out_buf_iter)) +
              n / 2;
+    }
+
     assert(left <= n);
 
     // find the number of keys on the left to the key (considering weak
@@ -198,14 +204,14 @@ class trie {
 
     // decode the left tree size
     size_t left;
-#ifdef HUFFMAN
-    if (n <= HuffmanCodingLimit)
+    if (kHuffmanEncoding && n <= HuffmanCodingLimit) {
       left = huff_[n - 2]->decode(in_buf, in_out_buf_iter);
-    else
-#endif
+    } else {
       left = sign_interleave::decode<size_t>(
                  exp_golomb<>::decode<size_t>(in_buf, in_out_buf_iter)) +
              n / 2;
+    }
+
     assert(left <= n);
 
     skip_rec(in_buf, in_out_buf_iter, key, key_len, off, left, dest_base,
