@@ -18,12 +18,10 @@ namespace pdlfs {
 
 class ECT {
  public:
-  ECT() {}
+  static ECT* Default(size_t key_len, size_t n, const Slice* keys);
 
-  static ECT* Create(size_t key_len, size_t n, const Slice* keys);
-
-  // Destroy all internal index structures.
-  virtual ~ECT();
+  static ECT* TwoLevel(size_t bucket_size, size_t key_len, size_t n,
+                       const Slice* keys);
 
   // Return the internal memory usage in bytes.
   virtual size_t MemUsage() const = 0;
@@ -31,7 +29,13 @@ class ECT {
   // Return the rank of a given key.
   virtual size_t Find(const Slice& key) const = 0;
 
+  virtual ~ECT();
+  ECT() {}
+
  private:
+  virtual void InsertKeys(size_t n, const uint8_t** keys) = 0;
+  static void Init(ECT* ect, size_t n, const Slice* keys);
+
   // No copying allowed
   void operator=(const ECT&);
   ECT(const ECT&);

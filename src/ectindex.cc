@@ -46,15 +46,11 @@ class EntropyCodedTrie : public ECT {
     return Locate(reinterpret_cast<const uint8_t*>(key.data()));
   }
 
-  size_t InsertKeys(size_t n, const uint8_t** keys) {
-    if (n_ == 0) {
-      trie_.encode(bitvector_, keys, key_len_, 0, n);
-      bitvector_.compact();
-      n_ = n;
-      return n_;
-    } else {
-      return 0;
-    }
+  virtual void InsertKeys(size_t n, const uint8_t** keys) {
+    assert(n_ == 0);
+    trie_.encode(bitvector_, keys, key_len_, 0, n);
+    bitvector_.compact();
+    n_ = n;
   }
 };
 
@@ -112,15 +108,15 @@ class TwoLevelBucketingTrie : public ECT {
     return Locate(reinterpret_cast<const uint8_t*>(key.data()));
   }
 
-  void InsertKeys(size_t n, const uint8_t** keys) {
-    n_ = n;
+  virtual void InsertKeys(size_t n, const uint8_t** keys) {
+    assert(n_ == 0);
     size_t bucket_size = 256;
     bucket_bits_ = 0;
-    while ((static_cast<size_t>(1) << bucket_bits_) < (n_ / bucket_size)) {
+    while ((static_cast<size_t>(1) << bucket_bits_) < (n / bucket_size)) {
       bucket_bits_++;
     }
     bucket_count_ = static_cast<size_t>(1) << bucket_bits_;
-    bucket_size_ = n_ / bucket_count_;
+    bucket_size_ = n / bucket_count_;
     if (bucket_size_ == 0) {
       bucket_size_ = 1;
     }
@@ -132,12 +128,14 @@ class TwoLevelBucketingTrie : public ECT {
     bu.last_dest_offset_ = 0;
     bu.bucket_count_ = 0;
     bu.pending_key_count_ = 0;
-    for (size_t i = 0; i < n_; i++) AppendKey(keys[i], bu);
+    for (size_t i = 0; i < n; i++) AppendKey(keys[i], bu);
     while (bu.bucket_count_ < bucket_count_) {
       Flush(bu);
     }
 
     bucketing_.finalize();
+    bitvector_.compact();
+    n_ = n;
   }
 
  private:
@@ -184,15 +182,26 @@ class TwoLevelBucketingTrie : public ECT {
 
 }  // anonymous namespace
 
-ECT* ECT::Create(size_t key_len, size_t n, const Slice* keys) {
-  TwoLevelBucketingTrie* trie = new TwoLevelBucketingTrie(key_len);
-  std::vector<const uint8_t*> ikeys;
-  ikeys.reserve(n);
+void ECT::Init(ECT* ect, size_t n, const Slice* keys) {
+  std::vector<const uint8_t*> ukeys;
+  ukeys.reserve(n);
   for (size_t i = 0; i < n; i++) {
-    ikeys.push_back(reinterpret_cast<const uint8_t*>(keys[i].data()));
+    ukeys.push_back(reinterpret_cast<const uint8_t*>(keys[i].data()));
   }
-  trie->InsertKeys(ikeys.size(), ikeys.data());
-  return trie;
+  ect->InsertKeys(ukeys.size(), ukeys.data());
+}
+
+ECT* ECT::Default(size_t key_len, size_t n, const Slice* keys) {
+  ECT* ect = new EntropyCodedTrie(key_len);
+  ECT::Init(ect, n, keys);
+  return ect;
+}
+
+ECT* ECT::TwoLevel(size_t bucket_size, size_t key_len, size_t n,
+                   const Slice* keys) {
+  ECT* ect = new TwoLevelBucketingTrie(key_len);
+  ECT::Init(ect, n, keys);
+  return ect;
 }
 
 }  // namespace pdlfs

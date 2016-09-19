@@ -36,8 +36,10 @@ void bit_vector<BlockType>::clear() {
 
 template <typename BlockType>
 void bit_vector<BlockType>::compact() {
-  capacity_ = size_;
-  resize();
+  if (size_ != capacity_) {
+    capacity_ = size_;
+    resize();
+  }
 }
 
 template <typename BlockType>

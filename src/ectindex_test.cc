@@ -43,7 +43,7 @@ class TrieWrapper {
     if (ect_ != NULL) {
       delete ect_;
     }
-    ect_ = ECT::Create(key_len_, pending_keys_.size(), pending_keys_.data());
+    ect_ = ECT::Default(key_len_, pending_keys_.size(), pending_keys_.data());
     pending_keys_.clear();
     key_buffer_.clear();
   }
