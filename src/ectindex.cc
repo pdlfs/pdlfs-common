@@ -27,7 +27,7 @@ class EntropyCodedTrie : public ECT {
   bitvec_t bitvector_;
   typedef ectrie::trie<> trie_t;
   trie_t trie_;
-  size_t key_len_;
+  const size_t key_len_;
   size_t n_;
 
  public:
@@ -73,7 +73,8 @@ class TwoLevelBucketingTrie : public ECT {
   trie_t trie_;
   typedef ectrie::twolevel_bucketing<> bucket_t;
   bucket_t bucketing_;
-  size_t key_len_;
+  const size_t default_bucket_size_;
+  const size_t key_len_;
   size_t n_;
 
   // Initialized lazily
@@ -82,7 +83,8 @@ class TwoLevelBucketingTrie : public ECT {
   size_t bucket_count_;
 
  public:
-  TwoLevelBucketingTrie(size_t key_len) : key_len_(key_len), n_(0) {}
+  TwoLevelBucketingTrie(size_t key_len, size_t bucket_size)
+      : default_bucket_size_(bucket_size), key_len_(key_len), n_(0) {}
   virtual ~TwoLevelBucketingTrie() {}
 
   virtual size_t MemUsage() const {
@@ -110,7 +112,7 @@ class TwoLevelBucketingTrie : public ECT {
 
   virtual void InsertKeys(size_t n, const uint8_t** keys) {
     assert(n_ == 0);
-    size_t bucket_size = 256;
+    size_t bucket_size = default_bucket_size_;
     bucket_bits_ = 0;
     while ((static_cast<size_t>(1) << bucket_bits_) < (n / bucket_size)) {
       bucket_bits_++;
@@ -182,25 +184,25 @@ class TwoLevelBucketingTrie : public ECT {
 
 }  // anonymous namespace
 
-void ECT::Init(ECT* ect, size_t n, const Slice* keys) {
+void ECT::InitTrie(ECT* ect, size_t n, const Slice* keys) {
   std::vector<const uint8_t*> ukeys;
-  ukeys.reserve(n);
+  ukeys.resize(n);
   for (size_t i = 0; i < n; i++) {
-    ukeys.push_back(reinterpret_cast<const uint8_t*>(keys[i].data()));
+    ukeys[i] = reinterpret_cast<const uint8_t*>(&keys[i][0]);
   }
-  ect->InsertKeys(ukeys.size(), ukeys.data());
+  ect->InsertKeys(ukeys.size(), &ukeys[0]);
 }
 
 ECT* ECT::Default(size_t key_len, size_t n, const Slice* keys) {
   ECT* ect = new EntropyCodedTrie(key_len);
-  ECT::Init(ect, n, keys);
+  ECT::InitTrie(ect, n, keys);
   return ect;
 }
 
-ECT* ECT::TwoLevel(size_t bucket_size, size_t key_len, size_t n,
-                   const Slice* keys) {
-  ECT* ect = new TwoLevelBucketingTrie(key_len);
-  ECT::Init(ect, n, keys);
+ECT* ECT::TwoLevelBucketing(size_t key_len, size_t n, const Slice* keys,
+                            size_t bucket_size) {
+  ECT* ect = new TwoLevelBucketingTrie(key_len, bucket_size);
+  ECT::InitTrie(ect, n, keys);
   return ect;
 }
 

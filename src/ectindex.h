@@ -20,8 +20,8 @@ class ECT {
  public:
   static ECT* Default(size_t key_len, size_t n, const Slice* keys);
 
-  static ECT* TwoLevel(size_t bucket_size, size_t key_len, size_t n,
-                       const Slice* keys);
+  static ECT* TwoLevelBucketing(size_t key_len, size_t n, const Slice* keys,
+                                size_t bucket_size = 256);
 
   // Return the internal memory usage in bytes.
   virtual size_t MemUsage() const = 0;
@@ -34,8 +34,9 @@ class ECT {
 
  private:
   virtual void InsertKeys(size_t n, const uint8_t** keys) = 0;
-  static void Init(ECT* ect, size_t n, const Slice* keys);
 
+  // Initialize the index with a sorted array of keys
+  static void InitTrie(ECT*, size_t n, const Slice*);
   // No copying allowed
   void operator=(const ECT&);
   ECT(const ECT&);

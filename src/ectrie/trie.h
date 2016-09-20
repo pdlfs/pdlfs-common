@@ -61,12 +61,9 @@ class trie {
     assert(!kWeakOrdering);
 
     for (unsigned int n = 2; n <= kHuffmanCodingLimit; n++) delete huff_[n - 2];
-
     for (unsigned int n = 2; n <= kHuffmanCodingLimit; n++) {
       huffman_tree_generator<uint64_t> gen(n + 1);
-
       for (unsigned int k = 0; k <= n; k++) gen[k] = dist[n][k];
-
       huffman_tree<RefType> t(n + 1);
       gen.generate(t);
 
@@ -101,7 +98,7 @@ class trie {
                       dest_keys_per_block, skip_bits);
   }
 
- protected:
+ private:
   template <typename Buffer, typename KeyArrayType>
   void encode_rec(Buffer& out_buf, const KeyArrayType& arr, size_t key_len,
                   size_t off, size_t n, size_t dest_base,
@@ -216,10 +213,10 @@ class trie {
              dest_base, dest_keys_per_block, depth + 1);
   }
 
- private:
-  static const bool kHuffmanEncoding = false;
   static const unsigned int kHuffmanCodingLimit = 16;
   huffman<RefType>* huff_[kHuffmanCodingLimit - 1];
+
+  static const bool kHuffmanEncoding = false;
   static const bool kWeakOrdering = false;
 };
 

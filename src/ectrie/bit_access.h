@@ -17,8 +17,9 @@
 namespace pdlfs {
 namespace ectrie {
 
-// example internal representation for uint8_t blocks
-//
+// ---------------------------------------------------------------
+// Example internal representation for uint8_t blocks
+// ---------------------------------------------------------------
 // block index:           0        1        2        3
 // in-block offset:   76543210 76543210 76543210 76543210
 //                   +--------+--------+--------+--------+
@@ -26,12 +27,12 @@ namespace ectrie {
 //                   +--------+--------+--------+--------+
 // bit_access index:  0          1          2
 //                    01234567 89012345 67890123 456
-//
+// ---------------------------------------------------------------
 class bit_access {
  public:
   template <typename BlockType>
   static size_t block_index(size_t i) {
-    return i >> block_info<BlockType>::log_bits_per_block;
+    return i / block_info<BlockType>::bits_per_block;
   }
 
   template <typename BlockType>
@@ -64,8 +65,9 @@ class bit_access {
   template <typename BlockType>
   static bool get(const BlockType* v, size_t i) {
     return (v[block_index<BlockType>(i)] &
-            (BlockType(1) << (block_info<BlockType>::bits_per_block - 1 -
-                              in_block_offset<BlockType>(i)))) != 0;
+            static_cast<BlockType>(
+                BlockType(1) << (block_info<BlockType>::bits_per_block - 1 -
+                                 in_block_offset<BlockType>(i)))) != 0;
   }
 
   // multiple bits operations

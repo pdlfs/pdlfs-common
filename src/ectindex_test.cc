@@ -22,78 +22,86 @@ class ECTTest {};
 
 class TrieWrapper {
  private:
-  const size_t key_len_;
-  std::vector<std::string> key_buffer_;
-  std::vector<Slice> pending_keys_;
+  const size_t k_len_;
+  std::vector<size_t> k_offs_;
+  std::string k_buffer_;
+  size_t num_k_;
   ECT* ect_;
 
  public:
-  TrieWrapper(size_t key_len) : key_len_(key_len), ect_(NULL) {}
+  TrieWrapper(size_t key_len) : k_len_(key_len), num_k_(0), ect_(NULL) {}
 
   ~TrieWrapper() { delete ect_; }
 
   size_t Locate(const Slice& key) { return ect_->Find(key); }
 
   void Insert(const Slice& key) {
-    key_buffer_.push_back(key.ToString());
-    pending_keys_.push_back(key_buffer_.back());
+    k_offs_.push_back(k_buffer_.size());
+    k_buffer_.append(key.data(), key.size());
+    num_k_++;
   }
 
   void Flush() {
-    if (ect_ != NULL) {
-      delete ect_;
+    delete ect_;
+    k_offs_.push_back(k_buffer_.size());
+    std::vector<Slice> tmp_keys;
+    tmp_keys.resize(num_k_);
+    for (size_t i = 0; i < num_k_; i++) {
+      tmp_keys[i] = Slice(&k_buffer_[k_offs_[i]], k_offs_[i + 1] - k_offs_[i]);
     }
-    ect_ = ECT::Default(key_len_, pending_keys_.size(), pending_keys_.data());
-    pending_keys_.clear();
-    key_buffer_.clear();
+    ect_ = ECT::Default(k_len_, tmp_keys.size(), &tmp_keys[0]);
+    k_offs_.clear();
+    k_buffer_.clear();
+    num_k_ = 0;
   }
 };
 
 TEST(ECTTest, EmptyTrie) {
-  TrieWrapper trie(1);
+  TrieWrapper trie(10);
   trie.Flush();
-  ASSERT_GE(trie.Locate("x"), 0);
-  ASSERT_GE(trie.Locate("z"), 0);
 }
 
-TEST(ECTTest, Trie_1) {
+TEST(ECTTest, KeyLenIs1) {
   TrieWrapper trie(1);
+  trie.Insert("x");
   trie.Insert("y");
+  trie.Insert("z");
   trie.Flush();
-  ASSERT_EQ(trie.Locate("x"), 0);
-  ASSERT_EQ(trie.Locate("y"), 0);
-  ASSERT_GE(trie.Locate("z"), 0);
+  BETWEEN(trie.Locate("x"), 0, 0);
+  BETWEEN(trie.Locate("y"), 1, 1);
+  BETWEEN(trie.Locate("z"), 2, 2);
 }
 
-TEST(ECTTest, Trie_5) {
+TEST(ECTTest, KeyLenIs5) {
   TrieWrapper trie(5);
+  trie.Insert("aaaaa");
   trie.Insert("fghdc");
   trie.Insert("fzhdc");
   trie.Insert("zdfgr");
   trie.Insert("zzfgr");
   trie.Insert("zzzgr");
   trie.Flush();
-  ASSERT_EQ(trie.Locate("fffff"), 0);
-  ASSERT_EQ(trie.Locate("fghdc"), 0);
-  ASSERT_EQ(trie.Locate("fgxxx"), 0);
-  ASSERT_EQ(trie.Locate("fzbbb"), 1);
-  ASSERT_EQ(trie.Locate("fzhdc"), 1);
-  ASSERT_EQ(trie.Locate("fzyyy"), 1);
-  ASSERT_EQ(trie.Locate("zabcd"), 2);
-  ASSERT_EQ(trie.Locate("zdfgr"), 2);
-  ASSERT_GE(trie.Locate("zezzz"), 2);
-  ASSERT_LE(trie.Locate("zezzz"), 3);
-  ASSERT_GE(trie.Locate("zfzzz"), 2);
-  ASSERT_LE(trie.Locate("zfzzz"), 3);
-  ASSERT_GE(trie.Locate("zyzzz"), 2);
-  ASSERT_LE(trie.Locate("zyzzz"), 3);
-  ASSERT_EQ(trie.Locate("zzfgr"), 3);
-  ASSERT_EQ(trie.Locate("zzzgr"), 4);
-  ASSERT_GE(trie.Locate("zzzzz"), 4);
+  BETWEEN(trie.Locate("abcde"), 0, 1);
+  BETWEEN(trie.Locate("fffff"), 0, 1);
+  BETWEEN(trie.Locate("fghdc"), 1, 1);
+  BETWEEN(trie.Locate("fgxxx"), 1, 2);
+  BETWEEN(trie.Locate("fzbbb"), 1, 2);
+  BETWEEN(trie.Locate("fzhdc"), 2, 2);
+  BETWEEN(trie.Locate("fzyyy"), 2, 3);
+  BETWEEN(trie.Locate("zabcd"), 2, 3);
+  BETWEEN(trie.Locate("zdfgr"), 3, 3);
+  BETWEEN(trie.Locate("zezzz"), 3, 4);
+  BETWEEN(trie.Locate("zfzzz"), 3, 4);
+  BETWEEN(trie.Locate("zyzzz"), 3, 4);
+  BETWEEN(trie.Locate("zzfgr"), 4, 4);
+  BETWEEN(trie.Locate("zzzgr"), 5, 5);
+  BETWEEN(trie.Locate("zzzxz"), 5, 6);
+  BETWEEN(trie.Locate("zzzzz"), 5, 6);
 }
 
-TEST(ECTTest, Trie_8) {
+TEST(ECTTest, KeyLenIs8) {
   TrieWrapper trie(8);
+  trie.Insert("00000000");
   trie.Insert("12345678");
   trie.Insert("23456789");
   trie.Insert("34567891");
@@ -103,16 +111,15 @@ TEST(ECTTest, Trie_8) {
   trie.Insert("78912345");
   trie.Insert("89123456");
   trie.Flush();
-  ASSERT_EQ(trie.Locate("11111111"), 0);
-  ASSERT_EQ(trie.Locate("12345678"), 0);
-  ASSERT_EQ(trie.Locate("23456789"), 1);
-  ASSERT_EQ(trie.Locate("34567891"), 2);
-  ASSERT_EQ(trie.Locate("45678912"), 3);
-  ASSERT_EQ(trie.Locate("56789123"), 4);
-  ASSERT_EQ(trie.Locate("67891234"), 5);
-  ASSERT_EQ(trie.Locate("78912345"), 6);
-  ASSERT_EQ(trie.Locate("89123456"), 7);
-  ASSERT_GE(trie.Locate("99999999"), 7);
+  BETWEEN(trie.Locate("11111111"), 0, 1);
+  BETWEEN(trie.Locate("22222222"), 1, 2);
+  BETWEEN(trie.Locate("33333333"), 2, 3);
+  BETWEEN(trie.Locate("44444444"), 3, 4);
+  BETWEEN(trie.Locate("55555555"), 4, 5);
+  BETWEEN(trie.Locate("66666666"), 5, 6);
+  BETWEEN(trie.Locate("77777777"), 6, 7);
+  BETWEEN(trie.Locate("88888888"), 7, 8);
+  BETWEEN(trie.Locate("99999999"), 8, 9);
 }
 
 }  // namespace pdlfs
