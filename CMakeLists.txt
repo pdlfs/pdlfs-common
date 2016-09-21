@@ -112,12 +112,12 @@ if (PDLFS_GFLAGS)
         message (FATAL_ERROR
         "-- gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
     endif ()
-    message ("-- gflags enabled")
+    message (STATUS "-- gflags enabled")
 endif ()
 
 if (PDLFS_GLOG)
     xpkg_import_module (libglog REQUIRED libglog)
-    message ("-- glog enabled")
+    message (STATUS "-- glog enabled")
 endif ()
 
 if (PDLFS_MERCURY_RPC)
