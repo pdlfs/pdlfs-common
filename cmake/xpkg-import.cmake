@@ -214,10 +214,9 @@ endfunction()
 #
 # Example usage:
 #
-#   xdual_import (foo)
-#   xdual_import (glog::glog,glog,libglog)
+#   xdual_import (foo REQUIRED)
+#   xdual_import (glog::glog,glog,libglog REQUIRED)
 #
-# currently hardwired to REQUIRED...
 #
 
 function (xdual_import names)
@@ -249,7 +248,7 @@ function (xdual_import names)
         find_package (${cm_pkg} QUIET)
         if (NOT TARGET ${target})
             string (REPLACE "," " " xpkg "${xpkg}")
-            xpkg_import_module (${target} REQUIRED ${xpkg})
+            xpkg_import_module (${target} ${ARGN} ${xpkg})
         endif ()
     endif ()
 endfunction ()

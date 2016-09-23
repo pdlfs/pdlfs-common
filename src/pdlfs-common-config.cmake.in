@@ -32,7 +32,7 @@ foreach (lcv ${PDLFS_REQUIRED_XPKGIMPORTS})
 endforeach ()
 
 foreach (lcv ${PDLFS_REQUIRED_XDUALIMPORTS})
-    xdual_import (${lcv})
+    xdual_import (${lcv} REQUIRED)
 endforeach ()
 
 # XXX: as long as we hide mercury behind our API we don't need to worry

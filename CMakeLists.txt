@@ -116,7 +116,7 @@ if (PDLFS_GFLAGS)
 endif ()
 
 if (PDLFS_GLOG)
-    xdual_import (glog::glog,glog,libglog)
+    xdual_import (glog::glog,glog,libglog REQUIRED)
     message (STATUS "-- glog enabled")
 endif ()
 
