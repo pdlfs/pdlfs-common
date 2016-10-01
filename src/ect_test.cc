@@ -131,22 +131,22 @@ static std::string RandomKey(Random* rnd, int k_len) {
   return result;
 }
 
-TEST(ECTTest, Bench) {
-  for (int i = 1; i <= 20; i++) {
-    const int k_len = 8;
-    const int num_k = i * 256;
-    Random rnd(301);
-    std::set<std::string> keys;
-    while (keys.size() < num_k) keys.insert(RandomKey(&rnd, k_len));
-    TrieWrapper trie(k_len);
-    std::set<std::string>::const_iterator iter;
-    for (iter = keys.begin(); iter != keys.end(); ++iter) {
-      trie.Insert(*iter);
+TEST(ECTTest, ECTBench) {
+  for (int k_len = 4; k_len <= 16; k_len += 4) {
+    for (int num_k = 256; num_k <= 2560; num_k += 256) {
+      Random rnd(301);
+      std::set<std::string> keys;
+      while (keys.size() < num_k) keys.insert(RandomKey(&rnd, k_len));
+      TrieWrapper trie(k_len);
+      std::set<std::string>::const_iterator iter;
+      for (iter = keys.begin(); iter != keys.end(); ++iter) {
+        trie.Insert(*iter);
+      }
+      trie.Flush();
+      const size_t bits = trie.MemUsage();
+      fprintf(stderr, "klen=%d\t#k=%d\ttotal_bits=%zu bits\tbits_per_k=%.2f\n",
+              k_len, num_k, bits, bits / static_cast<double>(num_k));
     }
-    trie.Flush();
-    const size_t bits = trie.MemUsage();
-    fprintf(stderr, "klen=%d\t#k=%d\ttotal_bits=%zu bits\tbits_per_k=%.2f\n",
-            k_len, num_k, bits, bits / static_cast<double>(num_k));
   }
 }
 
