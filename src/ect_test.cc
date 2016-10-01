@@ -16,6 +16,8 @@
 #include "pdlfs-common/slice.h"
 #include "pdlfs-common/testharness.h"
 
+#include "spooky.h"
+
 namespace pdlfs {
 
 class ECTTest {};
@@ -124,16 +126,30 @@ TEST(ECTTest, KeyLenIs8) {
   BETWEEN(trie.Locate("99999999"), 8, 9);
 }
 
+#if 0
 static std::string RandomKey(Random* rnd, int k_len) {
   std::string result;
   for (int i = 0; i < k_len; i++)
     result += static_cast<unsigned char>(rnd->Uniform(256));
   return result;
 }
+#else
+static std::string RandomKey(Random* rnd, int k_len) {
+  uint32_t seed = rnd->Next();
+  uint64_t h1 = 301;
+  uint64_t h2 = 103;
+  SpookyHash::Hash128(&seed, sizeof(seed), &h1, &h2);
+  std::string result;
+  result.append((char*)&h1, sizeof(h1));
+  result.append((char*)&h2, sizeof(h2));
+  result.resize(k_len);
+  return result;
+}
+#endif
 
 TEST(ECTTest, ECTBench) {
   for (int k_len = 4; k_len <= 16; k_len += 4) {
-    for (int num_k = 256; num_k <= 2560; num_k += 256) {
+    for (int num_k = 16; num_k <= 8192; num_k *= 2) {
       Random rnd(301);
       std::set<std::string> keys;
       while (keys.size() < num_k) keys.insert(RandomKey(&rnd, k_len));
