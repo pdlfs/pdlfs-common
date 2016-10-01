@@ -7,14 +7,14 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include <set>
 #include <string>
 #include <vector>
 
+#include "pdlfs-common/ect.h"
 #include "pdlfs-common/random.h"
 #include "pdlfs-common/slice.h"
 #include "pdlfs-common/testharness.h"
-
-#include "ectindex.h"
 
 namespace pdlfs {
 
@@ -34,6 +34,8 @@ class TrieWrapper {
   ~TrieWrapper() { delete ect_; }
 
   size_t Locate(const Slice& key) { return ect_->Find(key); }
+
+  size_t MemUsage() const { return ect_->MemUsage(); }
 
   void Insert(const Slice& key) {
     k_offs_.push_back(k_buffer_.size());
@@ -120,6 +122,32 @@ TEST(ECTTest, KeyLenIs8) {
   BETWEEN(trie.Locate("77777777"), 6, 7);
   BETWEEN(trie.Locate("88888888"), 7, 8);
   BETWEEN(trie.Locate("99999999"), 8, 9);
+}
+
+static std::string RandomKey(Random* rnd, int k_len) {
+  std::string result;
+  for (int i = 0; i < k_len; i++)
+    result += static_cast<unsigned char>(rnd->Uniform(256));
+  return result;
+}
+
+TEST(ECTTest, Bench) {
+  for (int i = 1; i <= 20; i++) {
+    const int k_len = 8;
+    const int num_k = i * 256;
+    Random rnd(301);
+    std::set<std::string> keys;
+    while (keys.size() < num_k) keys.insert(RandomKey(&rnd, k_len));
+    TrieWrapper trie(k_len);
+    std::set<std::string>::const_iterator iter;
+    for (iter = keys.begin(); iter != keys.end(); ++iter) {
+      trie.Insert(*iter);
+    }
+    trie.Flush();
+    const size_t bits = trie.MemUsage();
+    fprintf(stderr, "klen=%d\t#k=%d\ttotal_bits=%zu bits\tbits_per_k=%.2f\n",
+            k_len, num_k, bits, bits / static_cast<double>(num_k));
+  }
 }
 
 }  // namespace pdlfs

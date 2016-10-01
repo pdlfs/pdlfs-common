@@ -7,13 +7,13 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "ectindex.h"
+#include <vector>
 
 #include "ectrie/bit_vector.h"
 #include "ectrie/trie.h"
 #include "ectrie/twolevel_bucketing.h"
 
-#include <vector>
+#include "pdlfs-common/ect.h"
 
 namespace pdlfs {
 
@@ -23,6 +23,8 @@ namespace {
 
 class EntropyCodedTrie : public ECT {
  private:
+  typedef ectrie::huffman_buffer<> huffbuf_t;
+  huffbuf_t huffbuf_;
   typedef ectrie::bit_vector<> bitvec_t;
   bitvec_t bitvector_;
   typedef ectrie::trie<> trie_t;
@@ -31,7 +33,7 @@ class EntropyCodedTrie : public ECT {
   size_t n_;
 
  public:
-  EntropyCodedTrie(size_t l) : key_len_(l), n_(0) {}
+  EntropyCodedTrie(size_t k_len) : trie_(&huffbuf_), key_len_(k_len), n_(0) {}
   virtual ~EntropyCodedTrie() {}
 
   virtual size_t MemUsage() const { return bitvector_.size(); }
@@ -67,6 +69,8 @@ class TwoLevelBucketingTrie : public ECT {
     size_t pending_key_count_;
   };
 
+  typedef ectrie::huffman_buffer<> huffbuf_t;
+  huffbuf_t huffbuf_;
   typedef ectrie::bit_vector<> bitvec_t;
   bitvec_t bitvector_;
   typedef ectrie::trie<> trie_t;
@@ -84,7 +88,10 @@ class TwoLevelBucketingTrie : public ECT {
 
  public:
   TwoLevelBucketingTrie(size_t key_len, size_t bucket_size)
-      : default_bucket_size_(bucket_size), key_len_(key_len), n_(0) {}
+      : trie_(&huffbuf_),
+        default_bucket_size_(bucket_size),
+        key_len_(key_len),
+        n_(0) {}
   virtual ~TwoLevelBucketingTrie() {}
 
   virtual size_t MemUsage() const {
@@ -193,15 +200,15 @@ void ECT::InitTrie(ECT* ect, size_t n, const Slice* keys) {
   ect->InsertKeys(ukeys.size(), &ukeys[0]);
 }
 
-ECT* ECT::Default(size_t key_len, size_t n, const Slice* keys) {
-  ECT* ect = new EntropyCodedTrie(key_len);
+ECT* ECT::TwoLevelBucketing(size_t key_len, size_t n, const Slice* keys,
+                            size_t bucket_size) {
+  ECT* ect = new TwoLevelBucketingTrie(key_len, bucket_size);
   ECT::InitTrie(ect, n, keys);
   return ect;
 }
 
-ECT* ECT::TwoLevelBucketing(size_t key_len, size_t n, const Slice* keys,
-                            size_t bucket_size) {
-  ECT* ect = new TwoLevelBucketingTrie(key_len, bucket_size);
+ECT* ECT::Default(size_t key_len, size_t n, const Slice* keys) {
+  ECT* ect = new EntropyCodedTrie(key_len);
   ECT::InitTrie(ect, n, keys);
   return ect;
 }
