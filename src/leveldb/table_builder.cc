@@ -29,7 +29,6 @@ namespace pdlfs {
 
 struct TableBuilder::Rep {
   Options options;
-  Options index_block_options;
   WritableFile* file;
   uint64_t offset;
   Status status;
@@ -56,22 +55,20 @@ struct TableBuilder::Rep {
 
   std::string compressed_output;
 
-  Rep(const Options& opt, WritableFile* f)
-      : options(opt),
-        index_block_options(opt),
+  Rep(const Options& options, WritableFile* f)
+      : options(options),
         file(f),
         offset(0),
-        data_block(&options),
-        index_block(&index_block_options),
+        data_block(options.block_restart_interval, options.comparator),
+        index_block(options.index_block_restart_interval, options.comparator),
         num_entries(0),
         closed(false),
-        filter_block(opt.filter_policy != NULL
-                         ? new FilterBlockBuilder(opt.filter_policy)
+        filter_block(options.filter_policy != NULL
+                         ? new FilterBlockBuilder(options.filter_policy)
                          : NULL),
         enable_stats_(true),
         pending_index_entry(false) {
     assert(options.comparator != NULL);
-    index_block_options.block_restart_interval = 1;
   }
 };
 
@@ -102,11 +99,10 @@ Status TableBuilder::ChangeOptions(const Options& options) {
     return Status::InvalidArgument("changing comparator while building table");
   }
 
-  // Note that any live BlockBuilders point to rep_->options and therefore
-  // will automatically pick up the updated options.
   rep_->options = options;
-  rep_->index_block_options = options;
-  rep_->index_block_options.block_restart_interval = 1;
+  rep_->data_block.ChangeRestartInterval(rep_->options.block_restart_interval);
+  rep_->index_block.ChangeRestartInterval(
+      rep_->options.index_block_restart_interval);
   return Status::OK();
 }
 
@@ -251,7 +247,7 @@ Status TableBuilder::Finish() {
 
   // Write metaindex block
   if (ok()) {
-    BlockBuilder meta_index_block(&r->options, BytewiseComparator());
+    BlockBuilder meta_index_block(1);
 
     if (r->filter_block != NULL) {
       // Add mapping from "filter.Name" to location of filter data
