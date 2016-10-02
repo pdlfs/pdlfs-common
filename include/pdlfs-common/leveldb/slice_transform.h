@@ -20,7 +20,7 @@ namespace pdlfs {
 // transformation on a slice.
 class SliceTransform {
  public:
-  SliceTransform();
+  SliceTransform() {}
   virtual ~SliceTransform();
 
   virtual Slice Transform(const Slice& input, std::string* scratch) const = 0;
