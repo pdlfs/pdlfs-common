@@ -8,35 +8,36 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "index_builder.h"
+#include "index_block.h"
+#include "block.h"
 #include "block_builder.h"
+#include "format.h"
+#include "pdlfs-common/leveldb/iterator.h"
 
 namespace pdlfs {
 
 IndexBuilder::~IndexBuilder() {}
 
-class FullkeyIndexBuilder : public IndexBuilder {
+IndexReader::~IndexReader() {}
+
+class DefaultIndexBuilder : public IndexBuilder {
  public:
-  FullkeyIndexBuilder(const Options* options)
+  DefaultIndexBuilder(const Options* options)
       : index_block_builder_(options->index_block_restart_interval,
-                             options->comparator),
-        cmp_(options->comparator) {
-    if (cmp_ == NULL) {
-      cmp_ = BytewiseComparator();
-    }
-  }
+                             options->comparator) {}
 
   virtual void AddIndexEntry(std::string* last_key, const Slice* next_key,
                              const BlockHandle& block_handle) {
+    const Comparator* const comparator = index_block_builder_.comparator();
     if (next_key != NULL) {
-      cmp_->FindShortestSeparator(last_key, *next_key);
+      comparator->FindShortestSeparator(last_key, *next_key);
     } else {
-      cmp_->FindShortSuccessor(last_key);
+      comparator->FindShortSuccessor(last_key);
     }
 
-    std::string handle_encoding;
-    block_handle.EncodeTo(&handle_encoding);
-    index_block_builder_.Add(*last_key, handle_encoding);
+    std::string encoding;
+    block_handle.EncodeTo(&encoding);
+    index_block_builder_.Add(*last_key, encoding);
   }
 
   virtual Slice Finish() { return index_block_builder_.Finish(); }
@@ -56,11 +57,29 @@ class FullkeyIndexBuilder : public IndexBuilder {
 
  private:
   BlockBuilder index_block_builder_;
+};
+
+class DefaultIndexReader : public IndexReader {
+ public:
+  DefaultIndexReader(const BlockContents& contents, const Options* options)
+      : cmp_(options->comparator), block_(contents) {}
+
+  virtual size_t ApproximateMemoryUsage() const { return block_.size(); }
+
+  virtual Iterator* NewIterator() { return block_.NewIterator(cmp_); }
+
+ private:
   const Comparator* cmp_;
+  Block block_;
 };
 
 IndexBuilder* IndexBuilder::Create(const Options* options) {
-  return new FullkeyIndexBuilder(options);
+  return new DefaultIndexBuilder(options);
+}
+
+IndexReader* IndexReader::Create(const BlockContents& contents,
+                                 const Options* options) {
+  return new DefaultIndexReader(contents, options);
 }
 
 }  // namespace pdlfs

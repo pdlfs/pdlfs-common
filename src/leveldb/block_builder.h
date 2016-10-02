@@ -42,6 +42,9 @@ class BlockBuilder {
   // we are building.
   size_t CurrentSizeEstimate() const;
 
+  // Return the comparator being used by the builder.
+  const Comparator* comparator() const { return cmp_; }
+
   // Return true iff no entries have been added since the last Reset()
   bool empty() const { return buffer_.empty(); }
 

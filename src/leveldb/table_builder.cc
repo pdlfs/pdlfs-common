@@ -13,7 +13,7 @@
 #include "block_builder.h"
 #include "filter_block.h"
 #include "format.h"
-#include "index_builder.h"
+#include "index_block.h"
 #include "table_stats.h"
 
 #include "pdlfs-common/coding.h"

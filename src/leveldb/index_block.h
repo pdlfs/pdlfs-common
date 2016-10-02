@@ -10,9 +10,19 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "format.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <string>
+
+#include "pdlfs-common/slice.h"
 
 namespace pdlfs {
+
+struct BlockContents;
+struct DBOptions;
+
+class BlockHandle;
+class Iterator;
 
 // An internal interface used to build the index block for each Table file.
 class IndexBuilder {
@@ -46,6 +56,25 @@ class IndexBuilder {
   // Finish building the block and return a slice that refers to the
   // block contents.
   virtual Slice Finish() = 0;
+};
+
+// An internal interface for accessing the index block.
+class IndexReader {
+ public:
+  IndexReader() {}
+  virtual ~IndexReader();
+
+  typedef DBOptions Options;
+
+  // Create an index reader according to the specified options.
+  static IndexReader* Create(const BlockContents& contents,
+                             const Options* options);
+
+  // Return the amount of memory used to hold the index.
+  virtual size_t ApproximateMemoryUsage() const = 0;
+
+  // Return an iterator that maps keys to their data blocks.
+  virtual Iterator* NewIterator() = 0;
 };
 
 }  // namespace pdlfs
