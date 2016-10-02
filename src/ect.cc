@@ -11,7 +11,6 @@
 
 #include "ectrie/bit_vector.h"
 #include "ectrie/trie.h"
-#include "ectrie/twolevel_bucketing.h"
 
 #include "pdlfs-common/ect.h"
 
@@ -21,27 +20,51 @@ ECT::~ECT() {}
 
 namespace {
 
-class ECTImpl : public ECT {
+class ECTCoder {
  private:
   typedef ectrie::huffman_buffer<> huffbuf_t;
   huffbuf_t huffbuf_;
   typedef ectrie::trie<> trie_t;
   trie_t trie_;
+
+  ECTCoder() : trie_(&huffbuf_) {}
+
+ public:
+  static const ECTCoder* Get() {
+    static ECTCoder singleton;
+    return &singleton;
+  }
+
+  template <typename T>
+  size_t Decode(const T& encoding, const uint8_t* key, size_t k_len,
+                size_t num_k) const {
+    size_t iter = 0;
+    size_t rank = trie_.locate(encoding, iter, key, k_len, 0, num_k);
+    return rank;
+  }
+
+  template <typename T>
+  void Encode(T& encoding, size_t k_len, size_t num_k,
+              const uint8_t** keys) const {
+    trie_.encode(encoding, keys, k_len, 0, num_k);
+  }
+};
+
+class ECTIndex : public ECT {
+ private:
   typedef ectrie::bit_vector<> bitvec_t;
-  bitvec_t bitvector_;
-  const size_t key_len_;
+  bitvec_t bitvec_;
+  size_t key_len_;
   size_t n_;
 
  public:
-  ECTImpl(size_t k_len) : trie_(&huffbuf_), key_len_(k_len), n_(0) {}
-  virtual ~ECTImpl() {}
+  ECTIndex(size_t k_len) : key_len_(k_len), n_(0) {}
+  virtual ~ECTIndex() {}
 
-  virtual size_t MemUsage() const { return bitvector_.size(); }
+  virtual size_t MemUsage() const { return bitvec_.size(); }
 
   virtual size_t Locate(const uint8_t* key) const {
-    size_t iter = 0;
-    size_t rank = trie_.locate(bitvector_, iter, key, key_len_, 0, n_);
-    return rank;
+    return ECTCoder::Get()->Decode(bitvec_, key, key_len_, n_);
   }
 
   virtual size_t Find(const Slice& key) const {
@@ -50,8 +73,8 @@ class ECTImpl : public ECT {
 
   virtual void InsertKeys(size_t n, const uint8_t** keys) {
     assert(n_ == 0);
-    trie_.encode(bitvector_, keys, key_len_, 0, n);
-    bitvector_.compact();
+    ECTCoder::Get()->Encode(bitvec_, key_len_, n, keys);
+    bitvec_.compact();
     n_ = n;
   }
 };
@@ -68,7 +91,7 @@ void ECT::InitTrie(ECT* ect, size_t n, const Slice* keys) {
 }
 
 ECT* ECT::Default(size_t key_len, size_t n, const Slice* keys) {
-  ECT* ect = new ECTImpl(key_len);
+  ECT* ect = new ECTIndex(key_len);
   ECT::InitTrie(ect, n, keys);
   return ect;
 }
