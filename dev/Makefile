@@ -60,8 +60,12 @@ TESTS = \
 	src/rados/rados_env_test \
 	src/rados/rados_fio_test
 
+LSMHTTESTS = \
+	src/rados/rados_fio_test
+
 # Put the object files in a subdirectory, but the application at the top of the object dir.
 PROGNAMES := $(notdir $(TESTS))
+T2PROGNAMES := $(notdir $(LSMHTTESTS))
 
 CFLAGS += -I./include $(PLATFORM_CCFLAGS) $(OPT)
 CXXFLAGS += -I./include $(PLATFORM_CXXFLAGS) $(OPT)
@@ -72,6 +76,7 @@ LIBS += $(PLATFORM_LIBS)
 STATIC_OUTDIR=build
 
 STATIC_PROGRAMS := $(addprefix $(STATIC_OUTDIR)/, $(PROGNAMES))
+STATIC_T2PROGRAMS := $(addprefix $(STATIC_OUTDIR)/, $(T2PROGNAMES))
 
 TESTUTIL := $(STATIC_OUTDIR)/src/testutil.o
 TESTHARNESS := $(STATIC_OUTDIR)/src/testharness.o $(TESTUTIL)
@@ -86,9 +91,13 @@ default: all
 all: $(STATIC_LIBOBJECTS)
 
 tests: $(STATIC_LIBOBJECTS) $(STATIC_PROGRAMS)
+t2tests: $(STATIC_LIBOBJECTS) $(STATIC_T2PROGRAMS)
 
 check: tests
 	for t in $(notdir $(TESTS)); do echo "***** Running $$t"; $(STATIC_OUTDIR)/$$t || exit 1; done
+
+t2check: tests
+	for t in $(notdir $(LSMHTTESTS)); do echo "***** Running $$t"; $(STATIC_OUTDIR)/$$t || exit 1; done
 
 clean:
 	-rm -rf $(STATIC_OUTDIR)
