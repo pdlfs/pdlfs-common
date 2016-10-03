@@ -63,7 +63,7 @@ class ECTIndex : public ECT {
 
   virtual size_t MemUsage() const { return bitvec_.size(); }
 
-  virtual size_t Locate(const uint8_t* key) const {
+  size_t Locate(const uint8_t* key) const {
     return ECTCoder::Get()->Decode(bitvec_, key, key_len_, n_);
   }
 
@@ -83,9 +83,9 @@ class ECTIndex : public ECT {
 
 void ECT::InitTrie(ECT* ect, size_t n, const Slice* keys) {
   std::vector<const uint8_t*> ukeys;
-  ukeys.resize(n);
+  ukeys.reserve(n);
   for (size_t i = 0; i < n; i++) {
-    ukeys[i] = reinterpret_cast<const uint8_t*>(&keys[i][0]);
+    ukeys.push_back(reinterpret_cast<const uint8_t*>(&keys[i][0]));
   }
   ect->InsertKeys(ukeys.size(), &ukeys[0]);
 }
