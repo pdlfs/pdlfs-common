@@ -84,25 +84,30 @@ struct PgInfo {
                         // prefix group
   size_t last_prefix;   // Rank of the last prefix key in this
                         // prefix group
-  size_t first_block;   // Rank of the first block
+  size_t first_block;   // Rank of the first block covered by this
+                        // prefix group
+  size_t num_blocks;    // Number of blocks covered by this prefix group
 
   void EncodeTo(std::string* dst) const {
+    PutVarint32(dst, num_blocks);
     PutVarint32(dst, first_block);
     PutVarint32(dst, first_prefix);
     PutVarint32(dst, last_prefix);
   }
 
   bool DecodeFrom(Slice* input) {
-    uint32_t r1;
-    uint32_t r2;
+    uint32_t f;
+    uint32_t l;
     uint32_t b;
-    if (!GetVarint32(input, &b) || !GetVarint32(input, &r1) ||
-        !GetVarint32(input, &r2)) {
+    uint32_t n;
+    if (!GetVarint32(input, &n) || !GetVarint32(input, &b) ||
+        !GetVarint32(input, &f) || !GetVarint32(input, &l)) {
       return false;
     } else {
+      num_blocks = n;
       first_block = b;
-      first_prefix = r1;
-      last_prefix = r2;
+      first_prefix = f;
+      last_prefix = l;
       return true;
     }
   }
@@ -171,6 +176,12 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
     ending_prefix_.clear();
     pg.first_block = starting_block_;
     starting_block_ = n_blocks_;
+    pg.num_blocks = n_blocks_ - pg.first_block + 1;
+    assert(pg.num_blocks >= 1);
+    if (!key_added_into_new_block_) {
+      assert(pg.num_blocks > 1);
+      pg.num_blocks--;
+    }
     pg.EncodeTo(&pg_info_);
     n_pgs_++;
   }
@@ -187,8 +198,21 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
   }
 
  public:
+  ThreeLevelCompactIndexBuilder(const Options* options)
+      : prefix_len_(8),
+        cmp_(options->comparator),
+        finished_(false),
+        key_added_into_new_block_(false),
+        seen_new_block_(false),
+        starting_block_(0),
+        n_pgs_(0),
+        n_blocks_(0),
+        n_keys_(0),
+        off_(0) {}
+
   virtual void AddIndexEntry(std::string* last_key, const Slice* next_key,
                              const BlockHandle& handle) {
+    assert(!finished_);
     // Any block generated must be non-empty
     assert(last_prefix_.size() != 0);
     if (starting_prefix_.empty()) {
@@ -197,7 +221,7 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
 
     BlkInfo blk;
     blk.offset = handle.offset();
-    assert(blk.offset = off_);
+    assert(blk.offset == off_);
     blk.size = handle.size();
 
     if (next_key != NULL) {
@@ -227,11 +251,13 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
 
     off_ += blk.size + kBlockTrailerSize;
     blk.EncodeTo(&blk_info_);
+    key_added_into_new_block_ = false;
     seen_new_block_ = true;
     n_blocks_++;
   }
 
   virtual void OnKeyAdded(const Slice& key) {
+    assert(!finished_);
     Slice prefix = ExtractPrefixKey(key, prefix_len_);
     assert(prefix.size() != 0);
 
@@ -251,20 +277,24 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
       }
     }
 
+    key_added_into_new_block_ = true;
     n_keys_++;
   }
 
   virtual Slice Finish() {
+    assert(!finished_);
+
     // Add a dummy prefix group to serve as a sentinel
     PgInfo pg;
     size_t r = buffer_.size() / prefix_len_;
     pg.first_prefix = r;
     pg.last_prefix = r;
-    pg.first_block = starting_block_;
+    pg.first_block = n_blocks_;
+    pg.num_blocks = 0;
     pg.EncodeTo(&pg_info_);
     n_pgs_++;
-    PutVarint32(&pg_info_, n_pgs_);
     size_t pg_start = buffer_.size();
+    PutVarint32(&buffer_, n_pgs_);
     buffer_.append(pg_info_);
 
     // Add a dummy block to serve as a sentinel
@@ -273,20 +303,26 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
     blk.size = 0;
     blk.EncodeTo(&blk_info_);
     n_blocks_++;
-    PutVarint32(&blk_info_, n_blocks_);
     size_t blk_start = buffer_.size();
+    PutVarint32(&buffer_, n_blocks_);
     buffer_.append(blk_info_);
 
     // Done
+    finished_ = true;
+    PutFixed32(&buffer_, prefix_len_);
     PutFixed32(&buffer_, pg_start);
     PutFixed32(&buffer_, blk_start);
     return Slice(buffer_);
   }
 
   virtual size_t CurrentSizeEstimate() const {
-    return buffer_.size() + pg_info_.size() + blk_info_.size() +
-           VarintLength(n_pgs_) + VarintLength(n_blocks_) +
-           2 * sizeof(uint32_t);
+    if (!finished_) {
+      return buffer_.size() + pg_info_.size() + blk_info_.size() +
+             VarintLength(n_pgs_) + VarintLength(n_blocks_) +
+             3 * sizeof(uint32_t);
+    } else {
+      return buffer_.size();
+    }
   }
 
   virtual Status ChangeOptions(const Options* options) {
@@ -296,6 +332,8 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
  private:
   size_t prefix_len_;
   const Comparator* cmp_;
+  bool finished_;
+  bool key_added_into_new_block_;
   bool seen_new_block_;
   size_t starting_block_;
   std::string starting_prefix_;
@@ -311,7 +349,11 @@ class ThreeLevelCompactIndexBuilder : public IndexBuilder {
 };
 
 IndexBuilder* IndexBuilder::Create(const Options* options) {
-  return new DefaultIndexBuilder(options);
+  if (options->index_type == kCompact) {
+    return new ThreeLevelCompactIndexBuilder(options);
+  } else {
+    return new DefaultIndexBuilder(options);
+  }
 }
 
 IndexReader* IndexReader::Create(const BlockContents& contents,
