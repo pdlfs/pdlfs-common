@@ -14,10 +14,10 @@ $MAKE -j4
 
 echo "== Build tests in 1 seconds ..."
 sleep 1
-$MAKE -j4 t2tests
+$MAKE -j4 test #t2tests
 
 echo "== Run tests in 1 seconds ..."
 sleep 1
-$MAKE t2check
+$MAKE check #t2check
 
 exit 0

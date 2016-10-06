@@ -32,7 +32,7 @@ set (pdlfs-leveldb-srcs block.cc block_builder.cc bloom.cc comparator.cc
      db/repair.cc db/table_cache.cc db/version_edit.cc db/version_set.cc
      db/write_batch.cc filter_block.cc filter_policy.cc format.cc
      iterator.cc merger.cc table.cc table_builder.cc table_stats.cc
-     two_level_iterator.cc )
+     two_level_iterator.cc db/dualdb.cc db/dualdb_impl.cc)
 set (pdlfs-leveldb-tests bloom_test.cc db/autocompact_test.cc
      db/bulk_test.cc db/corruption_test.cc db/db_table_test.cc db/db_test.cc
      db/dbformat_test.cc db/readonly_test.cc db/version_edit_test.cc
