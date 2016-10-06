@@ -37,6 +37,7 @@ struct TableBuilder::Rep {
   IndexBuilder* index_block;
   std::string last_key;
   int64_t num_entries;
+  int64_t num_blocks;
   bool closed;  // Either Finish() or Abandon() has been called.
   FilterBlockBuilder* filter_block;
   bool enable_stats_;  // True if stats should be maintained for the table
@@ -63,6 +64,7 @@ struct TableBuilder::Rep {
         data_block(options.block_restart_interval, options.comparator),
         index_block(IndexBuilder::Create(&options)),
         num_entries(0),
+        num_blocks(0),
         closed(false),
         filter_block(options.filter_policy != NULL
                          ? new FilterBlockBuilder(options.filter_policy)
@@ -77,7 +79,13 @@ Status TableBuilder::status() const { return rep_->status; }
 
 uint64_t TableBuilder::NumEntries() const { return rep_->num_entries; }
 
+uint64_t TableBuilder::NumBlocks() const { return rep_->num_blocks; }
+
 uint64_t TableBuilder::FileSize() const { return rep_->offset; }
+
+const IndexBuilder* TableBuilder::index_builder() const {
+  return rep_->index_block;
+}
 
 TableBuilder::TableBuilder(const Options& options, WritableFile* file)
     : rep_(new Rep(options, file)) {
@@ -155,9 +163,12 @@ void TableBuilder::Flush() {
   if (ok()) {
     r->pending_index_entry = true;
     r->status = r->file->Flush();
-  }
-  if (r->filter_block != NULL) {
-    r->filter_block->StartBlock(r->offset);
+    if (ok()) {
+      r->num_blocks++;
+      if (r->filter_block != NULL) {
+        r->filter_block->StartBlock(r->offset);
+      }
+    }
   }
 }
 
