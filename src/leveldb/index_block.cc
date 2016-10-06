@@ -367,11 +367,7 @@ class ECTBuilder {
 #endif
 
 IndexBuilder* IndexBuilder::Create(const Options* options) {
-  if (options->index_type == kCompact) {
-    return new DefaultIndexBuilder(options);
-  } else {
-    return new DefaultIndexBuilder(options);
-  }
+  return new DefaultIndexBuilder(options);
 }
 
 IndexReader* IndexReader::Create(const BlockContents& contents,

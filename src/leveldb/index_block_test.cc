@@ -287,7 +287,7 @@ template <typename size_generator>
 static size_t GenerateRandomTable(MemTable* mem, Random* rnd,
                                   size_generator* size_gen,
                                   std::vector<std::string>* keys,
-                                  bool hash = false) {
+                                  bool hash = true) {
   uint64_t seq = rnd->Next();
   uint64_t prefix_seed = rnd->Next64();
   std::string K, IK, V;
@@ -422,12 +422,13 @@ class IndexBench {
 
   explicit IndexBench() {
     options.env = Env::Default();
+    options.index_type = kMultiwaySearchTree;
     options.compression = kNoCompression;
     options.comparator = new InternalKeyComparator(BytewiseComparator());
     options.filter_policy = NULL;
     options.index_block_restart_interval = 1;
     options.block_restart_interval = 16;
-    options.block_size = 4096;
+    options.block_size = 65536;
   }
 
   ~IndexBench() { delete options.comparator; }
