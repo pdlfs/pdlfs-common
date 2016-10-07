@@ -14,7 +14,6 @@
 #include <set>
 
 #include "options_internal.h"
-#include "write_batch_internal.h"
 
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/leveldb/db/db.h"
@@ -32,14 +31,21 @@ class DualDBImpl : public DualDB {
   // Implementations of the DB interface
   virtual Status Put(const WriteOptions&, const Slice& key, const Slice& value);
   virtual Status Get(const ReadOptions&, const Slice& key, std::string* value);
-  Status Open(const Options& options, const std::string& superdbname, DualDB** dualdbptr);
+
+
+  // Recover the descriptor from persistent storage.  May do a significant
+  // amount of work to recover recently logged updates.  Any changes to
+  // be made to the descriptor are added to *edit.
+  Status Recover();
 
   // Extra methods (for testing) that are not in the public DB interface
 
  private:
   friend class DualDB;
   const Options options_;
+  Env* const env_;
   const std::string superdbname_;
+
 
 
   // No copying allowed

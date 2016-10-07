@@ -28,7 +28,8 @@
 namespace pdlfs {
 
 DualDBImpl::DualDBImpl(const Options& raw_options, const std::string& superdbname)
-    : options_(raw_options),
+    : env_(raw_options.env),
+      options_(raw_options),
       superdbname_(superdbname) {
 }
 
@@ -81,15 +82,14 @@ Status DualDB::Open(const Options& options, const std::string& superdbname, Dual
   std::string rightname = superdbname + "/db_right";
 
   DualDBImpl* impl = new DualDBImpl(options, superdbname);
-  *dualdbptr = impl;
-
+  impl->Recover();
   // TODO: more suitable status code..
   Status s = DB::Open(options, leftname, &impl->dualdb_[0]);
   if (!s.ok()) {
       delete impl->dualdb_[0];
       delete impl;
       *dualdbptr = NULL;
-      return Status::AccessDenied("lefttable open failedA");
+      return s;
   }
   s = DB::Open(options, rightname, &impl->dualdb_[1]);
   if (!s.ok()) {
@@ -97,10 +97,18 @@ Status DualDB::Open(const Options& options, const std::string& superdbname, Dual
       delete impl->dualdb_[1];
       delete impl;
       *dualdbptr = NULL;
-      return Status::AccessDenied("righttable open failedA");
+      return s;
   }
-
+  *dualdbptr = impl;
   return s;
 }
+
+Status DualDBImpl::Recover() {
+  // Ignore error from CreateDir since the creation of the DB is
+  // committed only when the descriptor is created, and this directory
+  // may already exist from a previous failed creation attempt.
+  return env_->CreateDir(superdbname_);
+}
+
 
 }  // namespace pdlfs

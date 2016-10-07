@@ -45,6 +45,7 @@ TESTS = \
 	src/strutil_test \
 	src/leveldb/bloom_test \
 	src/leveldb/filter_block_test \
+	src/leveldb/index_block_test \
 	src/leveldb/skiplist_test \
 	src/leveldb/table_test \
 	src/leveldb/db/write_batch_test \
@@ -61,7 +62,7 @@ TESTS = \
 	src/rados/rados_fio_test
 
 LSMHTTESTS = \
-	src/rados/rados_fio_test
+	src/leveldb/db/dualdb_test 
 
 # Put the object files in a subdirectory, but the application at the top of the object dir.
 PROGNAMES := $(notdir $(TESTS))
@@ -185,6 +186,9 @@ $(STATIC_OUTDIR)/bloom_test:src/leveldb/bloom_test.cc $(STATIC_LIBOBJECTS) $(TES
 $(STATIC_OUTDIR)/filter_block_test:src/leveldb/filter_block_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/filter_block_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
+$(STATIC_OUTDIR)/index_block_test:src/leveldb/index_block_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/index_block_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
 $(STATIC_OUTDIR)/skiplist_test:src/leveldb/skiplist_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/skiplist_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
@@ -205,6 +209,9 @@ $(STATIC_OUTDIR)/dbformat_test:src/leveldb/db/dbformat_test.cc $(STATIC_LIBOBJEC
 
 $(STATIC_OUTDIR)/db_test:src/leveldb/db/db_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/db_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
+
+$(STATIC_OUTDIR)/dualdb_test:src/leveldb/db/dualdb_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/dualdb_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)
 
 $(STATIC_OUTDIR)/db_table_test:src/leveldb/db/db_table_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) src/leveldb/db/db_table_test.cc $(STATIC_LIBOBJECTS) $(TESTHARNESS) -o $@ $(LIBS)

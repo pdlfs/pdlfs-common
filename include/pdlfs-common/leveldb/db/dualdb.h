@@ -14,6 +14,8 @@
 #include <stdio.h>
 
 #include "pdlfs-common/leveldb/db/options.h"
+#include "pdlfs-common/status.h"
+#include "pdlfs-common/leveldb/db/db.h"
 
 namespace pdlfs {
 
