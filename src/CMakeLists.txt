@@ -32,7 +32,7 @@ set (pdlfs-leveldb-srcs block.cc block_builder.cc bloom.cc comparator.cc
      db/repair.cc db/table_cache.cc db/version_edit.cc db/version_set.cc
      db/write_batch.cc filter_block.cc filter_policy.cc format.cc
      index_block.cc iterator.cc merger.cc table.cc table_builder.cc table_stats.cc
-     two_level_iterator.cc db/dualdb.cc db/dualdb_impl.cc)
+     two_level_iterator.cc db/dualdb_impl.cc)
 set (pdlfs-leveldb-tests bloom_test.cc db/autocompact_test.cc
      db/bulk_test.cc db/corruption_test.cc db/db_table_test.cc db/db_test.cc db/dualdb_test.cc
      db/dbformat_test.cc db/readonly_test.cc db/version_edit_test.cc
@@ -200,6 +200,9 @@ endforeach ()
 #
 add_library (pdlfs-common ${pdlfs-all-srcs})
 set_target_properties (pdlfs-common PROPERTIES OUTPUT_NAME "${PDLFS_NAME}")
+set_target_properties (pdlfs-common PROPERTIES LINKER_LANGUAGE CXX)
+
+
 target_compile_definitions (pdlfs-common PUBLIC -DPDLFS_CONFIG=${PDLFS_NAME})
 target_include_directories (pdlfs-common PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
