@@ -108,7 +108,7 @@ include (xpkg-import)
 
 if (PDLFS_GFLAGS)
     find_package(GFlags REQUIRED)
-    if (NOT GFLAGS_FOUND)
+    if (NOT GFlags_FOUND)
         message (FATAL_ERROR
         "gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
     endif ()
@@ -141,7 +141,7 @@ endif ()
 
 if (PDLFS_SNAPPY)
     find_package(Snappy MODULE REQUIRED)
-    if (NOT SNAPPY_FOUND)
+    if (NOT Snappy_FOUND)
         message (FATAL_ERROR
         "snappy not found try setting -D SNAPPY_{INCLUDE,LIBRARY}_DIR")
     endif ()
