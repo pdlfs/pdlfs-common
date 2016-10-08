@@ -62,7 +62,7 @@ set (THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package (Threads REQUIRED)
 
 if (TARGET gflags AND PDLFS_GFLAGS)
-    list (APPEND PDLFS_REQUIRED_PACKAGES GFlags)
+    list (APPEND PDLFS_REQUIRED_PACKAGES gflags)
     list (APPEND pdlfs-xtra-libs gflags)
 endif ()
 
