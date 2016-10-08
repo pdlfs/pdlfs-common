@@ -3,3 +3,19 @@
 /nbproject/
 CMakeFiles/
 CMakeCache.txt
+
+# For eclipse
+.cproject
+.metadata/
+.project
+CTestTestfile.cmake
+Makefile
+RemoteSystemsTempFiles/
+cmake_install.cmake
+include/pdlfs-common/pdlfs-common_config_expand.h
+include/pdlfs-common/pdlfs_platform_expand.h
+src/CTestTestfile.cmake
+src/Makefile
+src/cmake_install.cmake
+src/pdlfs-common-config-version.cmake
+src/pdlfs-common-config.cmake

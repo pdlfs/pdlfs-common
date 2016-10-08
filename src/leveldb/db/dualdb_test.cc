@@ -41,14 +41,16 @@ class DualDBTest {
   DualDBTest() : option_config_(kDefault) {
     filter_policy_ = NewBloomFilterPolicy(10);
     dualdbname_ = test::TmpDir() + "/dualdb_test";
-    DestroyDB(dualdbname_, Options());
+    DestroyDB(dualdbname_ + "/db_left", Options());
+    DestroyDB(dualdbname_ + "/db_right", Options());
     dualdb_ = NULL;
     Reopen();
   }
 
   ~DualDBTest() {
     delete dualdb_;
-    DestroyDB(dualdbname_, Options());
+    DestroyDB(dualdbname_ + "/db_left", Options());
+    DestroyDB(dualdbname_ + "/db_right", Options());
     delete filter_policy_;
   }
 
@@ -92,7 +94,8 @@ class DualDBTest {
   void DestroyAndReopen(Options* options = NULL) {
     delete dualdb_;
     dualdb_ = NULL;
-    DestroyDB(dualdbname_, Options());
+    DestroyDB(dualdbname_ + "/db_left", Options());
+    DestroyDB(dualdbname_ + "/db_right", Options());
     ASSERT_OK(TryReopen(options));
   }
 
