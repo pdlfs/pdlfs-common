@@ -107,8 +107,8 @@ set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 include (xpkg-import)
 
 if (PDLFS_GFLAGS)
-    find_package(GFlags REQUIRED)
-    if (NOT GFlags_FOUND)
+    find_package(gflags REQUIRED)
+    if (NOT gflags_FOUND)
         message (FATAL_ERROR
         "gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
     endif ()
