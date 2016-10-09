@@ -44,7 +44,8 @@ DBOptions::DBOptions()
       l1_compaction_trigger(5),
       l0_compaction_trigger(4),
       l0_soft_limit(8),
-      l0_hard_limit(12) {}
+      l0_hard_limit(12),
+      is_dualdb(false) {}
 
 ReadOptions::ReadOptions()
     : verify_checksums(false),

@@ -76,8 +76,13 @@ Status DualDBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val
   return s;
 }
 
+Status DualDBImpl::Delete(const WriteOptions& options, const Slice& key) {
+  return DualDB::Delete(options, key);
+}
+
 Status DualDB::Open(const Options& options, const std::string& superdbname, DualDB** dualdbptr) {
   *dualdbptr = NULL;
+  // TODO: need a macro to define the left and right dir name
   std::string leftname = superdbname + "/db_left";
   std::string rightname = superdbname + "/db_right";
 
@@ -91,7 +96,9 @@ Status DualDB::Open(const Options& options, const std::string& superdbname, Dual
       *dualdbptr = NULL;
       return s;
   }
-  s = DB::Open(options, rightname, &impl->dualdb_[1]);
+  Options right_uncompacted_option(options);
+  right_uncompacted_option.disable_compaction = true;
+  s = DB::Open(right_uncompacted_option, rightname, &impl->dualdb_[1]);
   if (!s.ok()) {
       delete impl->dualdb_[0];
       delete impl->dualdb_[1];

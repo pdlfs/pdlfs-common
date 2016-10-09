@@ -31,7 +31,7 @@ class DualDBImpl : public DualDB {
   // Implementations of the DB interface
   virtual Status Put(const WriteOptions&, const Slice& key, const Slice& value);
   virtual Status Get(const ReadOptions&, const Slice& key, std::string* value);
-
+  virtual Status Delete(const WriteOptions& options, const Slice& key);
 
   // Recover the descriptor from persistent storage.  May do a significant
   // amount of work to recover recently logged updates.  Any changes to

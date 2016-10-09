@@ -91,6 +91,8 @@ class DualDBTest {
     dualdb_ = NULL;
   }
 
+  Status Delete(const std::string& k) { return dualdb_->Delete(WriteOptions(), k); }
+
   void DestroyAndReopen(Options* options = NULL) {
     delete dualdb_;
     dualdb_ = NULL;
@@ -146,6 +148,17 @@ TEST(DualDBTest, ReadWrite) {
     ASSERT_OK(Put("foo", "v3"));
     ASSERT_EQ("v3", Get("foo"));
     ASSERT_EQ("v2", Get("bar"));
+  } while (ChangeOptions());
+}
+
+TEST(DualDBTest, PutDeleteGet) {
+  do {
+    ASSERT_OK(dualdb_->Put(WriteOptions(), "foo", "v1"));
+    ASSERT_EQ("v1", Get("foo"));
+    ASSERT_OK(dualdb_->Put(WriteOptions(), "foo", "v2"));
+    ASSERT_EQ("v2", Get("foo"));
+    ASSERT_OK(dualdb_->Delete(WriteOptions(), "foo"));
+    ASSERT_EQ("NOT_FOUND", Get("foo"));
   } while (ChangeOptions());
 }
 

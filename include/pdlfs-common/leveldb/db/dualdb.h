@@ -58,6 +58,13 @@ class DualDB {
   virtual Status Get(const ReadOptions& options, const Slice& key,
                      std::string* value) = 0;
 
+  Status Delete(const WriteOptions& opt, const Slice& key) {
+    Status status = dualdb_[0]->Delete(opt, key);
+    if (!status.ok()) return status;
+    return dualdb_[1]->Delete(opt, key);
+  }
+
+
  private:
   // No copying allowed
   void operator=(const DualDB&);
