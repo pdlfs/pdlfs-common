@@ -203,10 +203,10 @@ std::string MakeFixedLenString(::pdlfs::Random* rnd, uint32_t len) {
 }
 
 
-void BM_DualDBPut(uint64_t iters, bool left_compact, bool right_compact) {
+void BM_DualDBPut(const std::string& test_dir, uint64_t iters, bool left_compact, bool right_compact) {
   iters *= 100000;
   typedef ::pdlfs::DBOptions Options;
-  std::string dbname = ::pdlfs::test::TmpDir() + "/dualdb_test_benchmark";
+  std::string dbname = test_dir + "/dualdb_test_benchmark";
   Options option;
   option.is_dualdb = true;
   DestroyDB(dbname, option);
@@ -284,8 +284,8 @@ void BM_DBPut(int iters) {
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-	BM_DualDBPut(atoi(argv[2]), std::string(argv[3]) == "c", std::string(argv[4]) == "c");
-	// BM_DBPut(100000);
+	BM_DualDBPut(std::string(argv[2]), atoi(argv[3]),
+			std::string(argv[4]) == "c", std::string(argv[5]) == "c");
 	return 0;
   }
 
