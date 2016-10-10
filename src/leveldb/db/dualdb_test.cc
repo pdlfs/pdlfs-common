@@ -9,18 +9,14 @@
  */
 
 #include "dualdb_test.h"
-#include "dualdb_impl.h"
 
-#include "pdlfs-common/env.h"
-#include "pdlfs-common/hash.h"
-#include "pdlfs-common/leveldb/db/dualdb.h"
-#include "pdlfs-common/leveldb/filter_policy.h"
-#include "pdlfs-common/leveldb/table.h"
-#include "pdlfs-common/strutil.h"
-#include "pdlfs-common/testharness.h"
-#include "pdlfs-common/testutil.h"
+#include <pdlfs-common/env.h>
+#include <pdlfs-common/leveldb/db/dualdb.h>
+#include <pdlfs-common/leveldb/filter_policy.h>
+#include <pdlfs-common/random.h>
+#include <pdlfs-common/testharness.h>
+#include <string>
 
-#include <random>
 
 namespace pdlfs {
 
@@ -207,7 +203,8 @@ std::string MakeFixedLenString(::pdlfs::Random* rnd, uint32_t len) {
 }
 
 
-void BM_DualDBPut(int iters) {
+void BM_DualDBPut(uint64_t iters, bool left_compact, bool right_compact) {
+  iters *= 1000000;
   typedef ::pdlfs::DBOptions Options;
   std::string dbname = ::pdlfs::test::TmpDir() + "/dualdb_test_benchmark";
   Options option;
@@ -217,6 +214,12 @@ void BM_DualDBPut(int iters) {
   ::pdlfs::DualDB* dualdb = NULL;
   Options opts;
   opts.create_if_missing = true;
+  opts.gc_skip_deletion = true;
+  opts.skip_lock_file = true;
+  opts.level_factor = 4;
+  opts.compression = ::pdlfs::kNoCompression;
+  opts.left_compact = left_compact;
+  opts.right_compact = right_compact;
   ::pdlfs::Status s = ::pdlfs::DualDB::Open(opts, dbname, &dualdb);
   ASSERT_OK(s);
   ASSERT_TRUE(dualdb != NULL);
@@ -281,8 +284,8 @@ void BM_DBPut(int iters) {
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-	BM_DualDBPut(100000);
-	BM_DBPut(100000);
+	BM_DualDBPut(atoi(argv[2]), std::string(argv[3]) == "c", std::string(argv[4]) == "c");
+	// BM_DBPut(100000);
 	return 0;
   }
 

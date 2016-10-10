@@ -94,23 +94,24 @@ Status DualDBImpl::Delete(const WriteOptions& options, const Slice& key) {
 
 Status DualDB::Open(const Options& options, const std::string& superdbname, DualDB** dualdbptr) {
   *dualdbptr = NULL;
-  // TODO: need a macro to define the left and right dir name
-  std::string leftname = superdbname + DUALDBLEFSUF; // "/db_left";
-  std::string rightname = superdbname + DUALDBRIGHTSUF; // "/db_right";
+  std::string leftname = superdbname + DUALDBLEFSUF;
+  std::string rightname = superdbname + DUALDBRIGHTSUF;
 
   DualDBImpl* impl = new DualDBImpl(options, superdbname);
   impl->Recover();
   // TODO: more suitable status code..
-  Status s = DB::Open(options, leftname, &impl->dualdb_[0]);
+  Options left_opt(options);
+  left_opt.disable_compaction = !options.left_compact;
+  Status s = DB::Open(left_opt, leftname, &impl->dualdb_[0]);
   if (!s.ok()) {
       delete impl->dualdb_[0];
       delete impl;
       *dualdbptr = NULL;
       return s;
   }
-  Options right_uncompacted_option(options);
-  right_uncompacted_option.disable_compaction = true;
-  s = DB::Open(right_uncompacted_option, rightname, &impl->dualdb_[1]);
+  Options right_opt(options);
+  right_opt.disable_compaction = !options.right_compact;
+  s = DB::Open(right_opt, rightname, &impl->dualdb_[1]);
   if (!s.ok()) {
       delete impl->dualdb_[0];
       delete impl->dualdb_[1];

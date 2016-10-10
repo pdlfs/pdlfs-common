@@ -226,6 +226,8 @@ struct DBOptions {
 
   // Indicate whether this operated object is DB or DualDB
   bool is_dualdb;
+  bool left_compact;
+  bool right_compact;
 
   DBOptions();
 };
