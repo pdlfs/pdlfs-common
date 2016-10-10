@@ -41,16 +41,23 @@ class DualDBTest {
   DualDBTest() : option_config_(kDefault) {
     filter_policy_ = NewBloomFilterPolicy(10);
     dualdbname_ = test::TmpDir() + "/dualdb_test";
-    DestroyDB(dualdbname_ + "/db_left", Options());
-    DestroyDB(dualdbname_ + "/db_right", Options());
+
+    DBOptions options;
+    options.is_dualdb = true;
+    DestroyDB(dualdbname_, options);
+    // DestroyDB(dualdbname_ + "/db_left", Options());
+    // DestroyDB(dualdbname_ + "/db_right", Options());
     dualdb_ = NULL;
     Reopen();
   }
 
   ~DualDBTest() {
     delete dualdb_;
-    DestroyDB(dualdbname_ + "/db_left", Options());
-    DestroyDB(dualdbname_ + "/db_right", Options());
+    DBOptions options;
+    options.is_dualdb = true;
+    DestroyDB(dualdbname_, options);
+    // DestroyDB(dualdbname_ + "/db_left", Options());
+    // DestroyDB(dualdbname_ + "/db_right", Options());
     delete filter_policy_;
   }
 
@@ -96,8 +103,13 @@ class DualDBTest {
   void DestroyAndReopen(Options* options = NULL) {
     delete dualdb_;
     dualdb_ = NULL;
-    DestroyDB(dualdbname_ + "/db_left", Options());
-    DestroyDB(dualdbname_ + "/db_right", Options());
+
+    DBOptions del_options;
+    del_options.is_dualdb = true;
+    DestroyDB(dualdbname_, del_options);
+
+    // DestroyDB(dualdbname_ + "/db_left", Options());
+    // DestroyDB(dualdbname_ + "/db_right", Options());
     ASSERT_OK(TryReopen(options));
   }
 
@@ -162,9 +174,51 @@ TEST(DualDBTest, PutDeleteGet) {
   } while (ChangeOptions());
 }
 
-
 }  // namespace pdlfs
 
+
+namespace {
+std::string MakeKey(unsigned int num) {
+  char buf[30];
+  snprintf(buf, sizeof(buf), "%016u", num);
+  return std::string(buf);
+}
+
+void BM_DualDBPut(int iters) {
+  typedef ::pdlfs::DBOptions Options;
+  std::string dbname = ::pdlfs::test::TmpDir() + "/leveldb_test_benchmark";
+  DestroyDB(dbname, Options());
+
+  ::pdlfs::DualDB* db = NULL;
+  Options opts;
+  opts.create_if_missing = true;
+  ::pdlfs::Status s = ::pdlfs::DualDB::Open(opts, dbname, &db);
+  ASSERT_OK(s);
+  ASSERT_TRUE(db != NULL);
+
+  delete db;
+  db = NULL;
+
+  ::pdlfs::Env* env = ::pdlfs::Env::Default();
+
+  uint64_t start_micros = env->NowMicros();
+
+  for (int i = 0; i < iters; i++) {
+
+  }
+  uint64_t stop_micros = env->NowMicros();
+  unsigned int us = stop_micros - start_micros;
+  fprintf(stderr,
+          "BM_DualDBPut/%8d iters : %9u us (%7.0f us / iter)\n",
+          iters, us, ((float)us) / iters);
+}
+}
+
 int main(int argc, char** argv) {
+  if (argc > 1 && std::string(argv[1]) == "--benchmark") {
+	BM_DualDBPut(1000);
+	BM_DualDBPut(1000);
+	return 0;
+  }
   return ::pdlfs::test::RunAllTests(&argc, &argv);
 }

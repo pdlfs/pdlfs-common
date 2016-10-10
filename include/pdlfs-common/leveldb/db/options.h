@@ -42,6 +42,9 @@ enum IndexType {
   kCompact = 0x1
 };
 
+constexpr char DUALDBLEFSUF[] = "/db_left";
+constexpr char DUALDBRIGHTSUF[] = "/db_right";
+
 // Options to control the behavior of a database (passed to DB::Open)
 struct DBOptions {
   // -------------------

@@ -39,6 +39,15 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 }
 
 Status DestroyDB(const std::string& dbname, const DBOptions& options) {
+  if (options.is_dualdb) {
+	DBOptions new_option(options);
+	new_option.is_dualdb = false;
+	Status status_left = DestroyDB(dbname + DUALDBLEFSUF, new_option);
+	Status status_right = DestroyDB(dbname + DUALDBRIGHTSUF, new_option);
+	return status_left.ok() && status_right.ok()
+		   ? Status::OK()
+		   : (status_left.ok() ? status_right : status_left);
+  }
   Env* env = options.env;
   std::vector<std::string> filenames;
   // Ignore error in case directory does not exist

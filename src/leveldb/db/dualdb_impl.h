@@ -42,8 +42,8 @@ class DualDBImpl : public DualDB {
 
  private:
   friend class DualDB;
-  const Options options_;
   Env* const env_;
+  const Options options_;
   const std::string superdbname_;
 
 
