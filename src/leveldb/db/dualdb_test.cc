@@ -204,7 +204,7 @@ std::string MakeFixedLenString(::pdlfs::Random* rnd, uint32_t len) {
 
 
 void BM_DualDBPut(uint64_t iters, bool left_compact, bool right_compact) {
-  iters *= 1000000;
+  iters *= 100000;
   typedef ::pdlfs::DBOptions Options;
   std::string dbname = ::pdlfs::test::TmpDir() + "/dualdb_test_benchmark";
   Options option;
