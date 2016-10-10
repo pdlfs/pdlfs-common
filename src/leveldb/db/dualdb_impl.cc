@@ -80,6 +80,7 @@ Status DualDBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return DualDB::Delete(options, key);
 }
 
+
 Status DualDB::Open(const Options& options, const std::string& superdbname, DualDB** dualdbptr) {
   *dualdbptr = NULL;
   // TODO: need a macro to define the left and right dir name

@@ -20,6 +20,8 @@
 #include "pdlfs-common/testharness.h"
 #include "pdlfs-common/testutil.h"
 
+#include <random>
+
 namespace pdlfs {
 
 class DualDBTest {
@@ -184,41 +186,68 @@ std::string MakeKey(unsigned int num) {
   return std::string(buf);
 }
 
+constexpr int ascii_max = 255;
+
+std::string MakeVariableLenString(::pdlfs::Random* rnd, uint32_t min_len, uint32_t max_len) {
+  uint32_t len = rnd->Uniform(max_len - min_len + 1) + min_len;
+  char chars[len+1];
+  for (uint32_t i = 0; i < len; ++i) {
+    chars[i] = rnd->Uniform(ascii_max) + 1;
+  }
+  chars[len] = 0;
+  return std::string(chars);
+}
+
+std::string MakeFixedLenString(::pdlfs::Random* rnd, uint32_t len) {
+  char chars[len+1];
+  for (uint32_t i = 0; i < len; ++i) {
+    chars[i] = rnd->Uniform(ascii_max) + 1;
+  }
+  chars[len] = 0;
+  return std::string(chars);
+}
+
+
 void BM_DualDBPut(int iters) {
   typedef ::pdlfs::DBOptions Options;
   std::string dbname = ::pdlfs::test::TmpDir() + "/leveldb_test_benchmark";
   DestroyDB(dbname, Options());
 
-  ::pdlfs::DualDB* db = NULL;
+  ::pdlfs::DualDB* dualdb = NULL;
   Options opts;
   opts.create_if_missing = true;
-  ::pdlfs::Status s = ::pdlfs::DualDB::Open(opts, dbname, &db);
+  ::pdlfs::Status s = ::pdlfs::DualDB::Open(opts, dbname, &dualdb);
   ASSERT_OK(s);
-  ASSERT_TRUE(db != NULL);
+  ASSERT_TRUE(dualdb != NULL);
 
-  delete db;
-  db = NULL;
+  uint32_t key_len = 16u;
+  uint32_t value_min_len = 256u;
+  uint32_t value_max_len = 4096u;
+  ::pdlfs::Random rnd(::pdlfs::test::RandomSeed());
+  ::pdlfs::WriteOptions write_opt;
 
   ::pdlfs::Env* env = ::pdlfs::Env::Default();
-
   uint64_t start_micros = env->NowMicros();
 
   for (int i = 0; i < iters; i++) {
-
+    dualdb->Put(write_opt, MakeFixedLenString(&rnd, key_len), MakeVariableLenString(&rnd, value_min_len, value_max_len));
   }
   uint64_t stop_micros = env->NowMicros();
   unsigned int us = stop_micros - start_micros;
   fprintf(stderr,
           "BM_DualDBPut/%8d iters : %9u us (%7.0f us / iter)\n",
           iters, us, ((float)us) / iters);
+
+  delete dualdb;
+  dualdb = NULL;
 }
 }
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
 	BM_DualDBPut(1000);
-	BM_DualDBPut(1000);
 	return 0;
   }
+
   return ::pdlfs::test::RunAllTests(&argc, &argv);
 }
