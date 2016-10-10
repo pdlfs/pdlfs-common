@@ -50,28 +50,39 @@ Status DualDBImpl::Get(const ReadOptions& options, const Slice& key,
   if (!s.ok()) {
     return s;
   }
-  s = dualdb_[1]->Get(options, key, &right_value);
+  dualdb_[1]->Get(options, key, &right_value);
+  // It's possible that no value is stored in the right table
+  // if the whole value is short.
+  /*
   if (!s.ok()) {
     return s;
   }
-  // TODO: combine left_value and right_value
+  */
   value->assign(left_value + right_value);
   return s;
 }
 
 Status DualDBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
-    // TODO: separate values func
-    // TODO: tryPut func in case of half-insert on left table
-  std::string str = val.ToString();
-  size_t len = str.size();
-  Status s = dualdb_[0]->Put(o, key, Slice(str.substr(0, len)));
+  // TODO: separate values func
+  // TODO: tryPut func in case of half-insert on left table
+  size_t len = val.size();
+  size_t left_len = std::min(len, 128lu);
+  Slice left_val(val);
+  size_t right_len = left_len < 128lu ? 0 : len - 128lu;
+  left_val.remove_suffix(right_len);
+
+  Status s = dualdb_[0]->Put(o, key, left_val);
   if (!s.ok()) {
       return s;
   }
-  s = dualdb_[1]->Put(o, key, Slice(str.substr(len)));
-  if (!s.ok()) {
-      // TODO: should undo insert on left table
-      return s;
+  if (right_len > 0) {
+	  Slice right_val(val);
+	  right_val.remove_prefix(left_len);
+	  s = dualdb_[1]->Put(o, key, right_val);
+	  if (!s.ok()) {
+		  // TODO: should undo insert on left table
+		  return s;
+	  }
   }
   return s;
 }

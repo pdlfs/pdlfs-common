@@ -180,31 +180,30 @@ TEST(DualDBTest, PutDeleteGet) {
 
 
 namespace {
-std::string MakeKey(unsigned int num) {
-  char buf[30];
-  snprintf(buf, sizeof(buf), "%016u", num);
-  return std::string(buf);
-}
 
 constexpr int ascii_max = 255;
 
 std::string MakeVariableLenString(::pdlfs::Random* rnd, uint32_t min_len, uint32_t max_len) {
   uint32_t len = rnd->Uniform(max_len - min_len + 1) + min_len;
-  char chars[len+1];
+  char* chars = new char[len+1];
   for (uint32_t i = 0; i < len; ++i) {
     chars[i] = rnd->Uniform(ascii_max) + 1;
   }
   chars[len] = 0;
-  return std::string(chars);
+  std::string res(chars);
+  delete chars;
+  return res;
 }
 
 std::string MakeFixedLenString(::pdlfs::Random* rnd, uint32_t len) {
-  char chars[len+1];
+  char* chars = new char[len+1];
   for (uint32_t i = 0; i < len; ++i) {
     chars[i] = rnd->Uniform(ascii_max) + 1;
   }
   chars[len] = 0;
-  return std::string(chars);
+  std::string res(chars);
+  delete chars;
+  return res;
 }
 
 
