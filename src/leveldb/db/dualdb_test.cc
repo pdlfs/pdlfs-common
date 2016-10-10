@@ -209,8 +209,10 @@ std::string MakeFixedLenString(::pdlfs::Random* rnd, uint32_t len) {
 
 void BM_DualDBPut(int iters) {
   typedef ::pdlfs::DBOptions Options;
-  std::string dbname = ::pdlfs::test::TmpDir() + "/leveldb_test_benchmark";
-  DestroyDB(dbname, Options());
+  std::string dbname = ::pdlfs::test::TmpDir() + "/dualdb_test_benchmark";
+  Options option;
+  option.is_dualdb = true;
+  DestroyDB(dbname, option);
 
   ::pdlfs::DualDB* dualdb = NULL;
   Options opts;
@@ -240,11 +242,47 @@ void BM_DualDBPut(int iters) {
   delete dualdb;
   dualdb = NULL;
 }
+
+
+void BM_DBPut(int iters) {
+  typedef ::pdlfs::DBOptions Options;
+  std::string dbname = ::pdlfs::test::TmpDir() + "/db_test_benchmark";
+  DestroyDB(dbname, Options());
+
+  ::pdlfs::DB* db = NULL;
+  Options opts;
+  opts.create_if_missing = true;
+  ::pdlfs::Status s = ::pdlfs::DB::Open(opts, dbname, &db);
+  ASSERT_OK(s);
+  ASSERT_TRUE(db != NULL);
+
+  uint32_t key_len = 16u;
+  uint32_t value_min_len = 256u;
+  uint32_t value_max_len = 4096u;
+  ::pdlfs::Random rnd(::pdlfs::test::RandomSeed());
+  ::pdlfs::WriteOptions write_opt;
+
+  ::pdlfs::Env* env = ::pdlfs::Env::Default();
+  uint64_t start_micros = env->NowMicros();
+
+  for (int i = 0; i < iters; i++) {
+    db->Put(write_opt, MakeFixedLenString(&rnd, key_len), MakeVariableLenString(&rnd, value_min_len, value_max_len));
+  }
+  uint64_t stop_micros = env->NowMicros();
+  unsigned int us = stop_micros - start_micros;
+  fprintf(stderr,
+          "BM_DBPut/%8d iters : %9u us (%7.0f us / iter)\n",
+          iters, us, ((float)us) / iters);
+
+  delete db;
+  db = NULL;
+}
 }
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-	BM_DualDBPut(1000);
+	BM_DualDBPut(100000);
+	BM_DBPut(100000);
 	return 0;
   }
 
