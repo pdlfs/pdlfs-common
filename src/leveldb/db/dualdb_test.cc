@@ -247,7 +247,7 @@ void BM_DualDBPut(const std::string& test_dir, uint64_t iters, bool left_compact
 }
 
 
-void BM_DBPut(int iters) {
+void BM_DBPut(uint64_t iters) {
   typedef ::pdlfs::DBOptions Options;
   std::string dbname = ::pdlfs::test::TmpDir() + "/db_test_benchmark";
   DestroyDB(dbname, Options());
@@ -268,13 +268,13 @@ void BM_DBPut(int iters) {
   ::pdlfs::Env* env = ::pdlfs::Env::Default();
   uint64_t start_micros = env->NowMicros();
 
-  for (int i = 0; i < iters; i++) {
+  for (uint64_t i = 0; i < iters; i++) {
     db->Put(write_opt, MakeFixedLenString(&rnd, key_len), MakeVariableLenString(&rnd, value_min_len, value_max_len));
   }
   uint64_t stop_micros = env->NowMicros();
-  unsigned int us = stop_micros - start_micros;
+  uint64_t us = stop_micros - start_micros;
   fprintf(stderr,
-          "BM_DBPut/%8d iters : %9u us (%7.0f us / iter)\n",
+          "BM_DBPut/%8lu iters : %9ul us (%7.0f us / iter)\n",
           iters, us, ((float)us) / iters);
 
   delete db;
@@ -284,7 +284,7 @@ void BM_DBPut(int iters) {
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-	BM_DualDBPut(std::string(argv[2]), atoi(argv[3]),
+	BM_DualDBPut(std::string(argv[2]), static_cast<uint64_t>(atoi(argv[3])),
 			std::string(argv[4]) == "c", std::string(argv[5]) == "c");
 	return 0;
   }
