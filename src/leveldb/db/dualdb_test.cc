@@ -237,9 +237,9 @@ void BM_DualDBPut(const std::string& test_dir, uint64_t iters, bool left_compact
     dualdb->Put(write_opt, MakeFixedLenString(&rnd, key_len), MakeVariableLenString(&rnd, value_min_len, value_max_len));
   }
   uint64_t stop_micros = env->NowMicros();
-  unsigned int us = stop_micros - start_micros;
+  uint64_t us = stop_micros - start_micros;
   fprintf(stderr,
-          "BM_DualDBPut/%8d iters : %9u us (%7.0f us / iter)\n",
+          "BM_DualDBPut/%15lu iters : %15lu us (%7.0f us / iter)\n",
           iters, us, ((float)us) / iters);
 
   delete dualdb;
@@ -247,7 +247,7 @@ void BM_DualDBPut(const std::string& test_dir, uint64_t iters, bool left_compact
 }
 
 
-void BM_DBPut(uint64_t iters) {
+void BM_DBPut(const std::string& test_dir, uint64_t iters) {
   typedef ::pdlfs::DBOptions Options;
   std::string dbname = ::pdlfs::test::TmpDir() + "/db_test_benchmark";
   DestroyDB(dbname, Options());
@@ -255,6 +255,10 @@ void BM_DBPut(uint64_t iters) {
   ::pdlfs::DB* db = NULL;
   Options opts;
   opts.create_if_missing = true;
+  opts.gc_skip_deletion = true;
+  opts.skip_lock_file = true;
+  opts.level_factor = 4;
+  opts.compression = ::pdlfs::kNoCompression;
   ::pdlfs::Status s = ::pdlfs::DB::Open(opts, dbname, &db);
   ASSERT_OK(s);
   ASSERT_TRUE(db != NULL);
@@ -268,13 +272,13 @@ void BM_DBPut(uint64_t iters) {
   ::pdlfs::Env* env = ::pdlfs::Env::Default();
   uint64_t start_micros = env->NowMicros();
 
-  for (uint64_t i = 0; i < iters; i++) {
+  for (int i = 0; i < iters; i++) {
     db->Put(write_opt, MakeFixedLenString(&rnd, key_len), MakeVariableLenString(&rnd, value_min_len, value_max_len));
   }
   uint64_t stop_micros = env->NowMicros();
   uint64_t us = stop_micros - start_micros;
   fprintf(stderr,
-          "BM_DBPut/%8lu iters : %9ul us (%7.0f us / iter)\n",
+          "BM_DBPut/%15lu iters : %15lu us (%7.0f us / iter)\n",
           iters, us, ((float)us) / iters);
 
   delete db;
@@ -284,8 +288,12 @@ void BM_DBPut(uint64_t iters) {
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "--benchmark") {
-	BM_DualDBPut(std::string(argv[2]), static_cast<uint64_t>(atoi(argv[3])),
-			std::string(argv[4]) == "c", std::string(argv[5]) == "c");
+	  if (std::string(argv[2]) == "dualdb") {
+		BM_DualDBPut(std::string(argv[3]), static_cast<uint64_t>(atoi(argv[4])),
+				std::string(argv[5]) == "c", std::string(argv[6]) == "c");
+	  } else {
+		BM_DBPut(std::string(argv[3]), static_cast<uint64_t>(atoi(argv[4])));
+	  }
 	return 0;
   }
 
