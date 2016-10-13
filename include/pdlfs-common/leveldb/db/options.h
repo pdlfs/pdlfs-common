@@ -186,7 +186,7 @@ struct DBOptions {
   // Set to true to disable the use of a write-ahead log to protect
   // the data in the current memtable.
   // Default: false
-  bool disable_write_ahread_log;
+  bool disable_write_ahead_log;
 
   // If true, no background compaction will be performed except for
   // those triggered by MemTable dumps.

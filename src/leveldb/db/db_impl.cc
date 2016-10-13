@@ -1251,7 +1251,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     // into mem_.
     {
       mutex_.Unlock();
-      if (!options_.disable_write_ahread_log) {
+      if (!options_.disable_write_ahead_log) {
         status = log_->AddRecord(WriteBatchInternal::Contents(updates));
         if (status.ok() && options.sync) {
           status = logfile_->Sync();
@@ -1272,7 +1272,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
     versions_->SetLastSequence(last_sequence);
   } else if (status.ok() && my_batch == &sync_wal_) {
-    if (!options_.disable_write_ahread_log) {
+    if (!options_.disable_write_ahead_log) {
       mutex_.Unlock();
       status = logfile_->Sync();
       if (!status.ok()) {
@@ -1404,7 +1404,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       bg_cv_.Wait();
     } else {
       // Close and open write-ahead log files
-      if (!options_.disable_write_ahread_log) {
+      if (!options_.disable_write_ahead_log) {
         assert(versions_->PrevLogNumber() == 0);
         uint64_t new_log_number = versions_->NewFileNumber();
         WritableFile* lfile = NULL;
@@ -1863,7 +1863,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   Status s =
       impl->Recover(&edit);  // Handles create_if_missing, error_if_exists
   if (s.ok()) {
-    if (!options.disable_write_ahread_log) {
+    if (!options.disable_write_ahead_log) {
       uint64_t new_log_number = impl->versions_->NewFileNumber();
       WritableFile* lfile;
       s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
@@ -1874,8 +1874,6 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
         impl->logfile_number_ = new_log_number;
         impl->log_ = new log::Writer(lfile);
       }
-    } else {
-      edit.SetLogNumber(0);
     }
     if (s.ok()) {
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);

@@ -37,7 +37,7 @@ DBOptions::DBOptions()
       gc_skip_deletion(false),
       skip_lock_file(false),
       rotating_manifest(false),
-      disable_write_ahread_log(false),
+      disable_write_ahead_log(false),
       disable_compaction(false),
       disable_seek_compaction(false),
       table_file_size(2 * 1048576),
