@@ -163,21 +163,15 @@ DBImpl::~DBImpl() {
   delete logfile_;
   delete table_cache_;
 
-  if (owns_info_log_) {
-    delete options_.info_log;
-  }
-  if (owns_cache_) {
-    delete options_.block_cache;
-  }
-  if (owns_table_cache_) {
-    delete options_.table_cache;
-  }
-
-  // Remove LOCK file and detach db directory so other
-  // processes may mount the directory.
+  if (owns_info_log_) delete options_.info_log;
+  if (owns_table_cache_) delete options_.table_cache;
+  if (owns_cache_) delete options_.block_cache;
+  // Remove LOCK file
   if (db_lock_ != NULL) {
     env_->UnlockFile(db_lock_);
   }
+
+  // Detach db directory so other processes may mount the db.
   env_->DetachDir(dbname_);
 }
 
@@ -1226,7 +1220,11 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   w.done = false;
   w.batch = my_batch;
 
-  bool null_batch = (my_batch == &flush_memtable_) || (my_batch == &sync_wal_);
+  bool flush_or_sync = false;
+  if (my_batch == &flush_memtable_ || my_batch == &sync_wal_) {
+    flush_or_sync = true;
+  }
+
   MutexLock l(&mutex_);
   writers_.push_back(&w);
   while (!w.done && &w != writers_.front()) {
@@ -1240,8 +1238,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   Status status = MakeRoomForWrite(my_batch == &flush_memtable_);
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
+  bool sync_error = false;
 
-  if (status.ok() && !null_batch) {
+  if (status.ok() && !flush_or_sync) {
     WriteBatch* updates = BuildBatchGroup(&last_writer);
     WriteBatchInternal::SetSequence(updates, last_sequence + 1);
     last_sequence += WriteBatchInternal::Count(updates);
@@ -1252,44 +1251,42 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     // into mem_.
     {
       mutex_.Unlock();
-      status = log_->AddRecord(WriteBatchInternal::Contents(updates));
-      bool sync_error = false;
-      if (status.ok() && options.sync) {
-        status = logfile_->Sync();
-        if (!status.ok()) {
-          sync_error = true;
+      if (!options_.disable_write_ahread_log) {
+        status = log_->AddRecord(WriteBatchInternal::Contents(updates));
+        if (status.ok() && options.sync) {
+          status = logfile_->Sync();
+          if (!status.ok()) {
+            sync_error = true;
+          }
         }
       }
       if (status.ok()) {
         status = WriteBatchInternal::InsertInto(updates, mem_);
       }
       mutex_.Lock();
-      if (sync_error) {
-        // The state of the log file is indeterminate: the log record we
-        // just added may or may not show up when the DB is re-opened.
-        // So we force the DB into a mode where all future writes fail.
-        RecordBackgroundError(status);
-      }
     }
+
     if (updates == tmp_batch_) {
       tmp_batch_->Clear();
     }
-    versions_->SetLastSequence(last_sequence);
 
+    versions_->SetLastSequence(last_sequence);
   } else if (status.ok() && my_batch == &sync_wal_) {
-    bool sync_error = false;
-    mutex_.Unlock();
-    status = logfile_->Sync();
-    if (!status.ok()) {
-      sync_error = true;
+    if (!options_.disable_write_ahread_log) {
+      mutex_.Unlock();
+      status = logfile_->Sync();
+      if (!status.ok()) {
+        sync_error = true;
+      }
+      mutex_.Lock();
     }
-    mutex_.Lock();
-    if (sync_error) {
-      // The state of the log file is indeterminate: the log record we
-      // just added may or may not show up when the DB is re-opened.
-      // So we force the DB into a mode where all future writes fail.
-      RecordBackgroundError(status);
-    }
+  }
+
+  if (sync_error) {
+    // The state of the log file is indeterminate: the log record we
+    // just added may or may not show up when the DB is re-opened.
+    // So we force the DB into a mode where all future writes fail.
+    RecordBackgroundError(status);
   }
 
   while (true) {
@@ -1406,21 +1403,26 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       bg_cv_.Wait();
     } else {
-      // Attempt to switch to a new memtable and trigger compaction of old
-      assert(versions_->PrevLogNumber() == 0);
-      uint64_t new_log_number = versions_->NewFileNumber();
-      WritableFile* lfile = NULL;
-      s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
-      if (!s.ok()) {
-        // Avoid chewing through file number space in a tight loop.
-        versions_->ReuseFileNumber(new_log_number);
-        break;
+      // Close and open write-ahead log files
+      if (!options_.disable_write_ahread_log) {
+        assert(versions_->PrevLogNumber() == 0);
+        uint64_t new_log_number = versions_->NewFileNumber();
+        WritableFile* lfile = NULL;
+        s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
+        if (!s.ok()) {
+          // Avoid chewing through file number space in a tight loop.
+          versions_->ReuseFileNumber(new_log_number);
+          break;
+        }
+        delete log_;
+        delete logfile_;
+        logfile_ = lfile;
+        logfile_number_ = new_log_number;
+        log_ = new log::Writer(lfile);
       }
-      delete log_;
-      delete logfile_;
-      logfile_ = lfile;
-      logfile_number_ = new_log_number;
-      log_ = new log::Writer(lfile);
+
+      // Attempt to switch to a new memtable and
+      // trigger compaction of old
       imm_ = mem_;
       has_imm_.Release_Store(imm_);
       mem_ = new MemTable(internal_comparator_);
@@ -1861,15 +1863,21 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   Status s =
       impl->Recover(&edit);  // Handles create_if_missing, error_if_exists
   if (s.ok()) {
-    uint64_t new_log_number = impl->versions_->NewFileNumber();
-    WritableFile* lfile;
-    s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
-                                     &lfile);
+    if (!options.disable_write_ahread_log) {
+      uint64_t new_log_number = impl->versions_->NewFileNumber();
+      WritableFile* lfile;
+      s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
+                                       &lfile);
+      if (s.ok()) {
+        edit.SetLogNumber(new_log_number);
+        impl->logfile_ = lfile;
+        impl->logfile_number_ = new_log_number;
+        impl->log_ = new log::Writer(lfile);
+      }
+    } else {
+      edit.SetLogNumber(0);
+    }
     if (s.ok()) {
-      edit.SetLogNumber(new_log_number);
-      impl->logfile_ = lfile;
-      impl->logfile_number_ = new_log_number;
-      impl->log_ = new log::Writer(lfile);
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }
     if (s.ok()) {
