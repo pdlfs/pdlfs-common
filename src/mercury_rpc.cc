@@ -183,21 +183,24 @@ void MercuryRPC::Client::Call(Message& in, Message& out) {
     state.rpc_cv = &cv_;
     state.out = &out;
     Timer timer;
-    rpc_->AddTimerFor(handle, &timer);
     ret = HG_Forward(handle, SaveReply, &state, &in);
-    rpc_->RemoveTimer(&timer);
+
     if (ret == HG_SUCCESS) {
+      rpc_->AddTimerFor(handle, &timer);
       MutexLock ml(&mu_);
       while (!state.rpc_done) {
         cv_.Wait();
       }
+      rpc_->RemoveTimer(&timer);
       ret = state.ret;
     }
+
     HG_Destroy(handle);
   }
   rpc_->Release(entry);
   if (ret != HG_SUCCESS) {
-    throw ENETUNREACH;
+    /* how to recover? */
+    assert(0);
   }
 }
 
