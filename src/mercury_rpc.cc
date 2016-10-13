@@ -96,6 +96,7 @@ hg_return_t MercuryRPC::RPCCallback(hg_handle_t handle) {
   if (ret == HG_SUCCESS) {
     registered_data(handle)->fs_->Call(input, output);
     ret = HG_Respond(handle, NULL, NULL, &output);
+    HG_Free_input(handle, &input);
   }
   HG_Destroy(handle);
   return ret;
