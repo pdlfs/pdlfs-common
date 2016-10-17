@@ -109,7 +109,9 @@ class DBImpl : public DB {
   Status RecoverLogFile(uint64_t log_number, VersionEdit* edit,
                         SequenceNumber* max_sequence);
 
-  Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base);
+  Status WriteMemTable(MemTable* mem, VersionEdit* edit, Version* base);
+  Status WriteLevel0Table(Iterator* iter, VersionEdit* edit, Version* base,
+                          bool force_level0);
 
   Status MakeRoomForWrite(bool force /* compact even if there is room? */);
   WriteBatch* BuildBatchGroup(Writer** last_writer);

@@ -34,6 +34,7 @@ DBOptions::DBOptions()
       index_block_restart_interval(1),
       compression(kSnappyCompression),
       filter_policy(NULL),
+      no_memtable(false),
       gc_skip_deletion(false),
       skip_lock_file(false),
       rotating_manifest(false),

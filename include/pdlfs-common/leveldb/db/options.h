@@ -169,6 +169,11 @@ struct DBOptions {
   // -------------------
   // Dangerous zone - parameters for experts
 
+  // Set to true to skip the creation of memtables.  Without memtables,
+  // all write operations directly result in new Level-0 tables.
+  // Default: false
+  bool no_memtable;
+
   // Set to true to skip garbage collection at the end of each compaction run.
   // Default: false
   bool gc_skip_deletion;
