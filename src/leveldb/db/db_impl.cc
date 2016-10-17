@@ -1300,7 +1300,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         }
 
         if (!status.ok()) {
-          RecordBackgroundError(s);
+          RecordBackgroundError(status);
         }
       }
 
