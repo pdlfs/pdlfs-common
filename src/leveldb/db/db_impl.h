@@ -166,7 +166,7 @@ class DBImpl : public DB {
   std::deque<Writer*> writers_;
   WriteBatch flush_memtable_;  // Dummy batch representing a compaction request
   WriteBatch sync_wal_;        // Dummy batch representing a WAL sync request
-  WriteBatch* tmp_batch_;
+  WriteBatch tmp_batch_;
 
   SnapshotList snapshots_;
 

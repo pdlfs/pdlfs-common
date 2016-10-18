@@ -125,7 +125,6 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       logfile_number_(0),
       log_(NULL),
       seed_(0),
-      tmp_batch_(new WriteBatch),
       bg_compaction_scheduled_(false),
       bulk_insert_in_progress_(false),
       manual_compaction_(NULL) {
@@ -156,7 +155,6 @@ DBImpl::~DBImpl() {
   delete versions_;
   if (mem_ != NULL) mem_->Unref();
   if (imm_ != NULL) imm_->Unref();
-  delete tmp_batch_;
   delete log_;
   delete logfile_;
   delete table_cache_;
@@ -1312,8 +1310,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
       mem->Unref();
     }
 
-    if (updates == tmp_batch_) {
-      tmp_batch_->Clear();
+    if (updates == &tmp_batch_) {
+      updates->Clear();
     }
 
     versions_->SetLastSequence(last_sequence);
@@ -1399,7 +1397,7 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
       // Append to *result
       if (result == first->batch) {
         // Switch to temporary batch instead of disturbing caller's batch
-        result = tmp_batch_;
+        result = &tmp_batch_;
         assert(WriteBatchInternal::Count(result) == 0);
         WriteBatchInternal::Append(result, first->batch);
       }
