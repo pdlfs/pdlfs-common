@@ -94,6 +94,9 @@ DBOptions SanitizeOptions(const std::string& dbname,
       result.info_log = NULL;
     }
   }
+  if (result.disable_compaction) {
+    result.disable_seek_compaction = true;
+  }
   if (result.block_cache == NULL) {
     result.block_cache = NewLRUCache(8 << 20);
   }

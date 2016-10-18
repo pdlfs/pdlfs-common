@@ -118,6 +118,7 @@ class DBImpl : public DB {
 
   void RecordBackgroundError(const Status& s);
 
+  bool HasCompaction();
   void MaybeScheduleCompaction();
   static void BGWork(void* db);
   void BackgroundCall();
@@ -141,8 +142,6 @@ class DBImpl : public DB {
   bool owns_info_log_;
   bool owns_cache_;
   bool owns_table_cache_;
-  bool allow_seek_compaction_;
-  bool allow_compaction_;
   const std::string dbname_;
 
   // table_cache_ provides its own synchronization
