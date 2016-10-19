@@ -1284,6 +1284,11 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
       }
       mutex_.Lock();
     } else {
+      while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
+        bg_cv_.Wait();
+      }
+
+      bulk_insert_in_progress_ = true;
       MemTable* mem = new MemTable(internal_comparator_);
       mem->Ref();
 
@@ -1308,6 +1313,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
       }
 
       mem->Unref();
+      bulk_insert_in_progress_ = false;
+      MaybeScheduleCompaction();
+      bg_cv_.SignalAll();
     }
 
     if (updates == &tmp_batch_) {
@@ -1483,6 +1491,11 @@ Status DBImpl::MakeRoomForWrite(bool force) {
 Status DBImpl::BulkInsert(Iterator* iter) {
   Status s;
   MutexLock l(&mutex_);
+  while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
+    bg_cv_.Wait();
+  }
+
+  bulk_insert_in_progress_ = true;
   VersionEdit edit;
   Version* base = versions_->current();
   base->Ref();
@@ -1496,6 +1509,9 @@ Status DBImpl::BulkInsert(Iterator* iter) {
     RecordBackgroundError(s);
   }
 
+  bulk_insert_in_progress_ = false;
+  MaybeScheduleCompaction();
+  bg_cv_.SignalAll();
   return s;
 }
 
@@ -1803,18 +1819,14 @@ Status DBImpl::AddL0Tables(const InsertOptions& options,
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
     bg_cv_.Wait();
   }
+
   bulk_insert_in_progress_ = true;
-  if (!shutting_down_.Acquire_Load()) {
-    s = InsertLevel0Tables(&insert);
-  } else {
-    s = Status::AssertionFailed("DB is being deleted", "no more operations");
-  }
+  s = InsertLevel0Tables(&insert);
   bulk_insert_in_progress_ = false;
   // A bulk insertion may introduce too many files in Level-0,
   // so schedule another compaction if needed.
   MaybeScheduleCompaction();
   bg_cv_.SignalAll();
-
   return s;
 }
 
