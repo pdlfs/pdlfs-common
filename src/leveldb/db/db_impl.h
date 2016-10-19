@@ -56,7 +56,10 @@ class DBImpl : public DB {
                       const std::string& dir, SequenceNumber* min_seq,
                       SequenceNumber* max_seq);
 
-  // Extra methods (for testing) that are not in the public DB interface
+  // Extra methods that are not in the public DB interface
+
+  // Bulk insert a list of pre-ordered and pre-sequenced updates.
+  Status BulkInsert(Iterator* updates);
 
   // Compact any files in the named level that overlap [*begin,*end]
   void TEST_CompactRange(int level, const Slice* begin, const Slice* end);

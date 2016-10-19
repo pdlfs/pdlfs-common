@@ -1224,8 +1224,8 @@ Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
   return DB::Put(o, key, val);
 }
 
-Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
-  return DB::Delete(options, key);
+Status DBImpl::Delete(const WriteOptions& o, const Slice& key) {
+  return DB::Delete(o, key);
 }
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
@@ -1477,6 +1477,25 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       break;
     }
   }
+  return s;
+}
+
+Status DBImpl::BulkInsert(Iterator* iter) {
+  Status s;
+  MutexLock l(&mutex_);
+  VersionEdit edit;
+  Version* base = versions_->current();
+  base->Ref();
+  s = WriteLevel0Table(iter, &edit, base, true);
+  base->Unref();
+  if (s.ok()) {
+    s = versions_->LogAndApply(&edit, &mutex_);
+  }
+
+  if (!s.ok()) {
+    RecordBackgroundError(s);
+  }
+
   return s;
 }
 
