@@ -273,7 +273,7 @@ Status TableBuilder::Finish() {
       meta_index_block.Add(key, handle_encoding);
     }
 
-    std::string key = "internal.table_stats";
+    std::string key = "table.properties";
     std::string handle_encoding;
     props_block_handle.EncodeTo(&handle_encoding);
     meta_index_block.Add(key, handle_encoding);
