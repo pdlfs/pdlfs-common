@@ -9,7 +9,6 @@
  */
 
 #include "builder.h"
-#include "../table_stats.h"
 #include "table_cache.h"
 #include "version_edit.h"
 
@@ -20,60 +19,9 @@
 #include "pdlfs-common/leveldb/db/options.h"
 #include "pdlfs-common/leveldb/iterator.h"
 #include "pdlfs-common/leveldb/table_builder.h"
+#include "pdlfs-common/leveldb/table_properties.h"
 
 namespace pdlfs {
-
-namespace {
-typedef DBOptions Options;
-
-static Status CheckFirstKey(Table* table, const Options& options,
-                            const InternalKey& key) {
-  Slice reported = TableStats::FirstKey(table);
-  const InternalKeyComparator* icmp =
-      reinterpret_cast<const InternalKeyComparator*>(options.comparator);
-  if (icmp->Compare(reported, key.Encode()) != 0) {
-    return Status::Corruption("First key is reported wrong");
-  } else {
-    return Status::OK();
-  }
-}
-
-static Status CheckLastKey(Table* table, const Options& options,
-                           const InternalKey& key) {
-  Slice reported = TableStats::LastKey(table);
-  const InternalKeyComparator* icmp =
-      reinterpret_cast<const InternalKeyComparator*>(options.comparator);
-  if (icmp->Compare(reported, key.Encode()) != 0) {
-    return Status::Corruption("Last key is reported wrong");
-  } else {
-    return Status::OK();
-  }
-}
-
-static Status LoadAndCheckTable(const Options& options, TableCache* table_cache,
-                                const FileMetaData* meta) {
-  Status s;
-  Table* table;
-  Iterator* it = table_cache->NewIterator(
-      ReadOptions(), meta->number, meta->file_size, meta->seq_off, &table);
-
-  s = it->status();
-  const bool paranoid_checks = options.paranoid_checks;
-  if (s.ok() && paranoid_checks) {
-    if (TableStats::HasStats(table)) {
-      if (s.ok()) {
-        s = CheckFirstKey(table, options, meta->smallest);
-      }
-      if (s.ok()) {
-        s = CheckLastKey(table, options, meta->largest);
-      }
-    }
-  }
-
-  delete it;
-  return s;
-}
-}  // namespace
 
 Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
                   TableCache* table_cache, Iterator* iter, FileMetaData* meta) {
@@ -92,11 +40,8 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
     }
 
     TableBuilder* builder = new TableBuilder(options, file);
-    meta->smallest.DecodeFrom(iter->key());
     for (; iter->Valid(); iter->Next()) {
-      Slice key = iter->key();
-      meta->largest.DecodeFrom(key);
-      builder->Add(key, iter->value());
+      builder->Add(iter->key(), iter->value());
     }
 
     // Finish and check for builder errors
@@ -105,6 +50,10 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
       if (s.ok()) {
         meta->file_size = builder->FileSize();
         assert(meta->file_size > 0);
+        const TableProperties* props = builder->properties();
+        assert(props != NULL);
+        meta->smallest.DecodeFrom(props->first_key());
+        meta->largest.DecodeFrom(props->last_key());
       }
     } else {
       builder->Abandon();
@@ -122,7 +71,11 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
     file = NULL;
 
     if (s.ok()) {
-      s = LoadAndCheckTable(options, table_cache, meta);
+      // Verify that the table is usable
+      Iterator* it = table_cache->NewIterator(ReadOptions(), meta->number,
+                                              meta->file_size, meta->seq_off);
+      s = it->status();
+      delete it;
     }
   }
 
