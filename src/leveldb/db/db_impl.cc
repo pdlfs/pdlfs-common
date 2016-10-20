@@ -480,15 +480,20 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, VersionEdit* edit,
 
 // REQUIRES: mutex_ has been locked.
 Status DBImpl::WriteMemTable(MemTable* mem, VersionEdit* edit, Version* base) {
+  mutex_.AssertHeld();
+  SequenceNumber ignored_min_seq;
+  SequenceNumber ignored_max_seq;
   Iterator* iter = mem->NewIterator();
-  Status s = WriteLevel0Table(iter, edit, base, false);
+  Status s = WriteLevel0Table(iter, edit, base, &ignored_min_seq,
+                              &ignored_max_seq, false);
   delete iter;
   return s;
 }
 
 // REQUIRES: mutex_ has been locked.
 Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
-                                Version* base, bool force_level0) {
+                                Version* base, SequenceNumber* min_seq,
+                                SequenceNumber* max_seq, bool force_level0) {
   mutex_.AssertHeld();
   const uint64_t start_micros = env_->NowMicros();
   FileMetaData meta;
@@ -500,7 +505,8 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
-    s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+    s = BuildTable(dbname_, env_, options_, table_cache_, iter, min_seq,
+                   max_seq, &meta);
     mutex_.Lock();
   }
 
@@ -1298,7 +1304,10 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         Version* base = versions_->current();
         base->Ref();
         Iterator* iter = mem->NewIterator();
-        status = WriteLevel0Table(iter, &edit, base, true);
+        SequenceNumber ignored_min_seq;
+        SequenceNumber ignored_max_seq;
+        status = WriteLevel0Table(iter, &edit, base, &ignored_min_seq,
+                                  &ignored_max_seq, true);
         delete iter;
         base->Unref();
 
@@ -1490,6 +1499,8 @@ Status DBImpl::MakeRoomForWrite(bool force) {
 
 Status DBImpl::BulkInsert(Iterator* iter) {
   Status s;
+  SequenceNumber min_seq;
+  SequenceNumber max_seq;
   MutexLock l(&mutex_);
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
     bg_cv_.Wait();
@@ -1499,9 +1510,12 @@ Status DBImpl::BulkInsert(Iterator* iter) {
   VersionEdit edit;
   Version* base = versions_->current();
   base->Ref();
-  s = WriteLevel0Table(iter, &edit, base, true);
+  s = WriteLevel0Table(iter, &edit, base, &min_seq, &max_seq, true);
   base->Unref();
   if (s.ok()) {
+    if (max_seq > versions_->LastSequence()) {
+      versions_->SetLastSequence(max_seq);
+    }
     s = versions_->LogAndApply(&edit, &mutex_);
   }
 

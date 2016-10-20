@@ -14,9 +14,6 @@
 
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/env.h"
-#include "pdlfs-common/leveldb/db/db.h"
-#include "pdlfs-common/leveldb/db/dbformat.h"
-#include "pdlfs-common/leveldb/db/options.h"
 #include "pdlfs-common/leveldb/iterator.h"
 #include "pdlfs-common/leveldb/table_builder.h"
 #include "pdlfs-common/leveldb/table_properties.h"
@@ -24,7 +21,9 @@
 namespace pdlfs {
 
 Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
-                  TableCache* table_cache, Iterator* iter, FileMetaData* meta) {
+                  TableCache* table_cache, Iterator* iter,
+                  SequenceNumber* min_seq, SequenceNumber* max_seq,
+                  FileMetaData* meta) {
   Status s;
   assert(meta->number != 0);
   meta->file_size = 0;
@@ -54,12 +53,14 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
         assert(props != NULL);
         meta->smallest.DecodeFrom(props->first_key());
         meta->largest.DecodeFrom(props->last_key());
+        *min_seq = props->min_seq();
+        *max_seq = props->max_seq();
       }
     } else {
       builder->Abandon();
     }
-    delete builder;
 
+    delete builder;
     // Finish and check for file errors
     if (s.ok()) {
       s = file->Sync();
@@ -71,17 +72,32 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
     file = NULL;
 
     if (s.ok()) {
+      Table* table;
       // Verify that the table is usable
-      Iterator* it = table_cache->NewIterator(ReadOptions(), meta->number,
-                                              meta->file_size, meta->seq_off);
+      Iterator* it = table_cache->NewIterator(
+          ReadOptions(), meta->number, meta->file_size, meta->seq_off, &table);
       s = it->status();
+
+      if (s.ok() && options.paranoid_checks) {
+        const TableProperties* props = table->GetProperties();
+        if (props != NULL) {
+          if (props->first_key() != meta->smallest.Encode() ||
+              props->last_key() != meta->largest.Encode()) {
+            s = Status::Corruption("table properties fail to match");
+            table_cache->Evict(meta->number);
+          }
+        }
+      }
+
       delete it;
     }
   }
 
   // Check for input iterator errors
   if (!iter->status().ok()) {
-    s = iter->status();
+    if (s.ok()) {
+      s = iter->status();
+    }
   }
 
   if (s.ok() && meta->file_size > 0) {

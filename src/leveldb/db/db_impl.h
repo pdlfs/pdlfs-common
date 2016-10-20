@@ -81,6 +81,8 @@ class DBImpl : public DB {
   // bytes.
   void RecordReadSample(Slice key);
 
+  Status NewDB();
+
  private:
   friend class DB;
   struct CompactionState;
@@ -91,8 +93,6 @@ class DBImpl : public DB {
   Iterator* NewInternalIterator(const ReadOptions&,
                                 SequenceNumber* latest_snapshot,
                                 uint32_t* seed);
-
-  Status NewDB();
 
   // Recover the descriptor from persistent storage.  May do a significant
   // amount of work to recover recently logged updates.  Any changes to
@@ -114,6 +114,7 @@ class DBImpl : public DB {
 
   Status WriteMemTable(MemTable* mem, VersionEdit* edit, Version* base);
   Status WriteLevel0Table(Iterator* iter, VersionEdit* edit, Version* base,
+                          SequenceNumber* min_seq, SequenceNumber* max_seq,
                           bool force_level0);
 
   Status MakeRoomForWrite(bool force /* compact even if there is room? */);

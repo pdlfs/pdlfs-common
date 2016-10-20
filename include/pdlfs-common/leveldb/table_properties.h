@@ -38,8 +38,8 @@ class TableProperties {
     }
   }
 
-  std::string first_key() const { return first_key_; }
-  std::string last_key() const { return last_key_; }
+  Slice first_key() const { return first_key_; }
+  Slice last_key() const { return last_key_; }
   uint64_t min_seq() const { return min_seq_; }
   uint64_t max_seq() const { return max_seq_; }
 
