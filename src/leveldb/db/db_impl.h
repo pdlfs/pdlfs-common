@@ -81,7 +81,12 @@ class DBImpl : public DB {
   // bytes.
   void RecordReadSample(Slice key);
 
-  Status NewDB();
+  Status Get(const ReadOptions&, const Slice& key, Buffer* buf);
+  // The snapshots specified in read options are ignored by the following calls
+  Status Get(const ReadOptions&, const LookupKey& lkey, Buffer* buf);
+  Iterator* NewInternalIterator(const ReadOptions&,
+                                SequenceNumber* latest_snapshot,
+                                uint32_t* seed);
 
  private:
   friend class DB;
@@ -89,10 +94,7 @@ class DBImpl : public DB {
   struct InsertionState;
   struct Writer;
 
-  Status InternalGet(const ReadOptions&, const Slice& key, Buffer* buf);
-  Iterator* NewInternalIterator(const ReadOptions&,
-                                SequenceNumber* latest_snapshot,
-                                uint32_t* seed);
+  Status NewDB();
 
   // Recover the descriptor from persistent storage.  May do a significant
   // amount of work to recover recently logged updates.  Any changes to

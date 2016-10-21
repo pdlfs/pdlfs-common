@@ -1128,8 +1128,48 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
   return versions_->MaxNextLevelOverlappingBytes();
 }
 
-Status DBImpl::InternalGet(const ReadOptions& options, const Slice& key,
-                           Buffer* value) {
+Status DBImpl::Get(const ReadOptions& options, const LookupKey& lkey,
+                   Buffer* value) {
+  Status s;
+  MutexLock l(&mutex_);
+  MemTable* mem = mem_;
+  MemTable* imm = imm_;
+  Version* current = versions_->current();
+  if (mem != NULL) mem->Ref();
+  if (imm != NULL) imm->Ref();
+  current->Ref();
+
+  bool have_stat_update = false;
+  Version::GetStats stats;
+
+  // Unlock while reading from files and memtables
+  {
+    mutex_.Unlock();
+    // First look in the memtable, then in the immutable memtable (if any).
+    if (mem != NULL && mem->Get(lkey, value, options.limit, &s)) {
+      // Done
+    } else if (imm != NULL && imm->Get(lkey, value, options.limit, &s)) {
+      // Done
+    } else {
+      s = current->Get(options, lkey, value, &stats);
+      have_stat_update = true;
+    }
+    mutex_.Lock();
+  }
+
+  if (have_stat_update && current->UpdateStats(stats)) {
+    if (!options_.disable_seek_compaction) {
+      MaybeScheduleCompaction();
+    }
+  }
+  if (mem != NULL) mem->Unref();
+  if (imm != NULL) imm->Unref();
+  current->Unref();
+  return s;
+}
+
+Status DBImpl::Get(const ReadOptions& options, const Slice& key,
+                   Buffer* value) {
   Status s;
   MutexLock l(&mutex_);
   SequenceNumber snapshot;
@@ -1179,14 +1219,14 @@ Status DBImpl::InternalGet(const ReadOptions& options, const Slice& key,
 Status DBImpl::Get(const ReadOptions& options, const Slice& key,
                    std::string* value) {
   buffer::StringBuf buf(value);
-  Status s = InternalGet(options, key, &buf);
+  Status s = Get(options, key, &buf);
   return s;
 }
 
 Status DBImpl::Get(const ReadOptions& options, const Slice& key, Slice* value,
                    char* scratch, size_t scratch_size) {
   buffer::DirectBuf buf(scratch, scratch_size);
-  Status s = InternalGet(options, key, &buf);
+  Status s = Get(options, key, &buf);
   if (s.ok()) {
     *value = buf.Read();
     if (value->data() == NULL) {
