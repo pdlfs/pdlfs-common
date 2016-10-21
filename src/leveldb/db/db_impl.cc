@@ -852,6 +852,11 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   } else {
     compact->builder->Abandon();
   }
+
+  // Obtain table properties
+  const TableProperties* props = compact->builder->properties();
+  compact->current_output()->smallest.DecodeFrom(props->first_key());
+  compact->current_output()->largest.DecodeFrom(props->last_key());
   const uint64_t current_bytes = compact->builder->FileSize();
   compact->current_output()->file_size = current_bytes;
   compact->total_bytes += current_bytes;
@@ -1007,10 +1012,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
           break;
         }
       }
-      if (compact->builder->NumEntries() == 0) {
-        compact->current_output()->smallest.DecodeFrom(key);
-      }
-      compact->current_output()->largest.DecodeFrom(key);
+
       compact->builder->Add(key, input->value());
 
       // Close output file if it is big enough

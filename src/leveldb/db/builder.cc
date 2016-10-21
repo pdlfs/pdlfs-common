@@ -57,7 +57,6 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
     // Obtain table properties
     if (s.ok()) {
       const TableProperties* props = builder->properties();
-      assert(props != NULL);
       meta->smallest.DecodeFrom(props->first_key());
       meta->largest.DecodeFrom(props->last_key());
       *min_seq = props->min_seq();
