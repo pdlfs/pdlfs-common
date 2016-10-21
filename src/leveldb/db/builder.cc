@@ -49,15 +49,19 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
       if (s.ok()) {
         meta->file_size = builder->FileSize();
         assert(meta->file_size > 0);
-        const TableProperties* props = builder->properties();
-        assert(props != NULL);
-        meta->smallest.DecodeFrom(props->first_key());
-        meta->largest.DecodeFrom(props->last_key());
-        *min_seq = props->min_seq();
-        *max_seq = props->max_seq();
       }
     } else {
       builder->Abandon();
+    }
+
+    // Obtain table properties
+    if (s.ok()) {
+      const TableProperties* props = builder->properties();
+      assert(props != NULL);
+      meta->smallest.DecodeFrom(props->first_key());
+      meta->largest.DecodeFrom(props->last_key());
+      *min_seq = props->min_seq();
+      *max_seq = props->max_seq();
     }
 
     delete builder;
@@ -78,16 +82,18 @@ Status BuildTable(const std::string& dbname, Env* env, const DBOptions& options,
           ReadOptions(), meta->number, meta->file_size, meta->seq_off, &table);
       s = it->status();
 
-      if (s.ok() && options.paranoid_checks) {
+#if 0
+      if (s.ok()) {
         const TableProperties* props = table->GetProperties();
         if (props != NULL) {
           if (props->first_key() != meta->smallest.Encode() ||
               props->last_key() != meta->largest.Encode()) {
-            s = Status::Corruption("table properties fail to match");
+            s = Status::Corruption("Table properties fail to match MANIFEST");
             table_cache->Evict(meta->number);
           }
         }
       }
+#endif
 
       delete it;
     }
