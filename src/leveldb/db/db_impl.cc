@@ -553,7 +553,7 @@ void DBImpl::CompactMemTable() {
   base->Unref();
 
   if (s.ok() && shutting_down_.Acquire_Load()) {
-    s = Status::IOError("Deleting DB during memtable compaction");
+    s = Status::IOError("Deleting db during memtable compaction");
   }
 
   // Replace immutable memtable with the generated Table
@@ -1151,7 +1151,7 @@ Status DBImpl::Get(const ReadOptions& options, const LookupKey& lkey,
     } else if (imm != NULL && imm->Get(lkey, value, options.limit, &s)) {
       // Done
     } else {
-      s = current->Get(options, lkey, value, &stats);
+      current->Get(options, lkey, value, &s, &stats);
       have_stat_update = true;
     }
     mutex_.Lock();
@@ -1199,7 +1199,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     } else if (imm != NULL && imm->Get(lkey, value, options.limit, &s)) {
       // Done
     } else {
-      s = current->Get(options, lkey, value, &stats);
+      current->Get(options, lkey, value, &s, &stats);
       have_stat_update = true;
     }
     mutex_.Lock();
