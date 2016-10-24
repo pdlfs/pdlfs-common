@@ -146,6 +146,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
 DBImpl::~DBImpl() {
   // Wait for background work to finish
   mutex_.Lock();
+  Log(options_.info_log, "Shutting down ...");
   shutting_down_.Release_Store(this);  // Any non-NULL value is ok
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
     bg_cv_.Wait();
@@ -287,9 +288,8 @@ void DBImpl::DeleteObsoleteFiles() {
         Log(options_.info_log, "Drop type=%d #%lld\n", int(type),
             static_cast<unsigned long long>(number));
         if (!options_.gc_skip_deletion) {
-          std::string f = dbname_ + "/" + filenames[i];
-          Log(options_.info_log, "Delete %s", f.c_str());
-          env_->DeleteFile(f);
+          Log(options_.info_log, "Delete file=%s", filenames[i].c_str());
+          env_->DeleteFile(dbname_ + "/" + filenames[i]);
         }
       }
     }
