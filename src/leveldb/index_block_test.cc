@@ -285,52 +285,57 @@ static const Comparator* DumbComparator() {
 
 template <typename size_generator>
 static size_t GenerateRandomTable(MemTable* mem, Random* rnd,
-                                  size_generator* size_gen,
-                                  std::vector<std::string>* keys,
+                                  size_generator* pg_size,
+                                  std::vector<std::string>* keys = NULL,
+                                  size_t fixed_value_size = 256,
                                   bool hash = true) {
   uint64_t seq = rnd->Next();
   uint64_t prefix_seed = rnd->Next64();
   std::string K, IK, V;
-  std::set<uint64_t> prefiz;
+  std::set<uint64_t> prefix_set;
   char tmp[8];
   while (true) {
     uint64_t prefix = prefix_seed++;
     if (hash) {
       prefix = XXH64(&prefix_seed, sizeof(uint64_t), 0);
     }
-    if (prefiz.count(prefix) != 0) {
+    if (prefix_set.count(prefix) != 0) {
       continue;
     }
-    prefiz.insert(prefix);
+    prefix_set.insert(prefix);
     EncodeFixed64(tmp, prefix);
     K.resize(0);
     K.append(tmp, 8);
     uint64_t suffix_seed = rnd->Next64();
-    size_t num_suffiz = size_gen->Next();
-    std::set<uint64_t> suffiz;
-    while (suffiz.size() < num_suffiz) {
+    size_t num_suffixes = pg_size->Next();
+    std::set<uint64_t> suffix_set;
+    while (suffix_set.size() < num_suffixes) {
       uint64_t suffix = suffix_seed++;
       if (hash) {
         suffix = XXH64(&suffix_seed, sizeof(uint64_t), 0);
       }
-      if (suffiz.count(suffix) != 0) {
+      if (suffix_set.count(suffix) != 0) {
         continue;
       }
-      suffiz.insert(suffix);
+      suffix_set.insert(suffix);
       EncodeFixed64(tmp, suffix);
       K.resize(8);
       K.append(tmp, 8);
       V.resize(0);
-      test::RandomString(rnd, 256 - 24, &V);
+      test::RandomString(rnd, fixed_value_size - 24, &V);
       mem->Add(++seq, kTypeValue, K, V);
       IK.resize(0);
       AppendInternalKey(&IK, ParsedInternalKey(K, seq, kTypeValue));
-      keys->push_back(IK);
+      if (keys != NULL) {
+        keys->push_back(IK);
+      }
       if (mem->ApproximateMemoryUsage() >= (1.2 * (32 << 20))) {
-        return prefiz.size();
+        return prefix_set.size();
       }
     }
   }
+
+  return 0;
 }
 
 class TableBuilderWrapper {
@@ -369,11 +374,11 @@ class TableBuilderWrapper {
     delete it;
   }
 
-  size_t NumPrefixes() const { return num_prefiz; }
+  int NumPrefixes() const { return num_prefiz; }
 
-  size_t NumBlocks() const { return builder->NumBlocks(); }
+  int NumBlocks() const { return builder->NumBlocks(); }
 
-  size_t NumKeys() const { return builder->NumEntries(); }
+  int NumKeys() const { return builder->NumEntries(); }
 
   double TableSize() const {
     return static_cast<double>(builder->FileSize()) / 1024 / 1024;
@@ -387,8 +392,8 @@ class TableBuilderWrapper {
 
   void Report() {
     fprintf(stderr,
-            "Keys: %zu\tblocks: %zu\tkeys_per_block: %.2f\tprefixes: "
-            "%zu\tkeys_per_prefix: "
+            "Keys: %d\tblocks: %d\tkeys_per_block: %.2f\tprefixes: "
+            "%d\tkeys_per_prefix: "
             "%.2f\trestarts: %d\ttable_size: %.2fMB\tindex_size: %.2fKB\t"
             "index_bits_per_key: %.2f\n",
             NumKeys(), NumBlocks(),

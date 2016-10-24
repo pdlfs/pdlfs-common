@@ -28,6 +28,7 @@ class BlockBuilder;
 class BlockHandle;
 class IndexBuilder;
 class WritableFile;
+class TableProperties;
 
 class TableBuilder {
   typedef DBOptions Options;
@@ -62,6 +63,9 @@ class TableBuilder {
 
   // Return a reference to the embedded index builder.
   const IndexBuilder* index_builder() const;
+
+  // Return the properties of the table being built.
+  const TableProperties* properties() const;
 
   // Return non-ok iff some error has been detected.
   Status status() const;
