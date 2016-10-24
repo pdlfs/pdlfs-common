@@ -35,6 +35,22 @@ class ColumnarTest {
     delete db_;  //
   }
 
+  std::string Get(const Slice& key) {
+    std::string value;
+    Status s = db_->Get(ReadOptions(), key, &value);
+    if (!s.ok()) {
+      return "NOT_FOUND";
+    } else {
+      return value;
+    }
+  }
+
+  void CompactMemTable() {
+    Status s =
+        reinterpret_cast<ColumnarDBWrapper*>(db_)->TEST_CompactMemTable();
+    ASSERT_OK(s);
+  }
+
   typedef DBOptions Options;
   std::string dbname_;
   Options options_;
@@ -43,6 +59,17 @@ class ColumnarTest {
 
 TEST(ColumnarTest, Empty) {
   // Empty
+}
+
+TEST(ColumnarTest, Put) {
+  ASSERT_OK(db_->Put(WriteOptions(), "foo", "v1"));
+  ASSERT_OK(db_->Put(WriteOptions(), "bar", "v2"));
+  ASSERT_EQ(Get("foo"), "v1");
+  ASSERT_EQ(Get("bar"), "v2");
+
+  CompactMemTable();
+  ASSERT_EQ(Get("foo"), "v1");
+  ASSERT_EQ(Get("bar"), "v2");
 }
 
 }  // namespace pdlfs
