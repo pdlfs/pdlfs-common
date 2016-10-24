@@ -855,7 +855,8 @@ VersionSet::VersionSet(const std::string& dbname, const Options* options,
       descriptor_file_(NULL),
       descriptor_log_(NULL),
       dummy_versions_(this),
-      current_(NULL) {
+      current_(NULL),
+      compact_pointer_(config::kMaxMemCompactLevel+1) {
   AppendVersion(new Version(this));
 }
 
