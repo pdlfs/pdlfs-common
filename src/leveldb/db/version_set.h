@@ -138,7 +138,7 @@ class Version {
   int refs_;          // Number of live refs to this version
 
   // List of files per level
-  std::vector<FileMetaData*> files_[config::kNumLevels];
+  std::vector<std::vector<FileMetaData*>> files_;
 
   // Next file to compact based on seek stats.
   FileMetaData* file_to_compact_;
@@ -155,6 +155,7 @@ class Version {
         next_(this),
         prev_(this),
         refs_(0),
+        files_(config::kMaxMemCompactLevel+1),
         file_to_compact_(NULL),
         file_to_compact_level_(-1),
         compaction_score_(-1),
@@ -324,7 +325,7 @@ class VersionSet {
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
-  std::string compact_pointer_[config::kNumLevels];
+  std::vector<std::string> compact_pointer_;
 
   // No copying allowed
   VersionSet(const VersionSet&);
@@ -379,7 +380,7 @@ class Compaction {
   friend class Version;
   friend class VersionSet;
 
-  explicit Compaction(const Options* options, int level);
+  explicit Compaction(const Options* options, int level, VersionSet* vset);
 
   int level_;
   uint64_t max_output_file_size_;
@@ -404,7 +405,7 @@ class Compaction {
   // is that we are positioned at one of the file ranges for each
   // higher level than the ones involved in this compaction (i.e. for
   // all L >= level_ + 2).
-  size_t level_ptrs_[config::kNumLevels];
+  std::vector<size_t> level_ptrs_;
 };
 
 }  // namespace pdlfs
