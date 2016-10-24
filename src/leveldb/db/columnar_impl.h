@@ -124,6 +124,11 @@ class ColumnarDBWrapper : public ColumnarDB {
   virtual const Snapshot* GetSnapshot();
   virtual void ReleaseSnapshot(const Snapshot* snapshot);
 
+  // Extra methods that are not in the public DB interface
+
+  // Force current memtable contents to be compacted.
+  Status TEST_CompactMemTable();
+
  private:
   ColumnarDBImpl* impl_;
 };

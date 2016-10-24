@@ -1,0 +1,52 @@
+/*
+ * Copyright (c) 2015-2016 Carnegie Mellon University.
+ *
+ * All rights reserved.
+ *
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file. See the AUTHORS file for names of contributors.
+ */
+
+#include "columnar_impl.h"
+#include "db_impl.h"
+
+#include "pdlfs-common/cache.h"
+#include "pdlfs-common/dbfiles.h"
+#include "pdlfs-common/testharness.h"
+#include "pdlfs-common/testutil.h"
+
+namespace pdlfs {
+
+class ColumnarTest {
+ public:
+  ColumnarTest() {
+    dbname_ = test::TmpDir() + "/columnar_test";
+    DestroyDB(ColumnName(dbname_, 0), Options());
+    DestroyDB(dbname_, Options());
+    options_.create_if_missing = true;
+    options_.skip_lock_file = true;
+    ColumnStyle styles[1];
+    styles[0] = ColumnStyle::kLSM;
+    Status s = ColumnarDB::Open(options_, dbname_, styles, 1, &db_);
+    ASSERT_OK(s);
+  }
+
+  ~ColumnarTest() {
+    delete db_;  //
+  }
+
+  typedef DBOptions Options;
+  std::string dbname_;
+  Options options_;
+  DB* db_;
+};
+
+TEST(ColumnarTest, Empty) {
+  // Empty
+}
+
+}  // namespace pdlfs
+
+int main(int argc, char** argv) {
+  return ::pdlfs::test::RunAllTests(&argc, &argv);
+}

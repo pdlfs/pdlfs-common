@@ -383,6 +383,10 @@ void ColumnarDBWrapper::ReleaseSnapshot(const Snapshot* snapshot) {
   return impl_->ReleaseSnapshot(snapshot);
 }
 
+Status ColumnarDBWrapper::TEST_CompactMemTable() {
+  return impl_->TEST_CompactMemTable();
+}
+
 Status Column::Open(ColumnStyle style, RecoverMethod method,
                     const Options& options, const std::string& name,
                     Column** result) {
@@ -392,6 +396,7 @@ Status Column::Open(ColumnStyle style, RecoverMethod method,
   switch (style) {
     case kLSM:
       column = new ColumnImpl(new DBImpl(options, name));
+      break;
     default:
       return Status::NotSupported(Slice());
   }
