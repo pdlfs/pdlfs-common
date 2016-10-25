@@ -125,6 +125,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       logfile_number_(0),
       log_(NULL),
       seed_(0),
+      bg_compaction_paused_(false),
       bg_compaction_scheduled_(false),
       bulk_insert_in_progress_(false),
       manual_compaction_(NULL) {
@@ -667,8 +668,8 @@ bool DBImpl::HasCompaction() {
 
 void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
-  if (bg_compaction_scheduled_) {
-    // Already scheduled
+  if (bg_compaction_scheduled_ || bg_compaction_paused_) {
+    // Already scheduled or paused
   } else if (shutting_down_.Acquire_Load()) {
     // DB is being deleted; no more background compactions
   } else if (!bg_error_.ok()) {
@@ -692,6 +693,8 @@ void DBImpl::BackgroundCall() {
     // No more background work when shutting down.
   } else if (!bg_error_.ok()) {
     // No more background work after a background error.
+  } else if (bulk_insert_in_progress_) {
+    // Abort
   } else {
     BackgroundCompaction();
   }
@@ -706,12 +709,6 @@ void DBImpl::BackgroundCall() {
 
 void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
-
-  // Only a single background compaction may be scheduled at a time.
-  // And we make sure this one don't interfere with an ongoing bulk insertion.
-  while (bulk_insert_in_progress_) {
-    bg_cv_.Wait();
-  }
 
   if (imm_ != NULL) {
     CompactMemTable();
@@ -1029,7 +1026,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   }
 
   if (status.ok() && shutting_down_.Acquire_Load()) {
-    status = Status::IOError("Deleting DB during compaction");
+    status = Status::IOError("Deleting db during compaction");
   }
   if (status.ok() && compact->builder != NULL) {
     status = FinishCompactionOutputFile(compact, input);
@@ -1332,6 +1329,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
       }
       mutex_.Lock();
     } else {
+      // Temporarily disable any background compaction
+      bg_compaction_paused_ = true;
       while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
         bg_cv_.Wait();
       }
@@ -1365,6 +1364,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
       mem->Unref();
       bulk_insert_in_progress_ = false;
+
+      // Restart background compaction
+      bg_compaction_paused_ = false;
       MaybeScheduleCompaction();
       bg_cv_.SignalAll();
     }
@@ -1544,6 +1546,9 @@ Status DBImpl::BulkInsert(Iterator* iter) {
   SequenceNumber min_seq;
   SequenceNumber max_seq;
   MutexLock l(&mutex_);
+
+  // Temporarily disable any background compaction
+  bg_compaction_paused_ = true;
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
     bg_cv_.Wait();
   }
@@ -1566,6 +1571,9 @@ Status DBImpl::BulkInsert(Iterator* iter) {
   }
 
   bulk_insert_in_progress_ = false;
+
+  // Restart background compaction
+  bg_compaction_paused_ = false;
   MaybeScheduleCompaction();
   bg_cv_.SignalAll();
   return s;
@@ -1826,10 +1834,6 @@ Status DBImpl::InsertLevel0Tables(InsertionState* insert) {
     }
   }
 
-  if (s.ok() && shutting_down_.Acquire_Load()) {
-    s = Status::IOError("Deleting DB during bulk operation");
-  }
-
   if (s.ok()) {
     const int level = 0;
     VersionEdit edit;
@@ -1872,6 +1876,9 @@ Status DBImpl::AddL0Tables(const InsertOptions& options,
   std::sort(names->begin(), names->end());
 
   MutexLock l(&mutex_);
+
+  // Temporarily disable any background compaction
+  bg_compaction_paused_ = true;
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
     bg_cv_.Wait();
   }
@@ -1879,8 +1886,9 @@ Status DBImpl::AddL0Tables(const InsertOptions& options,
   bulk_insert_in_progress_ = true;
   s = InsertLevel0Tables(&insert);
   bulk_insert_in_progress_ = false;
-  // A bulk insertion may introduce too many files in Level-0,
-  // so schedule another compaction if needed.
+
+  // Restart background compaction
+  bg_compaction_paused_ = false;
   MaybeScheduleCompaction();
   bg_cv_.SignalAll();
   return s;
