@@ -766,7 +766,7 @@ class VersionSet::Builder {
       v->files_.push_back(std::vector<FileMetaData *>());
     }
     if(vset_->compact_pointer_.size()<v->files_.size()) {
-      vset_->compact_pointer_.reserve(v->files_.size());
+      vset_->compact_pointer_.resize(v->files_.size());
     }
   }
 
