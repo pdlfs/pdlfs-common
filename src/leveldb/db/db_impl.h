@@ -215,7 +215,7 @@ class DBImpl : public DB {
       this->bytes_written += c.bytes_written;
     }
   };
-  CompactionStats stats_[config::kNumLevels];
+  std::vector<CompactionStats> stats_;
 
   // No copying allowed
   void operator=(const DBImpl&);

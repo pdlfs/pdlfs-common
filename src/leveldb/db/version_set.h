@@ -113,6 +113,7 @@ class Version {
                                  const Slice& largest_user_key);
 
   int NumFiles(int level) const { return files_[level].size(); }
+  inline int NumLevels() const { return files_.size(); }
 
   // Return a human readable string that describes this version's contents.
   std::string DebugString() const;

@@ -127,7 +127,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       seed_(0),
       bg_compaction_scheduled_(false),
       bulk_insert_in_progress_(false),
-      manual_compaction_(NULL) {
+      manual_compaction_(NULL),
+      stats_(config::kMaxMemCompactLevel+1) {
   if (!options_.no_memtable) {
     mem_ = new MemTable(internal_comparator_);
     mem_->Ref();
@@ -490,6 +491,7 @@ Status DBImpl::WriteMemTable(MemTable* mem, VersionEdit* edit, Version* base) {
   return s;
 }
 
+//TODO change CompactionStats
 // REQUIRES: mutex_ has been locked.
 Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
                                 Version* base, SequenceNumber* min_seq,
@@ -537,6 +539,9 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
+  if(level>=stats_.size()) {
+    stats_.resize(level+1);
+  }
   stats_[level].Add(stats);
   return s;
 }
@@ -579,7 +584,7 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
   {
     MutexLock l(&mutex_);
     Version* base = versions_->current();
-    for (int level = 1; level < config::kNumLevels; level++) {
+    for (int level = 1; level < base->NumLevels(); level++) {
       if (base->OverlapInLevel(level, begin, end)) {
         max_level_with_files = level;
       }
@@ -594,7 +599,7 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
 void DBImpl::TEST_CompactRange(int level, const Slice* begin,
                                const Slice* end) {
   assert(level >= 0);
-  assert(level + 1 < config::kNumLevels);
+  assert(level + 1 < versions_->current()->NumLevels());
 
   InternalKey begin_storage, end_storage;
 
@@ -909,6 +914,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
 
+//TODO change stat to have changable length
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
@@ -1052,7 +1058,12 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   }
 
   mutex_.Lock();
-  stats_[compact->compaction->level() + 1].Add(stats);
+
+  int level = compact->compaction->level() + 1;
+  if(level>=stats_.size()) {
+    stats_.resize(level+1);
+  }
+  stats_[level].Add(stats);
 
   if (status.ok()) {
     status = InstallCompactionResults(compact);
@@ -1584,7 +1595,7 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     in.remove_prefix(strlen("num-files-at-level"));
     uint64_t level;
     bool ok = ConsumeDecimalNumber(&in, &level) && in.empty();
-    if (!ok || level >= config::kNumLevels) {
+    if (!ok || level >= versions_->current()->NumLevels()) {
       return false;
     } else {
       char buf[100];
@@ -1600,7 +1611,8 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
              "Level  Files Size(MB) Time(sec) Read(MB) Write(MB)\n"
              "--------------------------------------------------\n");
     value->append(buf);
-    for (int level = 0; level < config::kNumLevels; level++) {
+    assert(stats_.size()>=versions_->current()->NumLevels());
+    for (int level = 0; level < versions_->current()->NumLevels(); level++) {
       int files = versions_->NumLevelFiles(level);
       if (stats_[level].micros > 0 || files > 0) {
         snprintf(buf, sizeof(buf), "%3d %8d %8.0f %9.0f %8.0f %9.0f\n", level,
@@ -2008,6 +2020,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
         impl->log_ = new log::Writer(lfile);
       }
     }
+    //TODO why LogAndApply again
     if (s.ok()) {
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }

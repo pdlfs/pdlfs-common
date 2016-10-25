@@ -764,7 +764,9 @@ class VersionSet::Builder {
     // Make sure the highest level is always empty
     if(!v->files_.back().empty()) {
       v->files_.push_back(std::vector<FileMetaData *>());
-      vset_->compact_pointer_.push_back(std::string());
+    }
+    if(vset_->compact_pointer_.size()<v->files_.size()) {
+      vset_->compact_pointer_.reserve(v->files_.size());
     }
   }
 
