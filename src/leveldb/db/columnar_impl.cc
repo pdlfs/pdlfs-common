@@ -25,6 +25,8 @@ ColumnImpl::~ColumnImpl() { delete db_; }
 
 ColumnarDBWrapper::~ColumnarDBWrapper() { delete impl_; }
 
+ColumnSelector::~ColumnSelector() {}
+
 Status ColumnImpl::WriteTableStart() {
   // TODO
   return Status::OK();
@@ -191,8 +193,12 @@ Status ColumnarDBImpl::WriteToColumn(MemTable* mem, size_t column_index) {
 }
 
 Column* ColumnarDBImpl::PickColumn(const Slice& key) {
-  // TODO
-  return columns_[0];
+  size_t column_index = selector_->Select(key);
+  if (column_index < columns_.size()) {
+    return columns_[column_index];
+  } else {
+    return NULL;
+  }
 }
 
 namespace {
@@ -417,13 +423,17 @@ Status Column::Open(ColumnStyle style, RecoverMethod method,
 }
 
 Status ColumnarDB::Open(const Options& options, const std::string& dbname,
+                        const ColumnSelector* selector,
                         ColumnStyle* column_styles, size_t num_columns,
                         DB** dbptr) {
   *dbptr = NULL;
-  if (num_columns == 0) {
-    return Status::InvalidArgument("No columns");
+  if (selector == NULL || column_styles == NULL) {
+    return Status::InvalidArgument("No column configurations");
+  } else if (num_columns == 0) {
+    return Status::InvalidArgument("No column defined");
   }
   ColumnarDBImpl* impl = new ColumnarDBImpl(options, dbname);
+  impl->selector_ = selector;
   impl->mutex_.Lock();
   Column::RecoverMethod method;
   Status s = impl->PreRecover(&method);

@@ -103,6 +103,7 @@ class ColumnarDBImpl : public DBImpl {
 
   Column* PickColumn(const Slice& key);
 
+  const ColumnSelector* selector_;
   std::vector<Column*> columns_;
 };
 

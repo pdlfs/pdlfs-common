@@ -13,6 +13,20 @@
 
 namespace pdlfs {
 
+// A selector object that routes keys to columns.
+class ColumnSelector {
+ public:
+  virtual ~ColumnSelector();
+
+  // Return the column index for the specified key.
+  virtual size_t Select(const Slice& k) const = 0;
+
+  // The name of the selector.  Used to check for selector
+  // mismatches (i.e., a DB created with one selector is
+  // accessed using a different selector).
+  virtual const char* Name() const = 0;
+};
+
 enum ColumnStyle {
   kLSMStyle,    // Both keys and values are stores as LSM
   kLSMKeyStyle  // Only keys are stores as LSM
@@ -21,7 +35,8 @@ enum ColumnStyle {
 class ColumnarDB : public DB {
  public:
   static Status Open(const Options& options, const std::string& dbname,
-                     ColumnStyle*, size_t num_columns, DB**);
+                     const ColumnSelector*, ColumnStyle*, size_t num_columns,
+                     DB**);
 
   ColumnarDB() {}
   virtual ~ColumnarDB();
