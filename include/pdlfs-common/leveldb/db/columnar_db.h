@@ -13,7 +13,10 @@
 
 namespace pdlfs {
 
-enum ColumnStyle { kLSM, kLSMKey, kLog };
+enum ColumnStyle {
+  kLSMStyle,    // Both keys and values are stores as LSM
+  kLSMKeyStyle  // Only keys are stores as LSM
+};
 
 class ColumnarDB : public DB {
  public:

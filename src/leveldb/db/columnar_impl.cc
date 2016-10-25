@@ -394,7 +394,7 @@ Status Column::Open(ColumnStyle style, RecoverMethod method,
 
   Column* column = NULL;
   switch (style) {
-    case kLSM:
+    case kLSMStyle:
       column = new ColumnImpl(new DBImpl(options, name));
       break;
     default:

@@ -26,7 +26,7 @@ class ColumnarTest {
     options_.create_if_missing = true;
     options_.skip_lock_file = true;
     ColumnStyle styles[1];
-    styles[0] = ColumnStyle::kLSM;
+    styles[0] = kLSMStyle;
     Status s = ColumnarDB::Open(options_, dbname_, styles, 1, &db_);
     ASSERT_OK(s);
   }
