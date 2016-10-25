@@ -661,8 +661,10 @@ bool DBImpl::HasCompaction() {
     return true;
   } else if (options_.disable_compaction) {
     return false;
+  } else if (versions_->NeedsCompaction(!options_.disable_seek_compaction)) {
+    return true;
   } else {
-    return versions_->NeedsCompaction(!options_.disable_seek_compaction);
+    return false;  // No compaction needed
   }
 }
 
@@ -678,7 +680,11 @@ void DBImpl::MaybeScheduleCompaction() {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
-    env_->Schedule(&DBImpl::BGWork, this);
+    if (options_.compaction_pool != NULL) {
+      options_.compaction_pool->Schedule(&DBImpl::BGWork, this);
+    } else {
+      env_->Schedule(&DBImpl::BGWork, this);
+    }
   }
 }
 
