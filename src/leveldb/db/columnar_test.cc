@@ -17,6 +17,13 @@
 
 namespace pdlfs {
 
+class TestColumnSelector : public ColumnSelector {
+ public:
+  virtual const char* Name() const { return "leveldb.TestColumnSelector"; }
+
+  virtual size_t Select(const Slice& k) const { return 0; }
+};
+
 class ColumnarTest {
  public:
   ColumnarTest() {
@@ -27,7 +34,8 @@ class ColumnarTest {
     options_.skip_lock_file = true;
     ColumnStyle styles[1];
     styles[0] = kLSMStyle;
-    Status s = ColumnarDB::Open(options_, dbname_, styles, 1, &db_);
+    Status s =
+        ColumnarDB::Open(options_, dbname_, &column_selector_, styles, 1, &db_);
     ASSERT_OK(s);
   }
 
@@ -52,6 +60,7 @@ class ColumnarTest {
   }
 
   typedef DBOptions Options;
+  TestColumnSelector column_selector_;
   std::string dbname_;
   Options options_;
   DB* db_;
