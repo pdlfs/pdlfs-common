@@ -8,8 +8,6 @@
  */
 
 #include "pdlfs-common/pdlfs_config.h"
-
-#if defined(RADOS)
 #include "rados_common.h"
 
 namespace pdlfs {
@@ -29,5 +27,3 @@ void RadosOpCtx::IO_safe(rados_completion_t comp, void* arg) {
 
 }  // namespace rados
 }  // namespace pdlfs
-
-#endif  // RADOS

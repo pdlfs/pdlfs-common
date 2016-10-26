@@ -9,7 +9,6 @@
 
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
-#if defined(MERCURY)
 #include "mercury_rpc.h"
 
 namespace pdlfs {
@@ -421,5 +420,3 @@ void MercuryRPC::LocalLooper::BGLoop() {
 
 }  // namespace rpc
 }  // namespace pdlfs
-
-#endif
