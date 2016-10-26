@@ -17,7 +17,6 @@
 
 #include "rados_conn.h"
 
-#if defined(PDLFS_RADOS)
 #include <rados/librados.h>
 
 namespace pdlfs {
@@ -299,5 +298,3 @@ class RadosAsyncWritableFile : public WritableFile {
 
 }  // namespace rados
 }  // namespace pdlfs
-
-#endif  // PDLFS_RADOS

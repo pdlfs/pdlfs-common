@@ -14,7 +14,9 @@
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/port.h"
+#ifdef PDLFS_RADOS
 #include "pdlfs-common/rados/rados_ld.h"
+#endif
 #if defined(PDLFS_PLATFORM_POSIX)
 #include "posix_logger.h"
 #endif

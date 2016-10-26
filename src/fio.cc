@@ -12,7 +12,9 @@
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
+#ifdef PDLFS_RADOS
 #include "pdlfs-common/rados/rados_ld.h"
+#endif
 #include "pdlfs-common/strutil.h"
 
 #if defined(PDLFS_PLATFORM_POSIX)
