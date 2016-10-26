@@ -9,7 +9,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#if defined(MARGO) && defined(MERCURY)
+#if defined(PDLFS_MARGO_RPC) && defined(MERCURY)
 #include <abt.h>
 #include <margo.h>
 #include "mercury_rpc.h"

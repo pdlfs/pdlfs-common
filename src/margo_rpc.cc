@@ -9,7 +9,7 @@
 
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
-#if defined(MARGO) && defined(MERCURY)
+#if defined(PDLFS_MARGO_RPC) && defined(MERCURY)
 #include "margo_rpc.h"
 
 namespace pdlfs {

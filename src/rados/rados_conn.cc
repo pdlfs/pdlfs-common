@@ -26,13 +26,13 @@ RadosOptions::RadosOptions()
 
 RadosConn::~RadosConn() {
   if (cluster_ != NULL) {
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
     rados_shutdown(cluster_);
 #endif
   }
 }
 
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
 static void rados_conf_set_(rados_t cluster, const char* opt, int val) {
   char tmp[20];
   snprintf(tmp, sizeof(tmp), "%d", val);
@@ -41,7 +41,7 @@ static void rados_conf_set_(rados_t cluster, const char* opt, int val) {
 #endif
 
 Status RadosConn::Open(const RadosOptions& options) {
-#if !defined(RADOS)
+#if !defined(PDLFS_RADOS)
   return Status::NotSupported(Slice());
 #else
   int r = rados_create(&cluster_, NULL);
@@ -90,7 +90,7 @@ Status RadosConn::OpenEnv(Env** result, const std::string& rados_root,
 
 Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name,
                           bool force_sync) {
-#if !defined(RADOS)
+#if !defined(PDLFS_RADOS)
   return Status::NotSupported(Slice());
 #else
   rados_ioctx_t ioctx;
@@ -114,7 +114,7 @@ Status RadosConn::OpenOsd(OSD** result, const std::string& pool_name,
 
 Status RadosConn::OpenFio(Fio** result, const std::string& pool_name,
                           bool force_sync) {
-#if !defined(RADOS)
+#if !defined(PDLFS_RADOS)
   return Status::NotSupported(Slice());
 #else
   rados_ioctx_t ioctx;

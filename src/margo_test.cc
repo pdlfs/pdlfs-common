@@ -11,7 +11,7 @@
 #include "pdlfs-common/testharness.h"
 #include "pdlfs-common/testutil.h"
 
-#if defined(MARGO) && defined(MERCURY)
+#if defined(PDLFS_MARGO_RPC) && defined(MERCURY)
 #include "margo_rpc.h"
 namespace pdlfs {
 namespace rpc {
@@ -117,11 +117,11 @@ TEST(MargoTest, SendReceive) {
 #endif
 
 int main(int argc, char** argv) {
-#if defined(MARGO)
+#if defined(PDLFS_MARGO_RPC)
   ABT_init(1, argv);
 #endif
   int r = ::pdlfs::test::RunAllTests(&argc, &argv);
-#if defined(MARGO)
+#if defined(PDLFS_MARGO_RPC)
   ABT_finalize();
 #endif
   return r;

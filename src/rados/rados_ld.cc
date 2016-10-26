@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
 typedef pdlfs::rados::RadosOptions options_t;
 typedef pdlfs::rados::RadosConn conn_t;
 typedef pdlfs::port::Mutex mutex_t;
@@ -88,7 +88,7 @@ static void ParseOptions(std::map<std::string, std::string>* options,
 
 void* PDLFS_Load_rados_env(const char* conf_str) {
   pdlfs::Env* env = NULL;
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
   std::map<std::string, std::string> options;
   ParseOptions(&options, conf_str);
   conn_t* conn = OpenRadosConn(options);
@@ -119,7 +119,7 @@ void* PDLFS_Load_rados_env(const char* conf_str) {
 
 void* PDLFS_Load_rados_fio(const char* conf_str) {
   pdlfs::Fio* fio = NULL;
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
   std::map<std::string, std::string> options;
   ParseOptions(&options, conf_str);
   conn_t* conn = OpenRadosConn(options);

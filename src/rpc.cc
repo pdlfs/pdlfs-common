@@ -14,7 +14,7 @@
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/rpc.h"
-#if defined(MARGO) && defined(MERCURY)
+#if defined(PDLFS_MARGO_RPC) && defined(MERCURY)
 #include "margo_rpc.h"
 #endif
 #if defined(MERCURY)
@@ -99,7 +99,7 @@ namespace rpc {
 If::~If() {}
 
 namespace {
-#if defined(MARGO) && defined(MERCURY)
+#if defined(PDLFS_MARGO_RPC) && defined(MERCURY)
 class MargoRPCImpl : public RPC {
   MargoRPC* rpc_;
 
@@ -200,7 +200,7 @@ RPC* RPC::Open(const RPCOptions& raw_options) {
               : "NULL");
 #endif
   RPC* rpc = NULL;
-#if defined(MARGO) && defined(MERCURY)
+#if defined(PDLFS_MARGO_RPC) && defined(MERCURY)
   if (options.impl == kMargoRPC) {
     rpc = new rpc::MargoRPCImpl(options);
   }

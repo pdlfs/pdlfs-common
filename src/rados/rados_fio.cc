@@ -9,7 +9,7 @@
 
 #include "pdlfs-common/pdlfs_config.h"
 
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
 #include "rados_fio.h"
 
 namespace pdlfs {
@@ -460,4 +460,4 @@ Status RadosFio::Pread(const Slice& fentry_encoding, Handle* fh, Slice* result,
 }  // namespace rados
 }  // namespace pdlfs
 
-#endif  // RADOS
+#endif  // PDLFS_RADOS

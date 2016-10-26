@@ -14,7 +14,7 @@
 
 #include "rados_conn.h"
 
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
 namespace pdlfs {
 namespace rados {
 

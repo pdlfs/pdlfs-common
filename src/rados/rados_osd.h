@@ -11,7 +11,7 @@
 
 #include "pdlfs-common/pdlfs_config.h"
 
-#if defined(RADOS)
+#if defined(PDLFS_RADOS)
 #include "rados_common.h"
 #include "rados_conn.h"
 
@@ -47,4 +47,4 @@ class RadosOsd : public OSD {
 }  // namespace rados
 }  // namespace pdlfs
 
-#endif  // RADOS
+#endif  // PDLFS_RADOS
