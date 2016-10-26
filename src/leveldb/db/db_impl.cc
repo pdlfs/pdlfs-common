@@ -1641,6 +1641,11 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
   } else if (in == "sstables") {
     *value = versions_->current()->DebugString();
     return true;
+  } else if (in == "num-levels") {
+    char buf[10];
+    snprintf(buf, sizeof(buf), "%d", versions_->current()->NumLevels());
+    *value = buf;
+    return true;
   }
 
   return false;

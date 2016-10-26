@@ -571,7 +571,7 @@ void Version::GetOverlappingInputs(int level, const InternalKey* begin,
 
 std::string Version::DebugString() const {
   std::string r;
-  for (int level = 0; level < config::kNumLevels; level++) {
+  for (int level = 0; level < files_.size(); level++) {
     // E.g.,
     //   --- level 1 ---
     //   17:123['a' .. 'd']
@@ -1316,15 +1316,21 @@ int VersionSet::NumLevelFiles(int level) const {
   return current_->files_[level].size();
 }
 
-//TODO change this
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   // Update code if kNumLevels changes
-  assert(config::kNumLevels == 7);
-  snprintf(scratch->buffer, sizeof(scratch->buffer),
-           "files[ %d %d %d %d %d %d %d ]", int(current_->files_[0].size()),
-           int(current_->files_[1].size()), int(current_->files_[2].size()),
-           int(current_->files_[3].size()), int(current_->files_[4].size()),
-           int(current_->files_[5].size()), int(current_->files_[6].size()));
+  size_t size = sizeof(scratch->buffer);
+  char *next_position = scratch->buffer;
+  int number = sprintf(next_position, "files[ ");
+  size -= number;
+  next_position += number;
+  for(int level=0; level<current_->files_.size()&&size>0; ++level) {
+    number = snprintf(next_position, size, " %d", int(current_->files_[level].size()));
+    size -= number;
+    next_position += number;
+  }
+  if(size>2) {
+    sprintf(next_position, " ]");
+  }
   return scratch->buffer;
 }
 

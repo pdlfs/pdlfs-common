@@ -405,9 +405,16 @@ class DBTest {
     return atoi(property.c_str());
   }
 
+  int TotalLevels() {
+    std::string property;
+    db_->GetProperty("leveldb.num-levels", &property);
+    return atoi(property.c_str());
+  }
+
   int TotalTableFiles() {
     int result = 0;
-    for (int level = 0; level < config::kNumLevels; level++) {
+    int total_level = TotalLevels();
+    for (int level = 0; level < total_level; level++) {
       result += NumTableFilesAtLevel(level);
     }
     return result;
@@ -417,7 +424,8 @@ class DBTest {
   std::string FilesPerLevel() {
     std::string result;
     int last_non_zero_offset = 0;
-    for (int level = 0; level < config::kNumLevels; level++) {
+    int total_level = TotalLevels();
+    for (int level = 0; level < total_level; level++) {
       int f = NumTableFilesAtLevel(level);
       char buf[100];
       snprintf(buf, sizeof(buf), "%s%d", (level ? "," : ""), f);
@@ -460,7 +468,9 @@ class DBTest {
   // Prevent pushing of new sstables into deeper levels by adding
   // tables that cover a specified range to all levels.
   void FillLevels(const std::string& smallest, const std::string& largest) {
-    MakeTables(config::kNumLevels, smallest, largest);
+    int total_level = TotalLevels();
+    //TODO changing this may not be correct
+    MakeTables(total_level, smallest, largest);
   }
 
   void DumpFileCounts(const char* label) {
@@ -468,7 +478,8 @@ class DBTest {
     fprintf(
         stderr, "maxoverlap: %lld\n",
         static_cast<long long>(dbfull()->TEST_MaxNextLevelOverlappingBytes()));
-    for (int level = 0; level < config::kNumLevels; level++) {
+    int total_level = TotalLevels();
+    for (int level = 0; level < total_level; level++) {
       int num = NumTableFilesAtLevel(level);
       if (num > 0) {
         fprintf(stderr, "  level %3d : %d files\n", level, num);
