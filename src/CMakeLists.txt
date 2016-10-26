@@ -151,14 +151,14 @@ elseif (${PDLFS_OS_EDITED} MATCHES "^CYGWIN_")
 endif ()
 
 #
-# setup and configure pdlfs_config_expand.h.in and pdlfs_platform_expand.h.in
+# setup and configure pdlfs_config_expand.h.in and pdlfs_platform.h.in
 #
 set (PDLFS_PLATFORM_${PDLFS_PLATFORM} 1)
 set (PDLFS_OS_${PDLFS_OS_EDITED} 1)
 configure_file ("../include/pdlfs-common/pdlfs_config_expand.h.in"
                 "../include/pdlfs-common/${PDLFS_NAME}_config_expand.h" @ONLY)
-configure_file ("../include/pdlfs-common/pdlfs_platform_expand.h.in"
-                "../include/pdlfs-common/pdlfs_platform_expand.h" @ONLY)
+configure_file ("../include/pdlfs-common/pdlfs_platform.h.in"
+                "../include/pdlfs-common/pdlfs_platform.h" @ONLY)
 
 #
 # prepend the subdir name to files that live in subdirs (e.g. leveldb/)
@@ -284,7 +284,7 @@ install (DIRECTORY ../include/pdlfs-common
          FILES_MATCHING PATTERN "*.h")
 install (FILES
   "${CMAKE_CURRENT_BINARY_DIR}/../include/pdlfs-common/${PDLFS_NAME}_config_expand.h"
-  "${CMAKE_CURRENT_BINARY_DIR}/../include/pdlfs-common/pdlfs_platform_expand.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/../include/pdlfs-common/pdlfs_platform.h"
          DESTINATION include/pdlfs-common)
 
 #
