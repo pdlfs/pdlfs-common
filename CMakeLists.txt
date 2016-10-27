@@ -108,7 +108,7 @@ include (xpkg-import)
 
 if (PDLFS_GFLAGS)
     find_package(gflags REQUIRED)
-    if (NOT gflags_FOUND)
+    if (NOT TARGET gflags)
         message (FATAL_ERROR
         "gflags not found try setting -D GFLAGS_{INCLUDE,LIBRARY}_DIR")
     endif ()
@@ -132,7 +132,7 @@ endif ()
 
 if (PDLFS_RADOS)
     find_package(RADOS MODULE REQUIRED)
-    if (NOT RADOS_FOUND)
+    if (NOT TARGET rados)
         message (FATAL_ERROR
         "rados not found try setting -D RADOS_{INCLUDE,LIBRARY}_DIR")
     endif ()
@@ -141,7 +141,7 @@ endif ()
 
 if (PDLFS_SNAPPY)
     find_package(Snappy MODULE REQUIRED)
-    if (NOT Snappy_FOUND)
+    if (NOT TARGET snappy)
         message (FATAL_ERROR
         "snappy not found try setting -D SNAPPY_{INCLUDE,LIBRARY}_DIR")
     endif ()
@@ -152,6 +152,7 @@ endif ()
 # sanitizer config (XXX: does not probe compiler to see if sanitizer flags
 # are supported... )
 #
+###set (as_flags "-fsanitize=address,leak -O1 -fno-omit-frame-pointer")
 set (as_flags "-fsanitize=address -O1 -fno-omit-frame-pointer")
 set (ts_flags "-fsanitize=thread  -O1 -fno-omit-frame-pointer")
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
