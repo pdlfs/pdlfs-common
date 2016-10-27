@@ -9,6 +9,7 @@
 
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
+
 #include "mercury_rpc.h"
 
 namespace pdlfs {
