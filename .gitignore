@@ -18,3 +18,4 @@ src/Makefile
 src/cmake_install.cmake
 src/pdlfs-common-config-version.cmake
 src/pdlfs-common-config.cmake
+.settings
