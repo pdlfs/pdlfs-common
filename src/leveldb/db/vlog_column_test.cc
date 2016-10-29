@@ -9,7 +9,6 @@
 
 #include "columnar_impl.h"
 #include "db_impl.h"
-
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/dbfiles.h"
 #include "pdlfs-common/testharness.h"
@@ -44,7 +43,6 @@ class VLogColumnTest {
     delete db_;  //
   }
 
-  /*
   std::string Get(const Slice& key) {
     std::string value;
     Status s = db_->Get(ReadOptions(), key, &value);
@@ -54,7 +52,6 @@ class VLogColumnTest {
       return value;
     }
   }
-  */
 
   void CompactMemTable() {
     Status s =
@@ -76,14 +73,13 @@ TEST(VLogColumnTest, Empty) {
 TEST(VLogColumnTest, Put) {
   ASSERT_OK(db_->Put(WriteOptions(), "foo", "v1"));
   ASSERT_OK(db_->Put(WriteOptions(), "bar", "v2"));
-  // ASSERT_EQ(Get("foo"), "v1");
-  // ASSERT_EQ(Get("bar"), "v2");
-
-  CompactMemTable();
-  /*
   ASSERT_EQ(Get("foo"), "v1");
   ASSERT_EQ(Get("bar"), "v2");
-  */
+
+  CompactMemTable();
+
+  ASSERT_EQ(Get("foo"), "v1");
+  ASSERT_EQ(Get("bar"), "v2");
 }
 
 }  // namespace pdlfs

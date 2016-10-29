@@ -15,13 +15,6 @@
 namespace pdlfs {
 
 typedef std::vector<std::pair<Slice, std::string> > KeyValOffVec;
-// TODO: borrowed from memtable.cc
-static Slice GetLengthPrefixedSlice(const char* data) {
-  uint32_t len;
-  const char* p = data;
-  p = GetVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
-  return Slice(p, len);
-}
 
 class KeyValOffsetIterator : public Iterator {
  public:
@@ -34,12 +27,10 @@ class KeyValOffsetIterator : public Iterator {
   virtual void Next() { ++iter_; }
   virtual void Prev() {}
   virtual Slice key() const {
-    // return GetLengthPrefixedSlice(iter_->first.data());
+    // return GetLengthPrefixedSlice(iter_->first.data());ter->value().data(
     return iter_->first;
   }
-  virtual Slice value() const {
-    return GetLengthPrefixedSlice(iter_->second.data());
-  }
+  virtual Slice value() const { return Slice(iter_->second.data(), 16); }
 
   virtual Status status() const { return Status::OK(); }
 

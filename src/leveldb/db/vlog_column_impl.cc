@@ -9,7 +9,7 @@
 
 // TODO: clean header files
 #include "vlog_column_impl.h"
-
+// #include "dbformat.h"
 #include <pdlfs-common/coding.h>
 #include <pdlfs-common/dbfiles.h>
 #include <pdlfs-common/env.h>
@@ -18,6 +18,7 @@
 #include <pdlfs-common/log_writer.h>
 #include <pdlfs-common/slice.h>
 #include <pdlfs-common/status.h>
+#include "pdlfs-common/log_reader.h"
 // #include <cstdint>
 #include <string>
 #include <utility>
@@ -54,20 +55,21 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
     for (; iter->Valid(); iter->Next()) {
       uint64_t off = vlog.CurrentOffset();
       std::string buffer;
-      PutVarint64(&buffer, iter->key().size());
-      PutVarint64(&buffer, iter->value().size());
-      buffer.append(iter->key().data());
-      buffer.append(iter->value().data());
-      s = vlog.AddRecord(buffer);
+      PutVarint32(&buffer, static_cast<uint32_t>(iter->key().size()));
+      buffer.append(iter->key().data(), iter->key().size());
+      PutVarint32(&buffer, static_cast<uint32_t>(iter->value().size()));
+      buffer.append(iter->value().data(), iter->value().size());
+      s = vlog.AddRecord(Slice(buffer));
+
       // If error, skip this one?
       if (!s.ok()) {
         continue;
       }
       std::string encoded_pos;
-      PutFixed64(&encoded_pos, off);
       PutFixed64(&encoded_pos, vlogfile_number_);
+      PutFixed64(&encoded_pos, off);
 
-      // Keep pair<key, offest>0
+      // Keep pair<key, offset>
       kvoff_vec->push_back(std::make_pair(iter->key(), encoded_pos));
     }
   }
@@ -109,8 +111,52 @@ Iterator* VLogColumnImpl::NewInternalIterator(const ReadOptions& options) {
 
 Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
                            Buffer* result) {
-  // TODO
-  return db_->Get(options, lkey, result);
+  // Get
+  std::string value;
+  buffer::StringBuf buf(&value);
+  Status s = db_->Get(options, lkey, &buf);
+  if (!s.ok()) {
+    return s;
+  }
+
+  uint64_t vlog_num = DecodeFixed64(value.data());
+  uint64_t vlog_offset = DecodeFixed64(value.data() + 8);
+  const std::string vlogname = VLogFileName(vlogname_, vlog_num);
+
+  // Read value from vlog
+  SequentialFile* file;
+  s = env_->NewSequentialFile(vlogname, &file);
+  if (!s.ok()) {
+    return s;
+  }
+  // Create the log reader.
+  // Ignore LogReporter for now.
+  log::Reader reader(file, NULL, true /*checksum*/,
+                     vlog_offset /*initial_offset*/);
+  Slice record;
+  std::string scratch;
+  if (reader.ReadRecord(&record, &scratch)) {
+    const char* p = record.data();
+    const char* limit = p + 5;  // VarInt32 takes no more than 5 bytes
+    std::string key_str;
+    std::string value_str;
+    Slice key(key_str);
+    Slice value(value_str);
+    if (!(p = GetLengthPrefixedSliceLite(p, limit, &key))) {
+      return Status::Corruption(columnname_,
+                                "VLog ReadRecord record corrupted");
+    }
+    // TODO: assert lkey == key
+    limit = p + 5;
+    if (!(p = GetLengthPrefixedSliceLite(p, limit, &value))) {
+      return Status::Corruption(columnname_,
+                                "VLog ReadRecord record corrupted");
+    }
+    result->Fill(value.data(), value.size());
+  } else {
+    return Status::IOError(columnname_, "VLog ReadRecord failed");
+  }
+  return s;
 }
 
 Status VLogColumnImpl::Recover() {
