@@ -27,8 +27,8 @@ set (pdlfs-common-tests arena_test.cc blkdb_test.cc cache_test.cc
 
 # leveldb directory sources and tests
 set (pdlfs-leveldb-srcs block.cc block_builder.cc bloom.cc comparator.cc
-     db/builder.cc db/columnar_db.cc db/columnar_impl.cc db/db.cc
-     db/db_impl.cc db/db_iter.cc db/dbformat.cc
+     db/builder.cc db/columnar_db.cc db/columnar_impl.cc db/vlog_column_impl.cc
+     db/db.cc db/db_impl.cc db/db_iter.cc db/dbformat.cc
      db/memtable.cc db/options.cc db/readonly.cc db/readonly_impl.cc
      db/repair.cc db/table_cache.cc db/version_edit.cc db/version_set.cc
      db/write_batch.cc filter_block.cc filter_policy.cc format.cc
@@ -36,7 +36,7 @@ set (pdlfs-leveldb-srcs block.cc block_builder.cc bloom.cc comparator.cc
      table_properties.cc two_level_iterator.cc )
 set (pdlfs-leveldb-tests bloom_test.cc db/autocompact_test.cc
      db/bulk_test.cc db/corruption_test.cc db/db_table_test.cc db/db_test.cc
-     db/dbformat_test.cc db/readonly_test.cc db/columnar_test
+     db/dbformat_test.cc db/readonly_test.cc db/columnar_test db/vlog_column_test.cc
      db/version_edit_test.cc db/version_set_test.cc
      db/write_batch_test.cc filter_block_test.cc
      index_block_test.cc skiplist_test.cc table_test.cc)
