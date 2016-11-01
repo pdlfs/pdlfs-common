@@ -103,7 +103,6 @@ TEST(VLogColumnTest, Put) {
   ASSERT_EQ(Get("a"), "va");
 }
 
-
 TEST(VLogColumnTest, Iterator) {
   Iterator* iter = db_->NewIterator(ReadOptions());
 

@@ -121,7 +121,7 @@ class KeyValOffsetIterator : public Iterator {
     // return GetLengthPrefixedSlice(iter_->first.data());ter->value().data(
     return iter_->first;
   }
-  Slice value() const { return Slice(iter_->second.data(), 16); }
+  Slice value() const { return Slice(iter_->second);}
 
   Status status() const { return Status::OK(); }
 
