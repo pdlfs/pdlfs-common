@@ -16,12 +16,12 @@
 #include "pdlfs-common/log_reader.h"
 
 #include <iostream>
-#define LOG(...) std::cout << std::dec << __FILE__ << ":" << __LINE__ << \
+#define XLOG(...) std::cout << std::dec << __FILE__ << ":" << __LINE__ << \
                    ":" << __func__ << " | " << __VA_ARGS__ << std::endl;
 
 namespace pdlfs {
 
-typedef std::vector<std::pair<Slice, std::string> > KeyValOffVec;
+typedef std::vector<std::pair<std::string, std::string> > KeyValOffVec;
 
 
 class VLogColumnIterator : public Iterator {
@@ -50,10 +50,9 @@ class VLogColumnIterator : public Iterator {
   	if (value_fetched_) {
   		return value_;
   	}
-    Slice value = leveldb_iter_->value();
-
-		uint64_t vlog_num = DecodeFixed64(value.data());
-		uint64_t vlog_offset = DecodeFixed64(value.data() + 8);
+    Slice position = leveldb_iter_->value();
+		uint64_t vlog_num = DecodeFixed64(position.data());
+		uint64_t vlog_offset = DecodeFixed64(position.data() + 8);
 		const std::string vlogname = VLogFileName(vlogname_, vlog_num);
 
 		// Read value from vlog
@@ -61,7 +60,7 @@ class VLogColumnIterator : public Iterator {
 		Status s = env_->NewSequentialFile(vlogname, &file);
 
 		if (!s.ok()) {
-			// ???
+			// TODO
 		}
 
 		// Create the log reader, ignore LogReporter for now.
@@ -69,26 +68,26 @@ class VLogColumnIterator : public Iterator {
 											 vlog_offset /*initial_offset*/);
 		Slice record;
 		std::string scratch;
-		//if (reader.ReadRecord(&record, &scratch)) {
-			reader.ReadRecord(&record, &scratch);
-			const char* p = record.data();
-			const char* limit = p + 5;  // VarInt32 takes no more than 5 bytes
-			std::string key_str;
-			Slice key(key_str);
-			value_ = Slice(value_str_);
-			if (!(p = GetLengthPrefixedSliceLite(p, limit, &key))) {
-				//??
-			}
-			// TODO: assert lkey == key
-			limit = p + 5;
-			if (!(p = GetLengthPrefixedSliceLite(p, limit, &value_))) {
-				//???
-			}
-			value_fetched_ = true;
-			delete file;
-			return value_;
-		//}
-
+		bool ret = reader.ReadRecord(&record, &scratch);
+		if (!ret) {
+			// TODO
+		}
+		const char* p = record.data();
+		const char* limit = p + 5;  // VarInt32 takes no more than 5 bytes
+		std::string key_str;
+		Slice key(key_str);
+		value_ = Slice(value_str_);
+		if (!(p = GetLengthPrefixedSliceLite(p, limit, &key))) {
+			// TODO
+		}
+		// TODO: assert lkey == key
+		limit = p + 5;
+		if (!(p = GetLengthPrefixedSliceLite(p, limit, &value_))) {
+			// TODO
+		}
+		value_fetched_ = true;
+		delete file;
+		return value_;
   }
 
   virtual Status status() const { return Status::OK(); }
@@ -118,10 +117,10 @@ class KeyValOffsetIterator : public Iterator {
   void Next() { ++iter_; }
   void Prev() {}
   Slice key() const {
-    // return GetLengthPrefixedSlice(iter_->first.data());ter->value().data(
-    return iter_->first;
+    return Slice(iter_->first);
   }
-  Slice value() const { return Slice(iter_->second);}
+  Slice value() const {
+  	return Slice(iter_->second);}
 
   Status status() const { return Status::OK(); }
 

@@ -56,6 +56,7 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
   if (iter->Valid()) {
     for (; iter->Valid(); iter->Next()) {
       uint64_t off = vlog.CurrentOffset();
+
       std::string buffer;
       PutVarint32(&buffer, static_cast<uint32_t>(iter->key().size()));
       buffer.append(iter->key().data(), iter->key().size());
@@ -65,14 +66,17 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
 
       // If error, skip this one?
       if (!s.ok()) {
-        continue;
+				file->Close();
+				delete file;
+				return Status::IOError("BulkInsertVLog error");
       }
+
+      // Keep pair<key, offset>
       std::string encoded_pos;
       PutFixed64(&encoded_pos, vlogfile_number_);
       PutFixed64(&encoded_pos, off);
-
-      // Keep pair<key, offset>
-      kvoff_vec->push_back(std::make_pair(iter->key(), encoded_pos));
+      // Allocate new space in std::string to prevent from iter becoming invalid.
+      kvoff_vec->push_back(std::make_pair(iter->key().ToString(), encoded_pos));
     }
   }
   file->Close();
@@ -89,9 +93,6 @@ Status VLogColumnImpl::WriteTable(Iterator* contents) {
   if (!s.ok()) {
     return s;
   }
-
-
-  // !!!!!!!!!!!!!!!! Need modification!
 
   // 2. bulk insert to left table.
   KeyValOffsetIterator* vec_iter = new KeyValOffsetIterator(&kvoff_vec);
@@ -129,7 +130,6 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
   uint64_t vlog_num = DecodeFixed64(value.data());
   uint64_t vlog_offset = DecodeFixed64(value.data() + 8);
   const std::string vlogname = VLogFileName(vlogname_, vlog_num);
-	LOG("lognum:" << vlog_num << " logoff:" << vlog_offset << " vlogname:" << vlogname);
 
 
   // Read value from vlog
@@ -138,8 +138,8 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
   if (!s.ok()) {
     return s;
   }
-  // Create the log reader.
-  // Ignore LogReporter for now.
+
+  // Create the log reader, ignore LogReporter for now.
   log::Reader reader(file, NULL, true /*checksum*/,
                      vlog_offset /*initial_offset*/);
   Slice record;
