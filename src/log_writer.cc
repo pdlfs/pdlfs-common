@@ -23,7 +23,7 @@ static void InitTypeCrc(uint32_t* type_crc) {
   }
 }
 
-Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0) {
+Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0), offset_(0) {
   InitTypeCrc(type_crc_);
 }
 
