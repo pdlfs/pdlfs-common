@@ -8,8 +8,10 @@
  */
 
 // TODO: clean header files
+#include "pdlfs-common/mutexlock.h"
 #include "vlog_column_impl.h"
-// #include "dbformat.h"
+#include "version_edit.h"
+#include "version_set.h"
 #include <pdlfs-common/coding.h>
 #include <pdlfs-common/dbfiles.h>
 #include <pdlfs-common/env.h>
@@ -19,10 +21,10 @@
 #include <pdlfs-common/slice.h>
 #include <pdlfs-common/status.h>
 #include "pdlfs-common/log_reader.h"
-// #include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 namespace pdlfs {
 
@@ -88,9 +90,13 @@ Status VLogColumnImpl::WriteTable(Iterator* contents) {
     return s;
   }
 
+
+  // !!!!!!!!!!!!!!!! Need modification!
+
   // 2. bulk insert to left table.
   KeyValOffsetIterator* vec_iter = new KeyValOffsetIterator(&kvoff_vec);
   s = db_->BulkInsert(vec_iter);
+  delete vec_iter;
   // What's typical strategy?
   if (!s.ok()) {
     return s;
@@ -102,11 +108,12 @@ Status VLogColumnImpl::WriteTable(Iterator* contents) {
 
 Iterator* VLogColumnImpl::NewInternalIterator(const ReadOptions& options) {
   // TODO
-
+	std::cout << "NewInternalIterator" << std::endl;
   SequenceNumber ignored_last_sequence;
   uint32_t ignored_seed;
-  return db_->NewInternalIterator(options, &ignored_last_sequence,
+  Iterator* leveldb_iter = db_->NewInternalIterator(options, &ignored_last_sequence,
                                   &ignored_seed);
+	return new VLogColumnIterator(leveldb_iter, vlogname_, env_);
 }
 
 Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
@@ -122,6 +129,8 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
   uint64_t vlog_num = DecodeFixed64(value.data());
   uint64_t vlog_offset = DecodeFixed64(value.data() + 8);
   const std::string vlogname = VLogFileName(vlogname_, vlog_num);
+	LOG("lognum:" << vlog_num << " logoff:" << vlog_offset << " vlogname:" << vlogname);
+
 
   // Read value from vlog
   SequentialFile* file;
@@ -149,13 +158,16 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
     // TODO: assert lkey == key
     limit = p + 5;
     if (!(p = GetLengthPrefixedSliceLite(p, limit, &value))) {
+    	delete file;
       return Status::Corruption(columnname_,
                                 "VLog ReadRecord record corrupted");
     }
     result->Fill(value.data(), value.size());
   } else {
+  	delete file;
     return Status::IOError(columnname_, "VLog ReadRecord failed");
   }
+  delete file;
   return s;
 }
 
@@ -175,6 +187,20 @@ Status VLogColumnImpl::Recover() {
       return Status::InvalidArgument(vlogname_, "exists");
     }
   }
-  return Status::OK();
+
+  // Recover from leveldb
+  VersionEdit edit;
+  MutexLock l(&db_->mutex_);
+
+  s = db_->Recover(&edit);  // Handles create_if_missing, error_if_exists
+  if (s.ok()) {
+    s = db_->versions_->LogAndApply(&edit, &db_->mutex_);
+  }
+  if (s.ok()) {
+    db_->DeleteObsoleteFiles();
+    db_->MaybeScheduleCompaction();
+  }
+
+  return s;
 }
 }  // namespace pdlfs
