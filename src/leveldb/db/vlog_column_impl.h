@@ -9,89 +9,104 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include <pdlfs-common/dbfiles.h>
 #include "columnar_impl.h"
 #include "db_impl.h"
 #include "pdlfs-common/coding.h"
-#include <pdlfs-common/dbfiles.h>
 #include "pdlfs-common/log_reader.h"
 
 #include <iostream>
-#define XLOG(...) std::cout << std::dec << __FILE__ << ":" << __LINE__ << \
-                   ":" << __func__ << " | " << __VA_ARGS__ << std::endl;
+#define XLOG(...)                                                         \
+  std::cout << std::dec << __FILE__ << ":" << __LINE__ << ":" << __func__ \
+            << " | " << __VA_ARGS__ << std::endl;
 
 namespace pdlfs {
 
 typedef std::vector<std::pair<std::string, std::string> > KeyValOffVec;
 
-
 class VLogColumnIterator : public Iterator {
  public:
-  VLogColumnIterator(Iterator* leveldb_iter, const std::string& vlogname, Env* env) :
-  	leveldb_iter_(leveldb_iter), vlogname_(vlogname), value_fetched_(false), env_(env) {
+  VLogColumnIterator(Iterator* leveldb_iter, const std::string& vlogname,
+                     Env* env)
+      : leveldb_iter_(leveldb_iter),
+        vlogname_(vlogname),
+        value_fetched_(false),
+        env_(env) {}
+  ~VLogColumnIterator() { delete leveldb_iter_; }
+  bool Valid() const { return leveldb_iter_->Valid(); }
+  virtual void Seek(const Slice& k) {
+    leveldb_iter_->Seek(k);
+    value_fetched_ = false;
+    value_str_.empty();
   }
-  ~VLogColumnIterator() {
-  	delete leveldb_iter_;
-  }
-  bool Valid() const {
-  	return leveldb_iter_->Valid();
-  }
-  virtual void Seek(const Slice& k) { leveldb_iter_->Seek(k); value_fetched_ = false; value_str_.empty();}
   // Need optimized, such as memorized by is_first;
   virtual void SeekToFirst() {
-  	leveldb_iter_->SeekToFirst();
-  	value_fetched_ = false;
-  	value_str_.empty();
+    leveldb_iter_->SeekToFirst();
+    value_fetched_ = false;
+    value_str_.empty();
   }
-  virtual void SeekToLast() { leveldb_iter_->SeekToLast(); value_fetched_ = false; value_str_.empty(); }
-  virtual void Next() { leveldb_iter_->Next(); value_fetched_ = false; value_str_.empty();}
-  virtual void Prev() { leveldb_iter_->Prev(); value_fetched_ = false; value_str_.empty();}
+  virtual void SeekToLast() {
+    leveldb_iter_->SeekToLast();
+    value_fetched_ = false;
+    value_str_.empty();
+  }
+  virtual void Next() {
+    leveldb_iter_->Next();
+    value_fetched_ = false;
+    value_str_.empty();
+  }
+  virtual void Prev() {
+    leveldb_iter_->Prev();
+    value_fetched_ = false;
+    value_str_.empty();
+  }
   virtual Slice key() const { return leveldb_iter_->key(); }
   virtual Slice value() const {
-  	if (value_fetched_) {
-  		return Slice(value_str_);
-  	}
+    if (value_fetched_) {
+      return Slice(value_str_);
+    }
     Slice position = leveldb_iter_->value();
-		uint64_t vlog_num = DecodeFixed64(position.data());
-		uint64_t vlog_offset = DecodeFixed64(position.data() + 8);
-		const std::string vlogname = VLogFileName(vlogname_, vlog_num);
+    uint64_t vlog_num = DecodeFixed64(position.data());
+    uint64_t vlog_offset = DecodeFixed64(position.data() + 8);
+    const std::string vlogname = VLogFileName(vlogname_, vlog_num);
 
-		// Read value from vlog
-		SequentialFile* file;
-		Status s = env_->NewSequentialFile(vlogname, &file);
+    // Read value from vlog
+    SequentialFile* file;
+    Status s = env_->NewSequentialFile(vlogname, &file);
 
-		if (!s.ok()) {
-			// TODO
-		}
+    if (!s.ok()) {
+      // TODO
+    }
 
-		// Create the log reader, ignore LogReporter for now.
-		log::Reader reader(file, NULL, true /*checksum*/,
-											 vlog_offset /*initial_offset*/);
-		Slice record;
-		std::string scratch;
-		bool ret = reader.ReadRecord(&record, &scratch);
-		if (!ret) {
-			// TODO
-		}
-		const char* p = record.data();
-		const char* limit = p + 5;  // VarInt32 takes no more than 5 bytes
-		std::string key_str;
-		Slice key(key_str);
-		Slice ret_value;
-		if (!(p = GetLengthPrefixedSliceLite(p, limit, &key))) {
-			// TODO
-		}
-		// TODO: assert lkey == key
-		limit = p + 5;
-		if (!(p = GetLengthPrefixedSliceLite(p, limit, &ret_value))) {
-			// TODO
-		}
+    // Create the log reader, ignore LogReporter for now.
+    log::Reader reader(file, NULL, true /*checksum*/,
+                       vlog_offset /*initial_offset*/);
+    Slice record;
+    std::string scratch;
+    bool ret = reader.ReadRecord(&record, &scratch);
+    if (!ret) {
+      // TODO
+    }
+    const char* p = record.data();
+    const char* limit =
+        p + record.size();  // VarInt32 takes no more than 5 bytes
+    std::string key_str;
+    Slice key(key_str);
+    Slice ret_value;
+    if (!(p = GetLengthPrefixedSlice(p, limit, &key))) {
+      // TODO
+    }
+    // TODO: assert lkey == key
+    if (!(p = GetLengthPrefixedSlice(p, limit, &ret_value))) {
+      // TODO
+    }
 
-		value_str_ = ret_value.ToString();
-		ret_value = Slice(value_str_);
+    value_str_ = ret_value.ToString();
+    ret_value = Slice(value_str_);
 
-		value_fetched_ = true;
-		delete file;
-		return ret_value;
+    value_fetched_ = true;
+    delete file;
+    return ret_value;
   }
 
   virtual Status status() const { return Status::OK(); }
@@ -102,12 +117,11 @@ class VLogColumnIterator : public Iterator {
   mutable bool value_fetched_;
   Env* const env_;
   mutable std::string value_str_;
-  //mutable Slice value_;
+  // mutable Slice value_;
 
   // No copying allowed
   VLogColumnIterator(const VLogColumnIterator&);
   void operator=(const VLogColumnIterator&);
-
 };
 
 class KeyValOffsetIterator : public Iterator {
@@ -120,11 +134,8 @@ class KeyValOffsetIterator : public Iterator {
   void SeekToLast() {}
   void Next() { ++iter_; }
   void Prev() {}
-  Slice key() const {
-    return Slice(iter_->first);
-  }
-  Slice value() const {
-  	return Slice(iter_->second);}
+  Slice key() const { return Slice(iter_->first); }
+  Slice value() const { return Slice(iter_->second); }
 
   Status status() const { return Status::OK(); }
 
@@ -179,7 +190,3 @@ class VLogColumnImpl : public Column {
 };
 
 }  // namespace pdlfs
-
-
-
-

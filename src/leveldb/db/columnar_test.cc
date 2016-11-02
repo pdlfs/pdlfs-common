@@ -76,7 +76,6 @@ class ColumnarTest {
     return result;
   }
 
-
   typedef DBOptions Options;
   TestColumnSelector column_selector_;
   std::string dbname_;
@@ -100,22 +99,20 @@ TEST(ColumnarTest, Put) {
 }
 
 TEST(ColumnarTest, IterMultiWithDelete) {
-	ASSERT_OK(Put("a", "va"));
-	ASSERT_OK(Put("b", "vb"));
-	ASSERT_OK(Put("c", "vc"));
-	ASSERT_OK(Delete("b"));
-	ASSERT_EQ("NOT_FOUND", Get("b"));
+  ASSERT_OK(Put("a", "va"));
+  ASSERT_OK(Put("b", "vb"));
+  ASSERT_OK(Put("c", "vc"));
+  ASSERT_OK(Delete("b"));
+  ASSERT_EQ("NOT_FOUND", Get("b"));
 
   CompactMemTable();
-	Iterator* iter = db_->NewIterator(ReadOptions());
-	iter->Seek("c");
-	ASSERT_EQ(IterStatus(iter), "c->vc");
-	iter->Prev();
-	ASSERT_EQ(IterStatus(iter), "a->va");
-	delete iter;
+  Iterator* iter = db_->NewIterator(ReadOptions());
+  iter->Seek("c");
+  ASSERT_EQ(IterStatus(iter), "c->vc");
+  iter->Prev();
+  ASSERT_EQ(IterStatus(iter), "a->va");
+  delete iter;
 }
-
-
 
 }  // namespace pdlfs
 

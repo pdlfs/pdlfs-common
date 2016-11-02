@@ -284,9 +284,9 @@ void DBImpl::DeleteObsoleteFiles() {
         //==============
         case kColumnVLogDir:
         case kColumnLevelDBDir:
-        	break;
-        // TODO!!
-        //==============
+          break;
+          // TODO!!
+          //==============
       }
 
       if (!keep) {

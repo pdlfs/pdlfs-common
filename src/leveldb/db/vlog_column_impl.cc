@@ -8,10 +8,7 @@
  */
 
 // TODO: clean header files
-#include "pdlfs-common/mutexlock.h"
 #include "vlog_column_impl.h"
-#include "version_edit.h"
-#include "version_set.h"
 #include <pdlfs-common/coding.h>
 #include <pdlfs-common/dbfiles.h>
 #include <pdlfs-common/env.h>
@@ -20,11 +17,14 @@
 #include <pdlfs-common/log_writer.h>
 #include <pdlfs-common/slice.h>
 #include <pdlfs-common/status.h>
-#include "pdlfs-common/log_reader.h"
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iostream>
+#include "pdlfs-common/log_reader.h"
+#include "pdlfs-common/mutexlock.h"
+#include "version_edit.h"
+#include "version_set.h"
 
 namespace pdlfs {
 
@@ -66,16 +66,17 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
 
       // If error, skip this one?
       if (!s.ok()) {
-				file->Close();
-				delete file;
-				return Status::IOError("BulkInsertVLog error");
+        file->Close();
+        delete file;
+        return Status::IOError("BulkInsertVLog error");
       }
 
       // Keep pair<key, offset>
       std::string encoded_pos;
       PutFixed64(&encoded_pos, vlogfile_number_);
       PutFixed64(&encoded_pos, off);
-      // Allocate new space in std::string to prevent from iter becoming invalid.
+      // Allocate new space in std::string to prevent from iter becoming
+      // invalid.
       kvoff_vec->push_back(std::make_pair(iter->key().ToString(), encoded_pos));
     }
   }
@@ -109,12 +110,12 @@ Status VLogColumnImpl::WriteTable(Iterator* contents) {
 
 Iterator* VLogColumnImpl::NewInternalIterator(const ReadOptions& options) {
   // TODO
-	std::cout << "NewInternalIterator" << std::endl;
+  std::cout << "NewInternalIterator" << std::endl;
   SequenceNumber ignored_last_sequence;
   uint32_t ignored_seed;
-  Iterator* leveldb_iter = db_->NewInternalIterator(options, &ignored_last_sequence,
-                                  &ignored_seed);
-	return new VLogColumnIterator(leveldb_iter, vlogname_, env_);
+  Iterator* leveldb_iter =
+      db_->NewInternalIterator(options, &ignored_last_sequence, &ignored_seed);
+  return new VLogColumnIterator(leveldb_iter, vlogname_, env_);
 }
 
 Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
@@ -131,7 +132,6 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
   uint64_t vlog_offset = DecodeFixed64(value.data() + 8);
   const std::string vlogname = VLogFileName(vlogname_, vlog_num);
 
-
   // Read value from vlog
   SequentialFile* file;
   s = env_->NewSequentialFile(vlogname, &file);
@@ -146,25 +146,24 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
   std::string scratch;
   if (reader.ReadRecord(&record, &scratch)) {
     const char* p = record.data();
-    const char* limit = p + 5;  // VarInt32 takes no more than 5 bytes
+    const char* limit = p + record.size();
     std::string key_str;
     std::string value_str;
     Slice key(key_str);
     Slice value(value_str);
-    if (!(p = GetLengthPrefixedSliceLite(p, limit, &key))) {
+    if (!(p = GetLengthPrefixedSlice(p, limit, &key))) {
       return Status::Corruption(columnname_,
                                 "VLog ReadRecord record corrupted");
     }
     // TODO: assert lkey == key
-    limit = p + 5;
-    if (!(p = GetLengthPrefixedSliceLite(p, limit, &value))) {
-    	delete file;
+    if (!(p = GetLengthPrefixedSlice(p, limit, &value))) {
+      delete file;
       return Status::Corruption(columnname_,
                                 "VLog ReadRecord record corrupted");
     }
     result->Fill(value.data(), value.size());
   } else {
-  	delete file;
+    delete file;
     return Status::IOError(columnname_, "VLog ReadRecord failed");
   }
   delete file;

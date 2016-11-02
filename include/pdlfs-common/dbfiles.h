@@ -32,7 +32,7 @@ enum FileType {
   kTempFile,
   kInfoLogFile,
   kColumnVLogDir,
-  kColumnLevelDBDir // Either the current one, or an old one
+  kColumnLevelDBDir  // Either the current one, or an old one
 };
 
 static const int kMaxFileType = kInfoLogFile;

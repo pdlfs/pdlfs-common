@@ -14,7 +14,6 @@
 #include "pdlfs-common/testharness.h"
 #include "pdlfs-common/testutil.h"
 
-
 namespace pdlfs {
 
 class TestVLogColumnSelector : public ColumnSelector {
@@ -38,9 +37,7 @@ class VLogColumnTest {
     ASSERT_OK(s);
   }
 
-  ~VLogColumnTest() {
-    delete db_;
-  }
+  ~VLogColumnTest() { delete db_; }
 
   std::string Get(const Slice& key) {
     std::string value;
@@ -58,7 +55,7 @@ class VLogColumnTest {
     ASSERT_OK(s);
   }
 
-   std::string IterStatus(Iterator* iter) {
+  std::string IterStatus(Iterator* iter) {
     std::string result;
     if (iter->Valid()) {
       result = iter->key().ToString();
@@ -75,7 +72,6 @@ class VLogColumnTest {
     return db_->Put(WriteOptions(), k, v);
   }
 
-
   typedef DBOptions Options;
   TestVLogColumnSelector column_selector_;
   std::string dbname_;
@@ -86,7 +82,6 @@ class VLogColumnTest {
 TEST(VLogColumnTest, Empty) {
   // Empty
 }
-
 
 TEST(VLogColumnTest, Put) {
   ASSERT_OK(db_->Put(WriteOptions(), "foo", "v1"));
@@ -115,7 +110,6 @@ TEST(VLogColumnTest, Iterator) {
 
   delete iter;
 }
-
 
 TEST(VLogColumnTest, IterSingle) {
   ASSERT_OK(Put("a", "va"));
@@ -155,8 +149,6 @@ TEST(VLogColumnTest, IterSingle) {
 
   delete iter;
 }
-
-
 
 TEST(VLogColumnTest, IterMulti) {
   ASSERT_OK(Put("a", "va"));
@@ -245,7 +237,6 @@ TEST(VLogColumnTest, IterMulti) {
   delete iter;
 }
 
-
 TEST(VLogColumnTest, IterSmallAndLargeMix) {
   ASSERT_OK(Put("a", "va"));
   ASSERT_OK(Put("b", std::string(100000, 'b')));
@@ -287,25 +278,27 @@ TEST(VLogColumnTest, IterSmallAndLargeMix) {
 }
 
 TEST(VLogColumnTest, IterMultiWithDelete) {
-	ASSERT_OK(Put("a", "va"));
-	ASSERT_OK(Put("b", "vb"));
-	ASSERT_OK(Put("c", "vc"));
-	ASSERT_OK(Delete("b"));
-	ASSERT_EQ("NOT_FOUND", Get("b"));
+  ASSERT_OK(Put("a", "va"));
+  ASSERT_OK(Put("b", "vb"));
+  ASSERT_OK(Put("c", "vc"));
+  ASSERT_OK(Delete("b"));
+  ASSERT_EQ("NOT_FOUND", Get("b"));
 
   CompactMemTable();
-	Iterator* iter = db_->NewIterator(ReadOptions());
-	iter->Seek("c");
-	ASSERT_EQ(IterStatus(iter), "c->vc");
-	iter->Prev();
-	ASSERT_EQ(IterStatus(iter), "a->va");
-	delete iter;
+  Iterator* iter = db_->NewIterator(ReadOptions());
+  iter->Seek("c");
+  ASSERT_EQ(IterStatus(iter), "c->vc");
+  iter->Prev();
+  ASSERT_EQ(IterStatus(iter), "a->va");
+  delete iter;
 }
 
-
-TEST(VLogColumnTest, Destroy) {
-	DestroyDB(dbname_, Options());
+TEST(VLogColumnTest, MultiCompact) {
+  ASSERT_OK(Put("a", "va"));
+  ASSERT_OK(Put("b", "vb"));
 }
+
+TEST(VLogColumnTest, Destroy) { DestroyDB(dbname_, Options()); }
 
 }  // namespace pdlfs
 
