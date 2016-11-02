@@ -293,12 +293,43 @@ TEST(VLogColumnTest, IterMultiWithDelete) {
   delete iter;
 }
 
-TEST(VLogColumnTest, MultiCompact) {
+TEST(VLogColumnTest, MultiCompaction) {
   ASSERT_OK(Put("a", "va"));
   ASSERT_OK(Put("b", "vb"));
+  Iterator* iter = db_->NewIterator(ReadOptions());
+
+  CompactMemTable();
+  iter->SeekToFirst();
+  ASSERT_EQ(IterStatus(iter), "a->va");
+  iter->Next();
+  ASSERT_EQ(IterStatus(iter), "b->vb");
+
+  ASSERT_OK(Put("c", "vc"));
+
+  CompactMemTable();
+  iter->SeekToLast();
+  ASSERT_EQ(IterStatus(iter), "b->vb");
+  iter->Prev();
+  ASSERT_EQ(IterStatus(iter), "a->va");
+  iter->Prev();
+  ASSERT_EQ(IterStatus(iter), "(invalid)");
+
+  delete iter;
+
+  ASSERT_OK(Delete("b"));
+  CompactMemTable();
+  iter = db_->NewIterator(ReadOptions());
+  iter->SeekToFirst();
+  ASSERT_EQ(IterStatus(iter), "a->va");
+  iter->Next();
+  ASSERT_EQ(IterStatus(iter), "c->vc");
+
+  delete iter;
 }
 
+/*
 TEST(VLogColumnTest, Destroy) { DestroyDB(dbname_, Options()); }
+*/
 
 }  // namespace pdlfs
 
