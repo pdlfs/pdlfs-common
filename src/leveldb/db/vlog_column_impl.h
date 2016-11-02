@@ -48,7 +48,7 @@ class VLogColumnIterator : public Iterator {
   virtual Slice key() const { return leveldb_iter_->key(); }
   virtual Slice value() const {
   	if (value_fetched_) {
-  		return value_;
+  		return Slice(value_str_);
   	}
     Slice position = leveldb_iter_->value();
 		uint64_t vlog_num = DecodeFixed64(position.data());
@@ -76,18 +76,22 @@ class VLogColumnIterator : public Iterator {
 		const char* limit = p + 5;  // VarInt32 takes no more than 5 bytes
 		std::string key_str;
 		Slice key(key_str);
-		value_ = Slice(value_str_);
+		Slice ret_value;
 		if (!(p = GetLengthPrefixedSliceLite(p, limit, &key))) {
 			// TODO
 		}
 		// TODO: assert lkey == key
 		limit = p + 5;
-		if (!(p = GetLengthPrefixedSliceLite(p, limit, &value_))) {
+		if (!(p = GetLengthPrefixedSliceLite(p, limit, &ret_value))) {
 			// TODO
 		}
+
+		value_str_ = ret_value.ToString();
+		ret_value = Slice(value_str_);
+
 		value_fetched_ = true;
 		delete file;
-		return value_;
+		return ret_value;
   }
 
   virtual Status status() const { return Status::OK(); }
@@ -98,7 +102,7 @@ class VLogColumnIterator : public Iterator {
   mutable bool value_fetched_;
   Env* const env_;
   mutable std::string value_str_;
-  mutable Slice value_;
+  //mutable Slice value_;
 
   // No copying allowed
   VLogColumnIterator(const VLogColumnIterator&);

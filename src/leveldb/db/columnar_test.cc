@@ -53,11 +53,29 @@ class ColumnarTest {
     }
   }
 
+  Status Put(const std::string& k, const std::string& v) {
+    return db_->Put(WriteOptions(), k, v);
+  }
+
+  Status Delete(const std::string& k) { return db_->Delete(WriteOptions(), k); }
+
   void CompactMemTable() {
     Status s =
         reinterpret_cast<ColumnarDBWrapper*>(db_)->TEST_CompactMemTable();
     ASSERT_OK(s);
   }
+
+  std::string IterStatus(Iterator* iter) {
+    std::string result;
+    if (iter->Valid()) {
+      result = iter->key().ToString();
+      result = result + "->" + iter->value().ToString();
+    } else {
+      result = "(invalid)";
+    }
+    return result;
+  }
+
 
   typedef DBOptions Options;
   TestColumnSelector column_selector_;
@@ -80,6 +98,24 @@ TEST(ColumnarTest, Put) {
   ASSERT_EQ(Get("foo"), "v1");
   ASSERT_EQ(Get("bar"), "v2");
 }
+
+TEST(ColumnarTest, IterMultiWithDelete) {
+	ASSERT_OK(Put("a", "va"));
+	ASSERT_OK(Put("b", "vb"));
+	ASSERT_OK(Put("c", "vc"));
+	ASSERT_OK(Delete("b"));
+	ASSERT_EQ("NOT_FOUND", Get("b"));
+
+  CompactMemTable();
+	Iterator* iter = db_->NewIterator(ReadOptions());
+	iter->Seek("c");
+	ASSERT_EQ(IterStatus(iter), "c->vc");
+	iter->Prev();
+	ASSERT_EQ(IterStatus(iter), "a->va");
+	delete iter;
+}
+
+
 
 }  // namespace pdlfs
 

@@ -18,8 +18,8 @@
 
 namespace pdlfs {
 
-#define LEVELDB_SUBDIR "leveldb"
-#define VLOG_SUBDIR "vlog"
+#define LEVELDB_SUBDIR "-LEVELDB"
+#define VLOG_SUBDIR "-VLOG"
 
 class Env;
 

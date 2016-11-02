@@ -61,7 +61,8 @@ class VLogColumnTest {
    std::string IterStatus(Iterator* iter) {
     std::string result;
     if (iter->Valid()) {
-      result = iter->key().ToString() + "->" + iter->value().ToString();
+      result = iter->key().ToString();
+      result = result + "->" + iter->value().ToString();
     } else {
       result = "(invalid)";
     }
@@ -120,6 +121,7 @@ TEST(VLogColumnTest, IterSingle) {
   ASSERT_OK(Put("a", "va"));
   Iterator* iter = db_->NewIterator(ReadOptions());
 
+  CompactMemTable();
   iter->SeekToFirst();
   ASSERT_EQ(IterStatus(iter), "a->va");
   iter->Next();
@@ -162,6 +164,7 @@ TEST(VLogColumnTest, IterMulti) {
   ASSERT_OK(Put("c", "vc"));
   Iterator* iter = db_->NewIterator(ReadOptions());
 
+  CompactMemTable();
   iter->SeekToFirst();
   ASSERT_EQ(IterStatus(iter), "a->va");
   iter->Next();
@@ -219,6 +222,9 @@ TEST(VLogColumnTest, IterMulti) {
   ASSERT_OK(Put("b", "vb2"));
   ASSERT_OK(Put("c", "vc2"));
   ASSERT_OK(Delete("b"));
+
+  CompactMemTable();
+
   iter->SeekToFirst();
   ASSERT_EQ(IterStatus(iter), "a->va");
   iter->Next();
@@ -248,6 +254,8 @@ TEST(VLogColumnTest, IterSmallAndLargeMix) {
   ASSERT_OK(Put("e", std::string(100000, 'e')));
 
   Iterator* iter = db_->NewIterator(ReadOptions());
+
+  CompactMemTable();
 
   iter->SeekToFirst();
   ASSERT_EQ(IterStatus(iter), "a->va");
@@ -285,6 +293,7 @@ TEST(VLogColumnTest, IterMultiWithDelete) {
 	ASSERT_OK(Delete("b"));
 	ASSERT_EQ("NOT_FOUND", Get("b"));
 
+  CompactMemTable();
 	Iterator* iter = db_->NewIterator(ReadOptions());
 	iter->Seek("c");
 	ASSERT_EQ(IterStatus(iter), "c->vc");
@@ -294,11 +303,9 @@ TEST(VLogColumnTest, IterMultiWithDelete) {
 }
 
 
-/*
 TEST(VLogColumnTest, Destroy) {
 	DestroyDB(dbname_, Options());
 }
-*/
 
 }  // namespace pdlfs
 
