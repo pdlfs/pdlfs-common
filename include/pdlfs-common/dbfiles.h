@@ -18,6 +18,9 @@
 
 namespace pdlfs {
 
+#define LEVELDB_SUBDIR "leveldb"
+#define VLOG_SUBDIR "vlog"
+
 class Env;
 
 enum FileType {
@@ -27,7 +30,9 @@ enum FileType {
   kDescriptorFile,
   kCurrentFile,
   kTempFile,
-  kInfoLogFile  // Either the current one, or an old one
+  kInfoLogFile,
+  kColumnVLogDir,
+  kColumnLevelDBDir // Either the current one, or an old one
 };
 
 static const int kMaxFileType = kInfoLogFile;

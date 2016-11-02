@@ -140,8 +140,8 @@ class VLogColumnImpl : public Column {
       : env_(raw_options.env),
         options_(raw_options),
         columnname_(columnname),
-        leveldbname_(columnname + "leveldb"),
-        vlogname_(columnname + "vlog"),
+        leveldbname_(columnname + LEVELDB_SUBDIR),
+        vlogname_(columnname + VLOG_SUBDIR),
         vlogfile_number_(0) {
     db_ = new DBImpl(raw_options, leveldbname_);
   }

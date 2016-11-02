@@ -16,6 +16,7 @@
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/strutil.h"
 
+
 namespace pdlfs {
 
 static std::string MakeFileName(const std::string& name, uint64_t number,
@@ -110,6 +111,14 @@ bool ParseFileName(const Slice& fname, uint64_t* number, FileType* type) {
     }
     *type = kDescriptorFile;
     *number = num;
+  } else if (rest.starts_with(Slice("COLUMN-"))) {
+  	rest.remove_prefix(strlen("COLUMN-000000"));
+  	if (rest == VLOG_SUBDIR) {
+			*type = kColumnVLogDir;
+  	} else if (rest == LEVELDB_SUBDIR) {
+  		*type = kColumnLevelDBDir;
+  	}
+  	return true;
   } else {
     // Avoid strtoull() to keep filename format independent of the
     // current locale

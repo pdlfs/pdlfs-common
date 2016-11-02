@@ -280,6 +280,13 @@ void DBImpl::DeleteObsoleteFiles() {
         case kInfoLogFile:
           keep = true;
           break;
+
+        //==============
+        case kColumnVLogDir:
+        case kColumnLevelDBDir:
+        	break;
+        // TODO!!
+        //==============
       }
 
       if (!keep) {

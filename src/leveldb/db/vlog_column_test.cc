@@ -17,7 +17,6 @@
 
 namespace pdlfs {
 
-// TODO: a header file needs to be generated.
 class TestVLogColumnSelector : public ColumnSelector {
  public:
   virtual const char* Name() const { return "leveldb.TestVLogColumnSelector"; }
@@ -29,8 +28,6 @@ class VLogColumnTest {
  public:
   VLogColumnTest() {
     dbname_ = test::TmpDir() + "/vlogcolumn_test";
-    DestroyDB(ColumnName(dbname_, 0) + "leveldb", Options());
-    DestroyDB(ColumnName(dbname_, 0) + "vlog", Options());
     DestroyDB(dbname_, Options());
     options_.create_if_missing = true;
     options_.skip_lock_file = true;
@@ -295,6 +292,13 @@ TEST(VLogColumnTest, IterMultiWithDelete) {
 	ASSERT_EQ(IterStatus(iter), "a->va");
 	delete iter;
 }
+
+
+/*
+TEST(VLogColumnTest, Destroy) {
+	DestroyDB(dbname_, Options());
+}
+*/
 
 }  // namespace pdlfs
 
