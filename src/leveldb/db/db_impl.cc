@@ -329,7 +329,6 @@ Status DBImpl::Recover(VersionEdit* edit) {
       return Status::InvalidArgument(dbname_, "exists");
     }
   }
-  // TODO check
   s = versions_->Recover();
   if (s.ok()) {
     SequenceNumber max_sequence(0);
@@ -492,7 +491,6 @@ Status DBImpl::WriteMemTable(MemTable* mem, VersionEdit* edit, Version* base) {
   return s;
 }
 
-//TODO change CompactionStats
 // REQUIRES: mutex_ has been locked.
 Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
                                 Version* base, SequenceNumber* min_seq,
@@ -540,6 +538,9 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
+  stats.num_tables_written = 1;
+  //TODO set num_tables_read
+
   if(level>=stats_.size()) {
     stats_.resize(level+1);
   }
@@ -766,6 +767,10 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->number), c->level() + 1,
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(), versions_->LevelSummary(&tmp));
+    if(stats_.size()<=c->level()+1) {
+      stats_.resize(c->level()+1);
+    }
+    stats_[c->level()+1].num_tables_written++;
   } else {
     CompactionState* compact = new CompactionState(c);
     status = DoCompactionWork(compact);
@@ -917,7 +922,6 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
 
-//TODO change stat to have changable length
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
@@ -1051,6 +1055,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
+  stats.num_tables_written = compact->outputs.size();
   for (int which = 0; which < 2; which++) {
     for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
       stats.bytes_read += compact->compaction->input(which, i)->file_size;

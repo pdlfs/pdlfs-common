@@ -211,13 +211,16 @@ class DBImpl : public DB {
     int64_t micros;
     int64_t bytes_read;
     int64_t bytes_written;
-
-    CompactionStats() : micros(0), bytes_read(0), bytes_written(0) {}
+    int64_t num_tables_written;
+    int64_t num_tables_read;
+    CompactionStats() : micros(0), bytes_read(0), bytes_written(0), num_tables_written(0), num_tables_read(0) {}
 
     void Add(const CompactionStats& c) {
       this->micros += c.micros;
       this->bytes_read += c.bytes_read;
       this->bytes_written += c.bytes_written;
+      this->num_tables_written += c.num_tables_written;
+      this->num_tables_read += c.num_tables_read;
     }
   };
   std::vector<CompactionStats> stats_;
