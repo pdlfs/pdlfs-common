@@ -211,6 +211,9 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
   if (msg != NULL) {
     result = Status::Corruption("VersionEdit", msg);
   }
+  else if(level>max_level_){
+    max_level_ = level;
+  }
   return result;
 }
 

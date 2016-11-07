@@ -237,6 +237,9 @@ struct DBOptions {
   // Default: 12
   int l0_hard_limit;
 
+  //
+  bool enable_input_output_fork;
+
   DBOptions();
 };
 

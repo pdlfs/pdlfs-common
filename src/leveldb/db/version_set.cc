@@ -676,7 +676,7 @@ class VersionSet::Builder {
     // Update compaction pointers
     for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
       const int level = edit->compact_pointers_[i].first;
-      assert(level < vset_->compact_pointer_.size());
+      assert(level <= edit->max_level_);
       vset_->compact_pointer_[level] =
           edit->compact_pointers_[i].second.Encode().ToString();
     }
@@ -687,7 +687,7 @@ class VersionSet::Builder {
          iter != del.end(); ++iter) {
       const int level = iter->first;
       const uint64_t number = iter->second;
-      assert(level < levels_.size());
+      assert(level <= edit->max_level_);
       levels_[level].deleted_files.insert(number);
     }
 
@@ -712,35 +712,9 @@ class VersionSet::Builder {
       // of data before triggering a compaction.
       f->allowed_seeks = (f->file_size / 16384);
       if (f->allowed_seeks < 100) f->allowed_seeks = 100;
-      assert(level < levels_.size());
+      assert(level <= edit->max_level_);
       levels_[level].deleted_files.erase(f->number);
       levels_[level].added_files->insert(f);
-    }
-  }
-
-  // Save the current state in *v.
-  // This function is solely used by Recover function
-  // The difference between this function and SaveTo is that
-  // This function does not assume base_ will have the same number of levels
-  // as levels_
-  void SaveToForRecover(Version* v) {
-    if(v->files_.size()<levels_.size())
-      v->files_.resize(levels_.size());
-    SaveTo(v);
-    for(int level=base_->files_.size(); level<levels_.size(); ++level) {
-      const FileSet* added = levels_[level].added_files;
-      v->files_[level].reserve(added->size());
-      for (FileSet::const_iterator added_iter = added->begin();
-           added_iter != added->end(); ++added_iter) {
-        MaybeAddFile(v, level, *added_iter);
-      }
-    }
-    // Make sure the highest level is always empty
-    if(!v->files_.back().empty()) {
-      v->files_.push_back(std::vector<FileMetaData *>());
-    }
-    if(vset_->compact_pointer_.size()<v->files_.size()) {
-      vset_->compact_pointer_.resize(v->files_.size());
     }
   }
 
@@ -751,30 +725,39 @@ class VersionSet::Builder {
     if(v->files_.size()<levels_.size()) {
       v->files_.resize(levels_.size());
     }
-    for (int level = 0; level < base_->files_.size(); level++) {
+    for (int level = 0; level < levels_.size(); level++) {
       // Merge the set of added files with the set of pre-existing files.
       // Drop any deleted files.  Store the result in *v.
-      const std::vector<FileMetaData*>& base_files = base_->files_[level];
-      std::vector<FileMetaData*>::const_iterator base_iter = base_files.begin();
-      std::vector<FileMetaData*>::const_iterator base_end = base_files.end();
-      const FileSet* added = levels_[level].added_files;
-      v->files_[level].reserve(base_files.size() + added->size());
-      for (FileSet::const_iterator added_iter = added->begin();
-           added_iter != added->end(); ++added_iter) {
-        // Add all smaller files listed in base_
-        for (std::vector<FileMetaData*>::const_iterator bpos =
-                 std::upper_bound(base_iter, base_end, *added_iter, cmp);
-             base_iter != bpos; ++base_iter) {
+      if(level<base_->files_.size()) {
+        const std::vector<FileMetaData *> &base_files = base_->files_[level];
+        std::vector<FileMetaData *>::const_iterator base_iter = base_files.begin();
+        std::vector<FileMetaData *>::const_iterator base_end = base_files.end();
+        const FileSet *added = levels_[level].added_files;
+        v->files_[level].reserve(base_files.size()+added->size());
+        for(FileSet::const_iterator added_iter = added->begin();
+            added_iter!=added->end(); ++added_iter) {
+          // Add all smaller files listed in base_
+          for(std::vector<FileMetaData *>::const_iterator bpos =
+                  std::upper_bound(base_iter, base_end, *added_iter, cmp);
+              base_iter!=bpos; ++base_iter) {
+            MaybeAddFile(v, level, *base_iter);
+          }
+          MaybeAddFile(v, level, *added_iter);
+        }
+
+        // Add remaining base files
+        for(; base_iter!=base_end; ++base_iter) {
           MaybeAddFile(v, level, *base_iter);
         }
-        MaybeAddFile(v, level, *added_iter);
       }
-
-      // Add remaining base files
-      for (; base_iter != base_end; ++base_iter) {
-        MaybeAddFile(v, level, *base_iter);
+      else {
+        const FileSet *added = levels_[level].added_files;
+        v->files_[level].reserve(added->size());
+        for(FileSet::const_iterator added_iter = added->begin();
+            added_iter!=added->end(); ++added_iter) {
+          MaybeAddFile(v, level, *added_iter);
+        }
       }
-
 #ifndef NDEBUG
       // Make sure there is no overlap in levels > 0
       if (level > 0) {
