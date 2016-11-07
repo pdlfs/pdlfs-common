@@ -658,47 +658,21 @@ class VersionSet::Builder {
   }
 
   // Apply all of the edits in *edit to the current state.
-  // This function is solely used by Recover function.
-  // The different between this function and Apply is that this function
-  // will expand container size while Apply will not.
-  void ApplyForRecover(VersionEdit* edit) {
-    int max_level = 0;
-    for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
-      const int level = edit->compact_pointers_[i].first;
-      if(level>max_level)
-        max_level = level;
+  void Apply(VersionEdit* edit) {
+    // Make sure the highest level is empty
+    if(vset_->compact_pointer_.size()<=edit->max_level_+1) {
+      vset_->compact_pointer_.resize(edit->max_level_+2);
     }
-
-    const VersionEdit::DeletedFileSet& del = edit->deleted_files_;
-    for (VersionEdit::DeletedFileSet::const_iterator iter = del.begin();
-         iter != del.end(); ++iter) {
-      const int level = iter->first;
-      if(max_level<level)
-        max_level = level;
-    }
-
-    for (size_t i = 0; i < edit->new_files_.size(); i++) {
-      const int level = edit->new_files_[i].first;
-      if(max_level<level)
-        max_level = level;
-    }
-    if(max_level>=vset_->compact_pointer_.size())
-      vset_->compact_pointer_.resize(max_level+1);
-    if(max_level>=levels_.size()) {
-      int from_level = levels_.size();
-      levels_.resize(max_level+1);
+    if(levels_.size()<=edit->max_level_+1) {
+      int from = levels_.size();
+      levels_.resize(edit->max_level_+2);
       BySmallestKey cmp;
       cmp.internal_comparator = &vset_->icmp_;
-      while(from_level<levels_.size()) {
-        levels_[from_level++].added_files = new FileSet(cmp);
+      for (int level = from; level < levels_.size(); level++) {
+        levels_[level].added_files = new FileSet(cmp);
       }
     }
 
-    Apply(edit);
-  }
-
-  // Apply all of the edits in *edit to the current state.
-  void Apply(VersionEdit* edit) {
     // Update compaction pointers
     for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
       const int level = edit->compact_pointers_[i].first;
@@ -774,9 +748,9 @@ class VersionSet::Builder {
   void SaveTo(Version* v) {
     BySmallestKey cmp;
     cmp.internal_comparator = &vset_->icmp_;
-    assert(vset_->compact_pointer_.size()==base_->files_.size());
-    if(v->files_.size()<base_->files_.size())
-      v->files_.resize(base_->files_.size());
+    if(v->files_.size()<levels_.size()) {
+      v->files_.resize(levels_.size());
+    }
     for (int level = 0; level < base_->files_.size(); level++) {
       // Merge the set of added files with the set of pre-existing files.
       // Drop any deleted files.  Store the result in *v.
@@ -819,10 +793,7 @@ class VersionSet::Builder {
     }
 
     // Make sure the highest level is always empty
-    if(!v->files_.back().empty()) {
-      v->files_.push_back(std::vector<FileMetaData *>());
-      vset_->compact_pointer_.push_back(std::string());
-    }
+    assert(v->files_.back().empty());
   }
 
   void MaybeAddFile(Version* v, int level, FileMetaData* f) {
@@ -873,7 +844,7 @@ void VersionSet::AppendVersion(Version* v) {
   // Make "v" current
   assert(v->refs_ == 0);
   assert(v != current_);
-  assert(v->files_.size()==compact_pointer_.size());
+  assert(v->files_.size()<=compact_pointer_.size());
   if (current_ != NULL) {
     current_->Unref();
   }
@@ -1127,7 +1098,7 @@ Status VersionSet::Recover() {
             }
 
             if (s.ok()) {
-              builder->ApplyForRecover(&edit);
+              builder->Apply(&edit);
             }
 
             if (edit.has_log_number_) {
@@ -1204,7 +1175,7 @@ Status VersionSet::Recover() {
       status = Status::Corruption(dbname_, "no valid manifest available");
     } else {
       Version* v = new Version(this);
-      selected->SaveToForRecover(v);
+      selected->SaveTo(v);
       // Install the chosen one
       Finalize(v);
       AppendVersion(v);

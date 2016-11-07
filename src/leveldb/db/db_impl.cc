@@ -329,7 +329,7 @@ Status DBImpl::Recover(VersionEdit* edit) {
       return Status::InvalidArgument(dbname_, "exists");
     }
   }
-
+  // TODO check
   s = versions_->Recover();
   if (s.ok()) {
     SequenceNumber max_sequence(0);
@@ -1609,12 +1609,15 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     in.remove_prefix(strlen("num-files-at-level"));
     uint64_t level;
     bool ok = ConsumeDecimalNumber(&in, &level) && in.empty();
-    if (!ok || level >= versions_->current()->NumLevels()) {
+    if (!ok) {
       return false;
     } else {
       char buf[100];
-      snprintf(buf, sizeof(buf), "%d",
-               versions_->NumLevelFiles(static_cast<int>(level)));
+      if(level >= versions_->current()->NumLevels()) {
+        sprintf(buf, "0");
+      } else {
+        snprintf(buf, sizeof(buf), "%d", versions_->NumLevelFiles(static_cast<int>(level)));
+      }
       *value = buf;
       return true;
     }

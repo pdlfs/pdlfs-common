@@ -51,6 +51,8 @@ class VersionEdit {
     last_sequence_ = seq;
   }
   void SetCompactPointer(int level, const InternalKey& key) {
+    if(level>max_level_)
+      max_level_ = level;
     compact_pointers_.push_back(std::make_pair(level, key));
   }
 
@@ -59,6 +61,8 @@ class VersionEdit {
   // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
   void AddFile(int level, uint64_t file, uint64_t file_size, SequenceOff off,
                const InternalKey& smallest, const InternalKey& largest) {
+    if(level>max_level_)
+      max_level_ = level;
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
@@ -93,6 +97,7 @@ class VersionEdit {
   bool has_prev_log_number_;
   bool has_next_file_number_;
   bool has_last_sequence_;
+  int max_level_;
 
   std::vector<std::pair<int, InternalKey> > compact_pointers_;
   DeletedFileSet deleted_files_;

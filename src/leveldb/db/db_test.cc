@@ -1140,10 +1140,10 @@ TEST(DBTest, RepeatedWritesToSameKey) {
   options.env = env_;
   options.write_buffer_size = 100000;  // Small write buffer
   Reopen(&options);
-
+  int total_levels = TotalLevels();
   // We must have at most one file per level except for level-0,
   // which may have up to kL0_StopWritesTrigger files.
-  const int kMaxFiles = config::kNumLevels + options.l0_hard_limit;
+  const int kMaxFiles = total_levels+options.l0_hard_limit;
 
   Random rnd(301);
   std::string value = RandomString(&rnd, 2 * options.write_buffer_size);
@@ -1685,9 +1685,10 @@ TEST(DBTest, NoSpace) {
   ASSERT_EQ("v1", Get("foo"));
   Compact("a", "z");
   const int num_files = CountFiles();
+  const int total_levels = TotalLevels();
   env_->no_space_.Release_Store(env_);  // Force out-of-space errors
   for (int i = 0; i < 10; i++) {
-    for (int level = 0; level < config::kNumLevels - 1; level++) {
+    for (int level = 0; level < total_levels - 1; level++) {
       dbfull()->TEST_CompactRange(level, NULL, NULL);
     }
   }

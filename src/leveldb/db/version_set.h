@@ -140,7 +140,7 @@ class Version {
   int refs_;          // Number of live refs to this version
 
   // List of files per level
-  std::vector<std::vector<FileMetaData*>> files_;
+  std::vector<std::vector<FileMetaData*> > files_;
 
   // Next file to compact based on seek stats.
   FileMetaData* file_to_compact_;

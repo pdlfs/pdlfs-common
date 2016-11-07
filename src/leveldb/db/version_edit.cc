@@ -42,6 +42,7 @@ void VersionEdit::Clear() {
   has_last_sequence_ = false;
   deleted_files_.clear();
   new_files_.clear();
+  max_level_ = config::kMaxMemCompactLevel;
 }
 
 void VersionEdit::EncodeTo(std::string* dst) const {
@@ -103,7 +104,7 @@ static bool GetInternalKey(Slice* input, InternalKey* dst) {
 
 static bool GetLevel(Slice* input, int* level) {
   uint32_t v;
-  if (GetVarint32(input, &v) && v < config::kNumLevels) {
+  if (GetVarint32(input, &v)) {
     *level = v;
     return true;
   } else {
