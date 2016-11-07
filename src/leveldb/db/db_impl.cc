@@ -1056,6 +1056,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
   stats.num_tables_written = compact->outputs.size();
+  stats.num_tables_read = compact->compaction->total_num_input_files();
   for (int which = 0; which < 2; which++) {
     for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
       stats.bytes_read += compact->compaction->input(which, i)->file_size;
