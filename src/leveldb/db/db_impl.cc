@@ -42,6 +42,9 @@
 #include "pdlfs-common/status.h"
 #include "pdlfs-common/strutil.h"
 
+// TODO: DEBUGGING
+#include <iostream>
+
 namespace pdlfs {
 
 // Information kept for every waiting writer
@@ -550,6 +553,8 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
 }
 
 void DBImpl::CompactMemTable() {
+	//TODO: DEBUGGING
+	std::cout << "CompactMemTable::  imm" << (imm_ == NULL ? "==" : "!=")  << "NULL" << std::endl;
   mutex_.AssertHeld();
   assert(imm_ != NULL);
 
@@ -687,6 +692,10 @@ void DBImpl::MaybeScheduleCompaction() {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
+
+    //TODO: DEBUGGING
+		std::cout << "MaybeScheduleCompaction::set bg_compaction_scheduled_ true" << std::endl;
+
     if (options_.compaction_pool != NULL) {
       options_.compaction_pool->Schedule(&DBImpl::BGWork, this);
     } else {
@@ -702,6 +711,7 @@ void DBImpl::BGWork(void* db) {
 void DBImpl::BackgroundCall() {
   MutexLock l(&mutex_);
   assert(bg_compaction_scheduled_);
+
   if (shutting_down_.Acquire_Load()) {
     // No more background work when shutting down.
   } else if (!bg_error_.ok()) {
@@ -714,6 +724,9 @@ void DBImpl::BackgroundCall() {
 
   bg_compaction_scheduled_ = false;
 
+	//TODO: DEBUGGING
+	std::cout << "BackgroundCall::set bg_compaction_scheduled_ false" << std::endl;
+
   // Previous compaction may have produced too many files in a level,
   // so reschedule another compaction if needed.
   MaybeScheduleCompaction();
@@ -724,7 +737,12 @@ void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
   if (imm_ != NULL) {
+		//TODO: DEBUGGING
+		std::cout << "BackgroundCompaction::Compact Mem" << std::endl;
+
     CompactMemTable();
+		//TODO: DEBUGGING
+		std::cout << "BackgroundCompaction::Compact Mem finished" << std::endl;
     return;
   }
 
@@ -732,6 +750,8 @@ void DBImpl::BackgroundCompaction() {
   bool is_manual = (manual_compaction_ != NULL);
   InternalKey manual_end;
   if (is_manual) {
+		//TODO: DEBUGGING
+		std::cout << "BackgroundCompaction::is_manual" << std::endl;
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
@@ -744,6 +764,8 @@ void DBImpl::BackgroundCompaction() {
         (m->end ? m->end->DebugString().c_str() : "(end)"),
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
   } else if (!options_.disable_compaction) {
+		//TODO: DEBUGGING
+		std::cout << "BackgroundCompaction::not_manual" << std::endl;
     c = versions_->PickCompaction(!options_.disable_seek_compaction);
   } else {
     c = NULL;
@@ -1518,7 +1540,13 @@ Status DBImpl::MakeRoomForWrite(bool force) {
     } else if (!options_.disable_compaction &&
                versions_->NumLevelFiles(0) >= options_.l0_hard_limit) {
       // There are too many level-0 files.
+
+    	// TODO: DEBUGGING
+    	if (bg_compaction_scheduled_) std::cout << "MakeRoomForWrite::bg_compaction_scheduled_" << std::endl;
+    	if (bulk_insert_in_progress_) std::cout << "MakeRoomForWrite::bulk_insert_in_progress_" << std::endl;
+
       Log(options_.info_log, "Too many L0 files; waiting...\n");
+
       bg_cv_.Wait();
     } else if (!options_.no_memtable) {
       // Close the current log file and open a new one
@@ -1563,6 +1591,10 @@ Status DBImpl::BulkInsert(Iterator* iter) {
   // Temporarily disable any background compaction
   bg_compaction_paused_ = true;
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
+
+		// TODO: DEBUGGING
+		if (bg_compaction_scheduled_) std::cout << "BulkInsert::bg_compaction_scheduled_" << std::endl;
+		if (bulk_insert_in_progress_) std::cout << "BulkInsert::bulk_insert_in_progress_" << std::endl;
     bg_cv_.Wait();
   }
 

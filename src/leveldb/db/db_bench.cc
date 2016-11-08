@@ -263,9 +263,8 @@ class Stats {
       else if (next_report_ < 10000)  next_report_ += 1000;
       else if (next_report_ < 50000)  next_report_ += 5000;
       else if (next_report_ < 100000) next_report_ += 10000;
-      else if (next_report_ < 500000) next_report_ += 10000;
-      //else                            next_report_ += 100000;
-      else                            next_report_ += 10000;
+      else if (next_report_ < 500000) next_report_ += 50000;
+      else                            next_report_ += 100000;
       fprintf(stderr, "... finished %d ops%30s\r", done_, "");
       fflush(stderr);
     }
@@ -1046,7 +1045,7 @@ int main(int argc, char** argv) {
   if (FLAGS_db == NULL) {
   	pdlfs::g_env->GetTestDirectory(&default_db_path);
     default_db_path += "/dbbench";
-    fprintf(stdout, "\n===path====:%s\n", default_db_path.c_str());
+    fprintf(stdout, "\n===path===:%s\n", default_db_path.c_str());
     FLAGS_db = default_db_path.c_str();
   }
 
