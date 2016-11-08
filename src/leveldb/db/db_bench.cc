@@ -737,6 +737,8 @@ class Benchmark {
     options.write_buffer_size = FLAGS_write_buffer_size;
     options.block_size = FLAGS_block_size;;
     options.filter_policy = filter_policy_;
+    options.compaction_pool = ThreadPool::NewFixed(4);
+
     Status s;
     if (FLAGS_db_impl == 0) {
 			s = DB::Open(options, FLAGS_db, &db_);
@@ -744,10 +746,8 @@ class Benchmark {
 			ColumnStyle styles[1];
 			if (FLAGS_db_impl == 1) {
 				styles[0] = kLSMStyle;
-				fprintf(stderr, "open kLSMStyle\n");
 			} else { // 2
 				styles[0] = kLSMKeyStyle;
-				fprintf(stderr, "open kLSMKeyStyle\n");
 			}
 			TestColumnSelector column_selector;
 			s = ColumnarDB::Open(options, FLAGS_db, &column_selector, styles, 1, &db_);
@@ -800,7 +800,6 @@ class Benchmark {
         fprintf(stderr, "put error: %s\n", s.ToString().c_str());
         exit(1);
       }
-			fprintf(stderr, "tid: %d, done:%d: \n", thread->tid, thread->stats.Done());
     }
     thread->stats.AddBytes(bytes);
   }

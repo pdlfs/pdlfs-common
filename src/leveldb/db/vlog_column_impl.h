@@ -157,7 +157,7 @@ class VLogColumnImpl : public Column {
         columnname_(columnname),
         leveldbname_(columnname + LEVELDB_SUBDIR),
         vlogname_(columnname + VLOG_SUBDIR),
-        vlogfile_number_(0) {
+        vlogfile_number_(1) {
     db_ = new DBImpl(raw_options, leveldbname_);
   }
   ~VLogColumnImpl();
