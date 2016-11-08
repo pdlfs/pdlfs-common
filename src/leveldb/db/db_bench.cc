@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "db_impl.h"
+#include "columnar_impl.h"
 #include "version_set.h"
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/env.h"
@@ -69,6 +70,9 @@ static const char* FLAGS_benchmarks =
     "snappyuncomp,"
     "acquireload,"
     ;
+
+// Use which DBImpl
+static int FLAGS_db_impl = 0;
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -126,6 +130,13 @@ static const char* FLAGS_db = NULL;
 namespace pdlfs {
 
 typedef DBOptions Options;
+
+class TestColumnSelector : public ColumnSelector {
+ public:
+  virtual const char* Name() const { return "leveldb.TestColumnSelector"; }
+
+  virtual size_t Select(const Slice& k) const { return 0; }
+};
 
 namespace {
 Env* g_env = NULL;
@@ -198,6 +209,7 @@ class Stats {
 
  public:
   Stats() { Start(); }
+  int Done() { return done_;}
 
   void Start() {
     next_report_ = 100;
@@ -251,8 +263,9 @@ class Stats {
       else if (next_report_ < 10000)  next_report_ += 1000;
       else if (next_report_ < 50000)  next_report_ += 5000;
       else if (next_report_ < 100000) next_report_ += 10000;
-      else if (next_report_ < 500000) next_report_ += 50000;
-      else                            next_report_ += 100000;
+      else if (next_report_ < 500000) next_report_ += 10000;
+      //else                            next_report_ += 100000;
+      else                            next_report_ += 10000;
       fprintf(stderr, "... finished %d ops%30s\r", done_, "");
       fflush(stderr);
     }
@@ -723,9 +736,23 @@ class Benchmark {
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
     options.write_buffer_size = FLAGS_write_buffer_size;
-    options.block_size = FLAGS_block_size;
+    options.block_size = FLAGS_block_size;;
     options.filter_policy = filter_policy_;
-    Status s = DB::Open(options, FLAGS_db, &db_);
+    Status s;
+    if (FLAGS_db_impl == 0) {
+			s = DB::Open(options, FLAGS_db, &db_);
+    } else {
+			ColumnStyle styles[1];
+			if (FLAGS_db_impl == 1) {
+				styles[0] = kLSMStyle;
+				fprintf(stderr, "open kLSMStyle\n");
+			} else { // 2
+				styles[0] = kLSMKeyStyle;
+				fprintf(stderr, "open kLSMKeyStyle\n");
+			}
+			TestColumnSelector column_selector;
+			s = ColumnarDB::Open(options, FLAGS_db, &column_selector, styles, 1, &db_);
+    }
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
       exit(1);
@@ -774,6 +801,7 @@ class Benchmark {
         fprintf(stderr, "put error: %s\n", s.ToString().c_str());
         exit(1);
       }
+			fprintf(stderr, "tid: %d, done:%d: \n", thread->tid, thread->stats.Done());
     }
     thread->stats.AddBytes(bytes);
   }
@@ -1002,6 +1030,8 @@ int main(int argc, char** argv) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
       FLAGS_open_files = n;
+    } else if (sscanf(argv[i], "--db_impl=%d%c", &n, &junk) == 1) {
+      FLAGS_db_impl = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
     } else {
@@ -1015,8 +1045,9 @@ int main(int argc, char** argv) {
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == NULL) {
   	pdlfs::g_env->GetTestDirectory(&default_db_path);
-      default_db_path += "/dbbench";
-      FLAGS_db = default_db_path.c_str();
+    default_db_path += "/dbbench";
+    fprintf(stdout, "\n===path====:%s\n", default_db_path.c_str());
+    FLAGS_db = default_db_path.c_str();
   }
 
   pdlfs::Benchmark benchmark;
