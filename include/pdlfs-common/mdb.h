@@ -26,6 +26,10 @@ struct DirId {
 #if !defined(DELTAFS)
   DirId(uint64_t ino) : ino(ino) {}
 #endif
+  DirId(const Stat& stat)
+      : reg(stat.RegId()), snap(stat.SnapId()), ino(stat.InodeNo()) {}
+  DirId(const LookupStat& stat)
+      : reg(stat.RegId()), snap(stat.SnapId()), ino(stat.InodeNo()) {}
   DirId(uint64_t reg, uint64_t snap, uint64_t ino)
       : reg(reg), snap(snap), ino(ino) {}
 
@@ -121,7 +125,8 @@ class MDB {
 
   typedef std::vector<std::string> NameList;
   typedef std::vector<Stat> StatList;
-  int List(const DirId& id, StatList* stats, NameList* names, Tx* tx);
+  size_t List(const DirId& id, StatList* stats, NameList* names, Tx* tx,
+              size_t limit);
   bool Exists(const DirId& id, const Slice& hash, Tx* tx);
 
   Status Commit(Tx* tx) {
