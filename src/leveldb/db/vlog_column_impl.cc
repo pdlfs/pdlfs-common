@@ -64,7 +64,7 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
       buffer.append(iter->value().data(), iter->value().size());
       s = vlog.AddRecord(Slice(buffer));
 
-      // If error, skip this one?
+      // TODO: modify: If error, skip this one.
       if (!s.ok()) {
         file->Close();
         delete file;
@@ -109,8 +109,6 @@ Status VLogColumnImpl::WriteTable(Iterator* contents) {
 }
 
 Iterator* VLogColumnImpl::NewInternalIterator(const ReadOptions& options) {
-  // TODO
-  std::cout << "NewInternalIterator" << std::endl;
   SequenceNumber ignored_last_sequence;
   uint32_t ignored_seed;
   Iterator* leveldb_iter =

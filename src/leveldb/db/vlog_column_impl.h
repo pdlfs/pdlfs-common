@@ -117,7 +117,6 @@ class VLogColumnIterator : public Iterator {
   mutable bool value_fetched_;
   Env* const env_;
   mutable std::string value_str_;
-  // mutable Slice value_;
 
   // No copying allowed
   VLogColumnIterator(const VLogColumnIterator&);
@@ -172,7 +171,6 @@ class VLogColumnImpl : public Column {
   Status BulkInsertVLog(KeyValOffVec* const kvoff_vec, const std::string& fname,
                         Iterator* iter);
 
-  // TODO: What's this?
   Status PreRecover(RecoverMethod method) { return Status::OK(); }
 
   Status Recover();
@@ -186,7 +184,6 @@ class VLogColumnImpl : public Column {
   DBImpl* db_;
   uint64_t vlogfile_number_;
 
-  // VLogImpl* vlog_;
 };
 
 }  // namespace pdlfs
