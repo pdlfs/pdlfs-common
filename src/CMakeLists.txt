@@ -202,7 +202,7 @@ set (pdlfs-all-tests ${pdlfs-common-tests} ${pdlfs-leveldb-tests}
 # (must come before any add_library/add_executable calls)
 #
 set (pdlfs-try-common-flags -Wpedantic -Wno-long-long -Wall
-                            -Wno-sign-compare -pthread -g -o)
+                            -Wno-sign-compare -pthread)
 foreach (lcv ${pdlfs-try-common-flags})
     CHECK_CXX_COMPILER_FLAG (${lcv} flag${lcv})
     if (${flag${lcv}})

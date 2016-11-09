@@ -738,6 +738,7 @@ class Benchmark {
     options.block_size = FLAGS_block_size;;
     options.filter_policy = filter_policy_;
     options.compaction_pool = ThreadPool::NewFixed(4);
+    options.compression = kNoCompression;
 
     Status s;
     if (FLAGS_db_impl == 0) {
