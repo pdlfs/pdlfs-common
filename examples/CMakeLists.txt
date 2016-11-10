@@ -7,3 +7,6 @@
 # XXX: example example, just add_executable with a target link to pdlfs-common
 # add_executable (foo foo.c)
 # target_link_libraries (foo pdlfs-common)
+
+add_executable (leveldb_example leveldb_example.cc)
+target_link_libraries (leveldb_example pdlfs-common)
