@@ -25,11 +25,13 @@ class TestColumnSelector : public ColumnSelector {
 };
 
 class ColumnarTest {
+ typedef DBOptions Options;
  public:
   ColumnarTest() {
     dbname_ = test::TmpDir() + "/columnar_test";
     DestroyDB(ColumnName(dbname_, 0), Options());
     DestroyDB(dbname_, Options());
+    options_.disable_write_ahead_log = false;
     options_.create_if_missing = true;
     options_.skip_lock_file = true;
     ColumnStyle styles[1];
@@ -76,7 +78,22 @@ class ColumnarTest {
     return result;
   }
 
-  typedef DBOptions Options;
+  void Reopen(Options* options = NULL) { ASSERT_OK(TryReopen(options)); }
+
+  Status TryReopen(Options* options) {
+    delete db_;
+    db_ = NULL;
+    Options opts;
+    if (options != NULL) {
+      opts = *options;
+    } else {
+      opts = Options();
+      opts.create_if_missing = true;
+    }
+    return DB::Open(opts, dbname_, &db_);
+  }
+
+
   TestColumnSelector column_selector_;
   std::string dbname_;
   Options options_;
@@ -113,6 +130,27 @@ TEST(ColumnarTest, IterMultiWithDelete) {
   ASSERT_EQ(IterStatus(iter), "a->va");
   delete iter;
 }
+
+TEST(ColumnarTest, Recover) {
+	ASSERT_OK(Put("foo", "v1"));
+	ASSERT_OK(Put("baz", "v5"));
+
+	Reopen();
+	ASSERT_EQ("v1", Get("foo"));
+
+	ASSERT_EQ("v1", Get("foo"));
+	ASSERT_EQ("v5", Get("baz"));
+	ASSERT_OK(Put("bar", "v2"));
+	ASSERT_OK(Put("foo", "v3"));
+
+	Reopen();
+	ASSERT_EQ("v3", Get("foo"));
+	ASSERT_OK(Put("foo", "v4"));
+	ASSERT_EQ("v4", Get("foo"));
+	ASSERT_EQ("v2", Get("bar"));
+	ASSERT_EQ("v5", Get("baz"));
+}
+
 
 }  // namespace pdlfs
 
