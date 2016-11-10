@@ -76,9 +76,14 @@ include (pdlfs-options)
 
 # local options
 set (PDLFS_EXAMPLES "OFF" CACHE BOOL "Build examples programs")
+set (PDLFS_TOOLS "OFF" CACHE BOOL "Enable pdlfs tool programs")
 
 add_subdirectory (src)
 
 if (PDLFS_EXAMPLES)
 add_subdirectory (examples)
+endif ()
+
+if (PDLFS_TOOLS)
+add_subdirectory (tools)
 endif ()
