@@ -88,8 +88,7 @@ class VLogColumnIterator : public Iterator {
       // TODO
     }
     const char* p = record.data();
-    const char* limit =
-        p + record.size();  // VarInt32 takes no more than 5 bytes
+    const char* limit = p + record.size();
     std::string key_str;
     Slice key(key_str);
     Slice ret_value;
@@ -103,7 +102,6 @@ class VLogColumnIterator : public Iterator {
 
     value_str_ = ret_value.ToString();
     ret_value = Slice(value_str_);
-
     value_fetched_ = true;
     delete file;
     return ret_value;
@@ -123,6 +121,9 @@ class VLogColumnIterator : public Iterator {
   void operator=(const VLogColumnIterator&);
 };
 
+// Iterator for a KeyValOffVec, currently only used
+// in VLogColumn::WriteTable. Some functions are not implemented
+// since they will not be used.
 class KeyValOffsetIterator : public Iterator {
  public:
   explicit KeyValOffsetIterator(KeyValOffVec* k_voff)

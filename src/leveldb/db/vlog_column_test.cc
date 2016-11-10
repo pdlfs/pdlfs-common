@@ -25,6 +25,7 @@ class TestVLogColumnSelector : public ColumnSelector {
 
 class VLogColumnTest {
  public:
+ typedef DBOptions Options;
   VLogColumnTest() {
     dbname_ = test::TmpDir() + "/vlogcolumn_test";
     DestroyDB(dbname_, Options());
@@ -72,7 +73,29 @@ class VLogColumnTest {
     return db_->Put(WriteOptions(), k, v);
   }
 
-  typedef DBOptions Options;
+
+  void Reopen(Options* options = NULL) { ASSERT_OK(TryReopen(options)); }
+
+  Status TryReopen(Options* options) {
+    delete db_;
+    db_ = NULL;
+    Options opts;
+    if (options != NULL) {
+      opts = *options;
+    } else {
+      opts = Options();
+      opts.create_if_missing = true;
+    }
+    return DB::Open(opts, dbname_, &db_);
+  }
+
+  int NumTableFilesAtLevel(int level) {
+    std::string property;
+    ASSERT_TRUE(db_->GetProperty(
+        "leveldb.num-files-at-level" + NumberToString(level), &property));
+    return atoi(property.c_str());
+  }
+
   TestVLogColumnSelector column_selector_;
   std::string dbname_;
   Options options_;
@@ -325,6 +348,102 @@ TEST(VLogColumnTest, MultiCompaction) {
   ASSERT_EQ(IterStatus(iter), "c->vc");
 
   delete iter;
+}
+
+TEST(VLogColumnTest, Recover) {
+	ASSERT_OK(Put("foo", "v1"));
+	ASSERT_OK(Put("baz", "v5"));
+
+	Reopen();
+	ASSERT_EQ("v1", Get("foo"));
+
+	ASSERT_EQ("v1", Get("foo"));
+	ASSERT_EQ("v5", Get("baz"));
+	ASSERT_OK(Put("bar", "v2"));
+	ASSERT_OK(Put("foo", "v3"));
+
+	Reopen();
+	ASSERT_EQ("v3", Get("foo"));
+	ASSERT_OK(Put("foo", "v4"));
+	ASSERT_EQ("v4", Get("foo"));
+	ASSERT_EQ("v2", Get("bar"));
+	ASSERT_EQ("v5", Get("baz"));
+}
+
+
+TEST(VLogColumnTest, RecoveryWithEmptyLog) {
+	ASSERT_OK(Put("foo", "v1"));
+	ASSERT_OK(Put("foo", "v2"));
+	Reopen();
+	Reopen();
+	ASSERT_OK(Put("foo", "v3"));
+	Reopen();
+	ASSERT_EQ("v3", Get("foo"));
+}
+
+// Check that writes done during a memtable compaction are recovered
+// if the database is shutdown during the memtable compaction.
+TEST(VLogColumnTest, RecoverDuringMemtableCompaction) {
+    Options options = options_;
+    options.write_buffer_size = 1000000;
+    Reopen(&options);
+
+    // Trigger a long memtable compaction and reopen the database during it
+    ASSERT_OK(Put("foo", "v1"));                         // Goes to 1st log file
+    ASSERT_OK(Put("big1", std::string(10000000, 'x')));  // Fills memtable
+    ASSERT_OK(Put("big2", std::string(1000, 'y')));      // Triggers compaction
+    ASSERT_OK(Put("bar", "v2"));                         // Goes to new log file
+
+    Reopen(&options);
+    ASSERT_EQ("v1", Get("foo"));
+    ASSERT_EQ("v2", Get("bar"));
+    ASSERT_EQ(std::string(10000000, 'x'), Get("big1"));
+    ASSERT_EQ(std::string(1000, 'y'), Get("big2"));
+}
+
+TEST(VLogColumnTest, RecoverWithLargeLog) {
+  {
+    Reopen(&options_);
+    ASSERT_OK(Put("big1", std::string(200000, '1')));
+    ASSERT_OK(Put("big2", std::string(200000, '2')));
+    ASSERT_OK(Put("small3", std::string(10, '3')));
+    ASSERT_OK(Put("small4", std::string(10, '4')));
+    ASSERT_EQ(NumTableFilesAtLevel(0), 0);
+  }
+
+  // Make sure that if we re-open with a small write buffer size that
+  // we flush table files in the middle of a large log file.
+  Options options = options_;
+  options.write_buffer_size = 100000;
+  Reopen(&options);
+  ASSERT_EQ(NumTableFilesAtLevel(0), 3);
+  ASSERT_EQ(std::string(200000, '1'), Get("big1"));
+  ASSERT_EQ(std::string(200000, '2'), Get("big2"));
+  ASSERT_EQ(std::string(10, '3'), Get("small3"));
+  ASSERT_EQ(std::string(10, '4'), Get("small4"));
+  ASSERT_GT(NumTableFilesAtLevel(0), 1);
+}
+
+TEST(VLogColumnTest, NoLog) {
+  Options options = options_;
+  options.disable_write_ahead_log = true;
+  Reopen(&options);
+
+  ASSERT_OK(Put("foo", "v1"));
+  ASSERT_OK(Put("baz", "v5"));
+
+  Reopen(&options);
+  ASSERT_EQ("NOT_FOUND", Get("foo"));
+  ASSERT_EQ("NOT_FOUND", Get("baz"));
+  ASSERT_OK(Put("bar", "v2"));
+  ASSERT_OK(Put("foo", "v3"));
+
+  Reopen();
+  ASSERT_EQ("NOT_FOUND", Get("foo"));
+  ASSERT_OK(Put("foo", "v4"));
+  ASSERT_EQ("v4", Get("foo"));
+  ASSERT_EQ("NOT_FOUND", Get("bar"));
+  ASSERT_EQ("NOT_FOUND", Get("baz"));
 }
 
 /*

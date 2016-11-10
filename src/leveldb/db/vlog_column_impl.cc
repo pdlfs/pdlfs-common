@@ -64,19 +64,20 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
       buffer.append(iter->value().data(), iter->value().size());
       s = vlog.AddRecord(Slice(buffer));
 
-      // TODO: modify: If error, skip this one.
+      // If error occurs, return. Inserted entries in VLog does not
+      // matter since they will be eliminated during garbage collection.
       if (!s.ok()) {
         file->Close();
         delete file;
         return Status::IOError("BulkInsertVLog error");
       }
 
-      // Keep pair<key, offset>
+      // Record pair<key, offset>
       std::string encoded_pos;
       PutFixed64(&encoded_pos, vlogfile_number_);
       PutFixed64(&encoded_pos, off);
-      // Allocate new space in std::string to prevent from iter becoming
-      // invalid.
+      // Allocate new space by std::string to prevent from
+      // iter becoming invalid.
       kvoff_vec->push_back(std::make_pair(iter->key().ToString(), encoded_pos));
     }
   }
@@ -86,8 +87,8 @@ Status VLogColumnImpl::BulkInsertVLog(KeyValOffVec* const kvoff_vec,
 }
 
 Status VLogColumnImpl::WriteTable(Iterator* contents) {
-  // 1. bulk insert to vlog, and store tmp files in a vector
-  // Always create a new file
+  // Currently, always create a new file for each invocation
+  // Step 1. Bulk insert to vlog, and store pos info in a vector
   const std::string fname = VLogFileName(vlogname_, vlogfile_number_);
   KeyValOffVec kvoff_vec;
   Status s = BulkInsertVLog(&kvoff_vec, fname, contents);
@@ -95,11 +96,10 @@ Status VLogColumnImpl::WriteTable(Iterator* contents) {
     return s;
   }
 
-  // 2. bulk insert to left table.
+  // Step 2. Bulk insert pos info to leveldb
   KeyValOffsetIterator* vec_iter = new KeyValOffsetIterator(&kvoff_vec);
   s = db_->BulkInsert(vec_iter);
   delete vec_iter;
-  // What's typical strategy?
   if (!s.ok()) {
     return s;
   }
@@ -118,16 +118,16 @@ Iterator* VLogColumnImpl::NewInternalIterator(const ReadOptions& options) {
 
 Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
                            Buffer* result) {
-  // Get
-  std::string value;
-  buffer::StringBuf buf(&value);
+  // Get position from leveldb
+  std::string pos;
+  buffer::StringBuf buf(&pos);
   Status s = db_->Get(options, lkey, &buf);
   if (!s.ok()) {
     return s;
   }
 
-  uint64_t vlog_num = DecodeFixed64(value.data());
-  uint64_t vlog_offset = DecodeFixed64(value.data() + 8);
+  uint64_t vlog_num = DecodeFixed64(pos.data());
+  uint64_t vlog_offset = DecodeFixed64(pos.data() + 8);
   const std::string vlogname = VLogFileName(vlogname_, vlog_num);
 
   // Read value from vlog
@@ -150,6 +150,7 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
     Slice key(key_str);
     Slice value(value_str);
     if (!(p = GetLengthPrefixedSlice(p, limit, &key))) {
+    	delete file;
       return Status::Corruption(columnname_,
                                 "VLog ReadRecord record corrupted");
     }
@@ -174,6 +175,7 @@ Status VLogColumnImpl::Recover() {
   // committed only when the descriptor is created, and this directory
   // may already exist from a previous failed creation attempt.
   env_->CreateDir(vlogname_);
+
   // TODO: No lock file
   if (!env_->FileExists(vlogname_)) {
     if (!options_.create_if_missing) {

@@ -7,10 +7,6 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
-#include <iostream>
-#define LOG(...)                                                         \
-  std::cout << std::dec << __FILE__ << ":" << __LINE__ << ":" << __func__ \
-            << " | " << __VA_ARGS__ << std::endl;
 
 #include <stdint.h>
 #include <stdio.h>
@@ -361,8 +357,6 @@ Status DBImpl::Recover(VersionEdit* edit) {
     }
     std::set<uint64_t> expected;
     versions_->AddLiveFiles(&expected);
-
-    LOG("expected size:" << expected.size() << std::endl);
 
     uint64_t number;
     FileType type;
