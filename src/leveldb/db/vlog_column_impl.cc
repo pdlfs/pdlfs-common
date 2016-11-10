@@ -171,15 +171,17 @@ Status VLogColumnImpl::Get(const ReadOptions& options, const LookupKey& lkey,
 
 Status VLogColumnImpl::Recover() {
   Status s;
-  // Ignore error from CreateDir since the creation of the DB is
-  // committed only when the descriptor is created, and this directory
-  // may already exist from a previous failed creation attempt.
-  env_->CreateDir(vlogname_);
 
-  // TODO: No lock file
+  // TODO: Add lock file
   if (!env_->FileExists(vlogname_)) {
     if (!options_.create_if_missing) {
       return Status::InvalidArgument(vlogname_, "does not exist");
+    } else {
+    	// Sematically equivalent to NewDB().
+			// Ignore error from CreateDir since the creation of the DB is
+			// committed only when the descriptor is created, and this directory
+			// may already exist from a previous failed creation attempt.
+			env_->CreateDir(vlogname_);
     }
   } else {
     if (options_.error_if_exists) {

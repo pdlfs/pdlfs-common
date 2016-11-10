@@ -16,7 +16,7 @@
 #include "pdlfs-common/log_reader.h"
 
 #include <iostream>
-#define XLOG(...)                                                         \
+#define LOG(...)                                                         \
   std::cout << std::dec << __FILE__ << ":" << __LINE__ << ":" << __func__ \
             << " | " << __VA_ARGS__ << std::endl;
 
