@@ -16,6 +16,7 @@
 #include "memtable.h"
 #include "version_edit.h"
 #include "version_set.h"
+#include "vlog_column_impl.h"
 
 namespace pdlfs {
 
@@ -402,6 +403,9 @@ Status Column::Open(ColumnStyle style, RecoverMethod method,
   switch (style) {
     case kLSMStyle:
       column = new ColumnImpl(new DBImpl(options, name));
+      break;
+    case kLSMKeyStyle:
+      column = new VLogColumnImpl(options, name);
       break;
     default:
       return Status::NotSupported(Slice());

@@ -82,6 +82,7 @@ class DBImpl : public DB {
  protected:
   friend class DB;
   friend class ColumnImpl;
+  friend class VLogColumnImpl;
   struct CompactionState;
   struct InsertionState;
   struct Writer;

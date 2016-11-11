@@ -31,6 +31,11 @@ std::string LogFileName(const std::string& name, uint64_t number) {
   return MakeFileName(name, number, "log");
 }
 
+std::string VLogFileName(const std::string& name, uint64_t number) {
+  assert(number > 0);
+  return MakeFileName(name, number, "vlog");
+}
+
 std::string TableFileName(const std::string& name, uint64_t number) {
   assert(number > 0);
   return MakeFileName(name, number, "ldb");
@@ -105,6 +110,14 @@ bool ParseFileName(const Slice& fname, uint64_t* number, FileType* type) {
     }
     *type = kDescriptorFile;
     *number = num;
+  } else if (rest.starts_with(Slice("COLUMN-"))) {
+    rest.remove_prefix(strlen("COLUMN-000000"));
+    if (rest == VLOG_SUBDIR) {
+      *type = kColumnVLogDir;
+    } else if (rest == LEVELDB_SUBDIR) {
+      *type = kColumnLevelDBDir;
+    }
+    return true;
   } else {
     // Avoid strtoull() to keep filename format independent of the
     // current locale

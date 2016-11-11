@@ -25,11 +25,14 @@ class TestColumnSelector : public ColumnSelector {
 };
 
 class ColumnarTest {
+  typedef DBOptions Options;
+
  public:
   ColumnarTest() {
     dbname_ = test::TmpDir() + "/columnar_test";
     DestroyDB(ColumnName(dbname_, 0), Options());
     DestroyDB(dbname_, Options());
+    options_.disable_write_ahead_log = false;
     options_.create_if_missing = true;
     options_.skip_lock_file = true;
     ColumnStyle styles[1];
@@ -53,13 +56,44 @@ class ColumnarTest {
     }
   }
 
+  Status Put(const std::string& k, const std::string& v) {
+    return db_->Put(WriteOptions(), k, v);
+  }
+
+  Status Delete(const std::string& k) { return db_->Delete(WriteOptions(), k); }
+
   void CompactMemTable() {
     Status s =
         reinterpret_cast<ColumnarDBWrapper*>(db_)->TEST_CompactMemTable();
     ASSERT_OK(s);
   }
 
-  typedef DBOptions Options;
+  std::string IterStatus(Iterator* iter) {
+    std::string result;
+    if (iter->Valid()) {
+      result = iter->key().ToString();
+      result = result + "->" + iter->value().ToString();
+    } else {
+      result = "(invalid)";
+    }
+    return result;
+  }
+
+  void Reopen(Options* options = NULL) { ASSERT_OK(TryReopen(options)); }
+
+  Status TryReopen(Options* options) {
+    delete db_;
+    db_ = NULL;
+    Options opts;
+    if (options != NULL) {
+      opts = *options;
+    } else {
+      opts = Options();
+      opts.create_if_missing = true;
+    }
+    return DB::Open(opts, dbname_, &db_);
+  }
+
   TestColumnSelector column_selector_;
   std::string dbname_;
   Options options_;
@@ -79,6 +113,42 @@ TEST(ColumnarTest, Put) {
   CompactMemTable();
   ASSERT_EQ(Get("foo"), "v1");
   ASSERT_EQ(Get("bar"), "v2");
+}
+
+TEST(ColumnarTest, IterMultiWithDelete) {
+  ASSERT_OK(Put("a", "va"));
+  ASSERT_OK(Put("b", "vb"));
+  ASSERT_OK(Put("c", "vc"));
+  ASSERT_OK(Delete("b"));
+  ASSERT_EQ("NOT_FOUND", Get("b"));
+
+  CompactMemTable();
+  Iterator* iter = db_->NewIterator(ReadOptions());
+  iter->Seek("c");
+  ASSERT_EQ(IterStatus(iter), "c->vc");
+  iter->Prev();
+  ASSERT_EQ(IterStatus(iter), "a->va");
+  delete iter;
+}
+
+TEST(ColumnarTest, Recover) {
+  ASSERT_OK(Put("foo", "v1"));
+  ASSERT_OK(Put("baz", "v5"));
+
+  Reopen();
+  ASSERT_EQ("v1", Get("foo"));
+
+  ASSERT_EQ("v1", Get("foo"));
+  ASSERT_EQ("v5", Get("baz"));
+  ASSERT_OK(Put("bar", "v2"));
+  ASSERT_OK(Put("foo", "v3"));
+
+  Reopen();
+  ASSERT_EQ("v3", Get("foo"));
+  ASSERT_OK(Put("foo", "v4"));
+  ASSERT_EQ("v4", Get("foo"));
+  ASSERT_EQ("v2", Get("bar"));
+  ASSERT_EQ("v5", Get("baz"));
 }
 
 }  // namespace pdlfs

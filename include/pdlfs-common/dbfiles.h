@@ -18,6 +18,9 @@
 
 namespace pdlfs {
 
+#define LEVELDB_SUBDIR "-LEVELDB"
+#define VLOG_SUBDIR "-VLOG"
+
 class Env;
 
 enum FileType {
@@ -27,7 +30,9 @@ enum FileType {
   kDescriptorFile,
   kCurrentFile,
   kTempFile,
-  kInfoLogFile  // Either the current one, or an old one
+  kInfoLogFile,
+  kColumnVLogDir,
+  kColumnLevelDBDir  // Either the current one, or an old one
 };
 
 static const int kMaxFileType = kInfoLogFile;
@@ -40,6 +45,9 @@ extern const char* NameOfType(FileType type);
 // "dbname".
 extern std::string LogFileName(const std::string& dbname, uint64_t number);
 
+// Return the name of the vlog file with the specified number. The result will
+// be prefixed with "name"
+extern std::string VLogFileName(const std::string& name, uint64_t number);
 // Return the name of the sstable with the specified number
 // in the db named by "dbname".  The result will be prefixed with
 // "dbname".
