@@ -157,7 +157,7 @@ class Version {
         next_(this),
         prev_(this),
         refs_(0),
-        files_(config::kMaxMemCompactLevel+1),
+        files_(config::kMaxMemCompactLevel + 1),
         file_to_compact_(NULL),
         file_to_compact_level_(-1),
         compaction_score_(-1),
@@ -353,7 +353,7 @@ class Compaction {
   int num_input_files(int which) const { return inputs_[which].size(); }
 
   int total_num_input_files() const {
-    return num_input_files(0)+num_input_files(1);
+    return num_input_files(0) + num_input_files(1);
   }
 
   // Return the ith input file at "level()+which" ("which" must be 0 or 1).

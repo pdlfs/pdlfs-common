@@ -129,7 +129,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       bg_compaction_scheduled_(false),
       bulk_insert_in_progress_(false),
       manual_compaction_(NULL),
-      stats_(config::kMaxMemCompactLevel+1) {
+      stats_(config::kMaxMemCompactLevel + 1) {
   if (!options_.no_memtable) {
     mem_ = new MemTable(internal_comparator_);
     mem_->Ref();
@@ -539,10 +539,10 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
   stats.num_tables_written = 1;
-  //TODO set num_tables_read
+  // TODO set num_tables_read
 
-  if(level>=stats_.size()) {
-    stats_.resize(level+1);
+  if (level >= stats_.size()) {
+    stats_.resize(level + 1);
   }
   stats_[level].Add(stats);
   return s;
@@ -766,10 +766,10 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->number), c->level() + 1,
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(), versions_->LevelSummary(&tmp));
-    if(stats_.size()<=c->level()+1) {
-      stats_.resize(c->level()+1);
+    if (stats_.size() <= c->level() + 1) {
+      stats_.resize(c->level() + 1);
     }
-    stats_[c->level()+1].num_tables_written++;
+    stats_[c->level() + 1].num_tables_written++;
   } else {
     CompactionState* compact = new CompactionState(c);
     status = DoCompactionWork(compact);
@@ -1068,8 +1068,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   mutex_.Lock();
 
   int level = compact->compaction->level() + 1;
-  if(level>=stats_.size()) {
-    stats_.resize(level+1);
+  if (level >= stats_.size()) {
+    stats_.resize(level + 1);
   }
   stats_[level].Add(stats);
 
@@ -1618,10 +1618,11 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       return false;
     } else {
       char buf[100];
-      if(level >= versions_->current()->NumLevels()) {
+      if (level >= versions_->current()->NumLevels()) {
         sprintf(buf, "0");
       } else {
-        snprintf(buf, sizeof(buf), "%d", versions_->NumLevelFiles(static_cast<int>(level)));
+        snprintf(buf, sizeof(buf), "%d",
+                 versions_->NumLevelFiles(static_cast<int>(level)));
       }
       *value = buf;
       return true;
@@ -1633,7 +1634,7 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
              "Level  Files Size(MB) Time(sec) Read(MB) Write(MB)\n"
              "--------------------------------------------------\n");
     value->append(buf);
-    assert(stats_.size()>=versions_->current()->NumLevels());
+    assert(stats_.size() >= versions_->current()->NumLevels());
     for (int level = 0; level < versions_->current()->NumLevels(); level++) {
       int files = versions_->NumLevelFiles(level);
       if (stats_[level].micros > 0 || files > 0) {
@@ -2046,7 +2047,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
         impl->log_ = new log::Writer(lfile);
       }
     }
-    //TODO why LogAndApply again
+    // TODO why LogAndApply again
     if (s.ok()) {
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }

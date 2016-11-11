@@ -20,7 +20,7 @@ namespace pdlfs {
 // Grouping of constants.  We may want to make some of these
 // parameters set via options.
 namespace config {
-//static const int kNumLevels = 7;
+// static const int kNumLevels = 7;
 
 // Maximum level to which a new compacted memtable is pushed if it
 // does not create overlap.  We try to push to level 2 to avoid the

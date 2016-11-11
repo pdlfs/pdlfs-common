@@ -213,7 +213,12 @@ class DBImpl : public DB {
     int64_t bytes_written;
     int64_t num_tables_written;
     int64_t num_tables_read;
-    CompactionStats() : micros(0), bytes_read(0), bytes_written(0), num_tables_written(0), num_tables_read(0) {}
+    CompactionStats()
+        : micros(0),
+          bytes_read(0),
+          bytes_written(0),
+          num_tables_written(0),
+          num_tables_read(0) {}
 
     void Add(const CompactionStats& c) {
       this->micros += c.micros;

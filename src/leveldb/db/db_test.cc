@@ -469,7 +469,7 @@ class DBTest {
   // tables that cover a specified range to all levels.
   void FillLevels(const std::string& smallest, const std::string& largest) {
     int total_level = TotalLevels();
-    //TODO changing this may not be correct
+    // TODO changing this may not be correct
     MakeTables(total_level, smallest, largest);
   }
 
@@ -1143,7 +1143,7 @@ TEST(DBTest, RepeatedWritesToSameKey) {
   int total_levels = TotalLevels();
   // We must have at most one file per level except for level-0,
   // which may have up to kL0_StopWritesTrigger files.
-  const int kMaxFiles = total_levels+options.l0_hard_limit;
+  const int kMaxFiles = total_levels + options.l0_hard_limit;
 
   Random rnd(301);
   std::string value = RandomString(&rnd, 2 * options.write_buffer_size);
