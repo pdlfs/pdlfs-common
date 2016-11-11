@@ -25,7 +25,7 @@ class TestVLogColumnSelector : public ColumnSelector {
 
 class VLogColumnTest {
  public:
- typedef DBOptions Options;
+  typedef DBOptions Options;
   VLogColumnTest() {
     dbname_ = test::TmpDir() + "/vlogcolumn_test";
     DestroyDB(dbname_, Options());
@@ -72,7 +72,6 @@ class VLogColumnTest {
   Status Put(const std::string& k, const std::string& v) {
     return db_->Put(WriteOptions(), k, v);
   }
-
 
   void Reopen(Options* options = NULL) { ASSERT_OK(TryReopen(options)); }
 
@@ -351,54 +350,53 @@ TEST(VLogColumnTest, MultiCompaction) {
 }
 
 TEST(VLogColumnTest, Recover) {
-	ASSERT_OK(Put("foo", "v1"));
-	ASSERT_OK(Put("baz", "v5"));
+  ASSERT_OK(Put("foo", "v1"));
+  ASSERT_OK(Put("baz", "v5"));
 
-	Reopen();
-	ASSERT_EQ("v1", Get("foo"));
+  Reopen();
+  ASSERT_EQ("v1", Get("foo"));
 
-	ASSERT_EQ("v1", Get("foo"));
-	ASSERT_EQ("v5", Get("baz"));
-	ASSERT_OK(Put("bar", "v2"));
-	ASSERT_OK(Put("foo", "v3"));
+  ASSERT_EQ("v1", Get("foo"));
+  ASSERT_EQ("v5", Get("baz"));
+  ASSERT_OK(Put("bar", "v2"));
+  ASSERT_OK(Put("foo", "v3"));
 
-	Reopen();
-	ASSERT_EQ("v3", Get("foo"));
-	ASSERT_OK(Put("foo", "v4"));
-	ASSERT_EQ("v4", Get("foo"));
-	ASSERT_EQ("v2", Get("bar"));
-	ASSERT_EQ("v5", Get("baz"));
+  Reopen();
+  ASSERT_EQ("v3", Get("foo"));
+  ASSERT_OK(Put("foo", "v4"));
+  ASSERT_EQ("v4", Get("foo"));
+  ASSERT_EQ("v2", Get("bar"));
+  ASSERT_EQ("v5", Get("baz"));
 }
 
-
 TEST(VLogColumnTest, RecoveryWithEmptyLog) {
-	ASSERT_OK(Put("foo", "v1"));
-	ASSERT_OK(Put("foo", "v2"));
-	Reopen();
-	Reopen();
-	ASSERT_OK(Put("foo", "v3"));
-	Reopen();
-	ASSERT_EQ("v3", Get("foo"));
+  ASSERT_OK(Put("foo", "v1"));
+  ASSERT_OK(Put("foo", "v2"));
+  Reopen();
+  Reopen();
+  ASSERT_OK(Put("foo", "v3"));
+  Reopen();
+  ASSERT_EQ("v3", Get("foo"));
 }
 
 // Check that writes done during a memtable compaction are recovered
 // if the database is shutdown during the memtable compaction.
 TEST(VLogColumnTest, RecoverDuringMemtableCompaction) {
-    Options options = options_;
-    options.write_buffer_size = 1000000;
-    Reopen(&options);
+  Options options = options_;
+  options.write_buffer_size = 1000000;
+  Reopen(&options);
 
-    // Trigger a long memtable compaction and reopen the database during it
-    ASSERT_OK(Put("foo", "v1"));                         // Goes to 1st log file
-    ASSERT_OK(Put("big1", std::string(10000000, 'x')));  // Fills memtable
-    ASSERT_OK(Put("big2", std::string(1000, 'y')));      // Triggers compaction
-    ASSERT_OK(Put("bar", "v2"));                         // Goes to new log file
+  // Trigger a long memtable compaction and reopen the database during it
+  ASSERT_OK(Put("foo", "v1"));                         // Goes to 1st log file
+  ASSERT_OK(Put("big1", std::string(10000000, 'x')));  // Fills memtable
+  ASSERT_OK(Put("big2", std::string(1000, 'y')));      // Triggers compaction
+  ASSERT_OK(Put("bar", "v2"));                         // Goes to new log file
 
-    Reopen(&options);
-    ASSERT_EQ("v1", Get("foo"));
-    ASSERT_EQ("v2", Get("bar"));
-    ASSERT_EQ(std::string(10000000, 'x'), Get("big1"));
-    ASSERT_EQ(std::string(1000, 'y'), Get("big2"));
+  Reopen(&options);
+  ASSERT_EQ("v1", Get("foo"));
+  ASSERT_EQ("v2", Get("bar"));
+  ASSERT_EQ(std::string(10000000, 'x'), Get("big1"));
+  ASSERT_EQ(std::string(1000, 'y'), Get("big2"));
 }
 
 TEST(VLogColumnTest, RecoverWithLargeLog) {

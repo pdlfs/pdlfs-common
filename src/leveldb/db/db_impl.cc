@@ -42,7 +42,6 @@
 #include "pdlfs-common/status.h"
 #include "pdlfs-common/strutil.h"
 
-
 namespace pdlfs {
 
 // Information kept for every waiting writer
@@ -690,7 +689,6 @@ void DBImpl::MaybeScheduleCompaction() {
   } else {
     bg_compaction_scheduled_ = true;
 
-
     if (options_.compaction_pool != NULL) {
       options_.compaction_pool->Schedule(&DBImpl::BGWork, this);
     } else {
@@ -718,7 +716,6 @@ void DBImpl::BackgroundCall() {
   }
 
   bg_compaction_scheduled_ = false;
-
 
   // Previous compaction may have produced too many files in a level,
   // so reschedule another compaction if needed.
@@ -1525,7 +1522,6 @@ Status DBImpl::MakeRoomForWrite(bool force) {
                versions_->NumLevelFiles(0) >= options_.l0_hard_limit) {
       // There are too many level-0 files.
 
-
       Log(options_.info_log, "Too many L0 files; waiting...\n");
 
       bg_cv_.Wait();
@@ -1572,7 +1568,6 @@ Status DBImpl::BulkInsert(Iterator* iter) {
   // Temporarily disable any background compaction
   bg_compaction_paused_ = true;
   while (bg_compaction_scheduled_ || bulk_insert_in_progress_) {
-
     bg_cv_.Wait();
   }
 

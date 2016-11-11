@@ -25,7 +25,8 @@ class TestColumnSelector : public ColumnSelector {
 };
 
 class ColumnarTest {
- typedef DBOptions Options;
+  typedef DBOptions Options;
+
  public:
   ColumnarTest() {
     dbname_ = test::TmpDir() + "/columnar_test";
@@ -93,7 +94,6 @@ class ColumnarTest {
     return DB::Open(opts, dbname_, &db_);
   }
 
-
   TestColumnSelector column_selector_;
   std::string dbname_;
   Options options_;
@@ -132,25 +132,24 @@ TEST(ColumnarTest, IterMultiWithDelete) {
 }
 
 TEST(ColumnarTest, Recover) {
-	ASSERT_OK(Put("foo", "v1"));
-	ASSERT_OK(Put("baz", "v5"));
+  ASSERT_OK(Put("foo", "v1"));
+  ASSERT_OK(Put("baz", "v5"));
 
-	Reopen();
-	ASSERT_EQ("v1", Get("foo"));
+  Reopen();
+  ASSERT_EQ("v1", Get("foo"));
 
-	ASSERT_EQ("v1", Get("foo"));
-	ASSERT_EQ("v5", Get("baz"));
-	ASSERT_OK(Put("bar", "v2"));
-	ASSERT_OK(Put("foo", "v3"));
+  ASSERT_EQ("v1", Get("foo"));
+  ASSERT_EQ("v5", Get("baz"));
+  ASSERT_OK(Put("bar", "v2"));
+  ASSERT_OK(Put("foo", "v3"));
 
-	Reopen();
-	ASSERT_EQ("v3", Get("foo"));
-	ASSERT_OK(Put("foo", "v4"));
-	ASSERT_EQ("v4", Get("foo"));
-	ASSERT_EQ("v2", Get("bar"));
-	ASSERT_EQ("v5", Get("baz"));
+  Reopen();
+  ASSERT_EQ("v3", Get("foo"));
+  ASSERT_OK(Put("foo", "v4"));
+  ASSERT_EQ("v4", Get("foo"));
+  ASSERT_EQ("v2", Get("bar"));
+  ASSERT_EQ("v5", Get("baz"));
 }
-
 
 }  // namespace pdlfs
 

@@ -15,11 +15,6 @@
 #include "pdlfs-common/coding.h"
 #include "pdlfs-common/log_reader.h"
 
-#include <iostream>
-#define LOG(...)                                                         \
-  std::cout << std::dec << __FILE__ << ":" << __LINE__ << ":" << __func__ \
-            << " | " << __VA_ARGS__ << std::endl;
-
 namespace pdlfs {
 
 typedef std::vector<std::pair<std::string, std::string> > KeyValOffVec;
@@ -184,7 +179,6 @@ class VLogColumnImpl : public Column {
   const std::string vlogname_;
   DBImpl* db_;
   uint64_t vlogfile_number_;
-
 };
 
 }  // namespace pdlfs
