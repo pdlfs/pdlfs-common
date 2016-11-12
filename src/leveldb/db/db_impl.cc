@@ -281,6 +281,13 @@ void DBImpl::DeleteObsoleteFiles() {
         case kInfoLogFile:
           keep = true;
           break;
+
+        //==============
+        case kColumnVLogDir:
+        case kColumnLevelDBDir:
+          break;
+          // TODO!!
+          //==============
       }
 
       if (!keep) {
@@ -349,6 +356,7 @@ Status DBImpl::Recover(VersionEdit* edit) {
     }
     std::set<uint64_t> expected;
     versions_->AddLiveFiles(&expected);
+
     uint64_t number;
     FileType type;
     std::vector<uint64_t> logs;
@@ -686,6 +694,7 @@ void DBImpl::MaybeScheduleCompaction() {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
+
     if (options_.compaction_pool != NULL) {
       options_.compaction_pool->Schedule(&DBImpl::BGWork, this);
     } else {
@@ -701,6 +710,7 @@ void DBImpl::BGWork(void* db) {
 void DBImpl::BackgroundCall() {
   MutexLock l(&mutex_);
   assert(bg_compaction_scheduled_);
+
   if (shutting_down_.Acquire_Load()) {
     // No more background work when shutting down.
   } else if (!bg_error_.ok()) {
@@ -1527,7 +1537,9 @@ Status DBImpl::MakeRoomForWrite(bool force) {
     } else if (!options_.disable_compaction &&
                versions_->NumLevelFiles(0) >= options_.l0_hard_limit) {
       // There are too many level-0 files.
+
       Log(options_.info_log, "Too many L0 files; waiting...\n");
+
       bg_cv_.Wait();
     } else if (!options_.no_memtable) {
       // Close the current log file and open a new one
