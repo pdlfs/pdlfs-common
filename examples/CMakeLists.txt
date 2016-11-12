@@ -10,3 +10,6 @@
 
 add_executable (leveldb_example leveldb_example.cc)
 target_link_libraries (leveldb_example pdlfs-common)
+
+add_executable (leveldb_bulk_example leveldb_bulk_example.cc)
+target_link_libraries (leveldb_bulk_example pdlfs-common)

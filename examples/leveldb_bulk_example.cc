@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string>
 
+#include "pdlfs-common/coding.h"
 #include "pdlfs-common/env.h"
 #include "pdlfs-common/leveldb/db/db.h"
 #include "pdlfs-common/pdlfs_config.h"
@@ -55,6 +56,7 @@ int main(int argc, char* argv[]) {
 #endif
   pdlfs::DB* db = NULL;
   pdlfs::DestroyDB("/tmp/pdlfs_leveldb", pdlfs::DBOptions());
+  pdlfs::DestroyDB("/tmp/pdlfs_bulk", pdlfs::DBOptions());
   pdlfs::DBOptions options;
 #if defined(PDLFS_GLOG)
   options.info_log = pdlfs::Logger::Default();
@@ -65,37 +67,43 @@ int main(int argc, char* argv[]) {
   Assert_OK(pdlfs::DB::Open(options, "/tmp/pdlfs_leveldb", &db));
   Assert_true(db != NULL);
 
-  // K1 -> ""
-  Assert_OK(db->Put(pdlfs::WriteOptions(), "K1", pdlfs::Slice()));
   // K1 -> V1
   Assert_OK(db->Put(pdlfs::WriteOptions(), "K1", "V1"));
-  // K2 -> ""
-  Assert_OK(db->Delete(pdlfs::WriteOptions(), "K2"));
   // K2 -> V2
   Assert_OK(db->Put(pdlfs::WriteOptions(), "K2", "V2"));
-
-  // Flush
-  db->FlushMemTable(pdlfs::FlushOptions());
-
-  // K3 -> K3
+  // K3 -> V3
   Assert_OK(db->Put(pdlfs::WriteOptions(), "K3", "V3"));
-  // K3 -> ""
-  Assert_OK(db->Delete(pdlfs::WriteOptions(), "K3"));
   // K4 -> V4
   Assert_OK(db->Put(pdlfs::WriteOptions(), "K4", "V4"));
 
-  // Get with a pre-allocated buffer
-  char buf[100];
-  pdlfs::Slice value;
-  Assert_OK(db->Get(pdlfs::ReadOptions(), "K1", &value, buf, sizeof(buf)));
+  // Dump db data
+  pdlfs::SequenceNumber min_seq;
+  pdlfs::SequenceNumber max_seq;
+  Assert_OK(db->Dump(pdlfs::DumpOptions(), pdlfs::Range(), "/tmp/pdlfs_bulk",
+                     &min_seq, &max_seq));
+
+  // Drop and reopen db
+  delete db;
+  pdlfs::DestroyDB("/tmp/pdlfs_leveldb", pdlfs::DBOptions());
+  options.no_memtable = true;
+  Assert_OK(pdlfs::DB::Open(options, "/tmp/pdlfs_leveldb", &db));
+  Assert_true(db != NULL);
+
+  // Bulk insert
+  Assert_OK(db->AddL0Tables(pdlfs::InsertOptions(), "/tmp/pdlfs_bulk"));
+  std::string value;
+  // K1
+  Assert_OK(db->Get(pdlfs::ReadOptions(), "K1", &value));
   Assert_true(value == "V1");
-  Assert_OK(db->Get(pdlfs::ReadOptions(), "K2", &value, buf, sizeof(buf)));
+  // K2
+  Assert_OK(db->Get(pdlfs::ReadOptions(), "K2", &value));
   Assert_true(value == "V2");
-  // Get with an empty buffer
-  char empty[0];
-  pdlfs::Status s = db->Get(pdlfs::ReadOptions(), "K4", &value, empty, 0);
-  Assert_true(s.IsBufferFull());
-  Assert_true(value.size() == pdlfs::Slice("V4").size());
+  // K3
+  Assert_OK(db->Get(pdlfs::ReadOptions(), "K3", &value));
+  Assert_true(value == "V3");
+  // K4
+  Assert_OK(db->Get(pdlfs::ReadOptions(), "K4", &value));
+  Assert_true(value == "V4");
 
   delete db;
   fprintf(stderr, "Done\n");
