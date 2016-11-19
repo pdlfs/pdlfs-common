@@ -55,6 +55,18 @@ class YCSBColumnarDB : public DB {
     ASSERT_OK(s);
   }
 
+  explicit YCSBColumnarDB() : dbname_(pdlfs::test::TmpDir() + "/ycsb_test") {
+    pdlfs::DestroyDB(dbname_, Options());
+    options_.create_if_missing = true;
+    options_.skip_lock_file = true;
+    options_.compaction_pool = pdlfs::ThreadPool::NewFixed(4);
+    options_.compression = pdlfs::kNoCompression;
+    // pdlfs::kLSMStyle;
+    // styles[0] = kLSMKeyStyle;
+    Status s = pdlfs::DB::Open(options_, dbname_, &db_);
+    ASSERT_OK(s);
+  }
+
   std::string Get(const Slice& key) {
     std::string value;
     Status s = db_->Get(pdlfs::ReadOptions(), key, &value);

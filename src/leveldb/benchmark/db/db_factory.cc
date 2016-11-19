@@ -26,6 +26,8 @@ DB* DBFactory::CreateDB(utils::Properties& props) {
     return new YCSBColumnarDB(pdlfs::kLSMStyle);
   } else if (props["dbname"] == "columnardb1") {
     return new YCSBColumnarDB(pdlfs::kLSMKeyStyle);
+  } else if (props["dbname"] == "leveldb") {
+    return new YCSBColumnarDB();
   } else
     return NULL;
 }
