@@ -442,9 +442,14 @@ Status ColumnarDB::Open(const Options& options, const std::string& dbname,
   Column::RecoverMethod method;
   Status s = impl->PreRecover(&method);
   if (s.ok()) {
+  	// Lu: Only for experiemnts.
+  	Options column_option(options);
+  	column_option.block_size = 1 << 14; // 16KB
+  	column_option.table_file_size = 8 * 1048576; // 8MB
+
     for (size_t i = 0; i < num_columns; i++) {
       Column* column;
-      s = Column::Open(column_styles[i], method, options, ColumnName(dbname, i),
+      s = Column::Open(column_styles[i], method, column_option, ColumnName(dbname, i),
                        &column);
       if (s.ok()) {
         impl->columns_.push_back(column);

@@ -57,6 +57,9 @@ int main(const int argc, const char *argv[]) {
   // Loads data
   vector<future<int>> actual_ops;
   int total_ops = stoi(props[ycsbc::CoreWorkload::RECORD_COUNT_PROPERTY]);
+
+  utils::Timer<double> load_timer;
+  load_timer.Start();
   for (int i = 0; i < num_threads; ++i) {
     actual_ops.emplace_back(async(launch::async,
         DelegateClient, db, &wl, total_ops / num_threads, true));
@@ -68,7 +71,11 @@ int main(const int argc, const char *argv[]) {
     assert(n.valid());
     sum += n.get();
   }
+  double duration = load_timer.End();
   cerr << "# Loading records:\t" << sum << endl;
+  cerr << "# Transaction throughput (KTPS)" << endl;
+  cerr << props["dbname"] << '\t' << file_name << '\t' << num_threads << '\t';
+  cerr << total_ops / duration / 1000 << endl;
 
   // Peforms transactions
   actual_ops.clear();
@@ -86,7 +93,7 @@ int main(const int argc, const char *argv[]) {
     assert(n.valid());
     sum += n.get();
   }
-  double duration = timer.End();
+  duration = timer.End();
   cerr << "# Transaction throughput (KTPS)" << endl;
   cerr << props["dbname"] << '\t' << file_name << '\t' << num_threads << '\t';
   cerr << total_ops / duration / 1000 << endl;
