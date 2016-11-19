@@ -16,9 +16,7 @@ namespace utils {
 template <typename T>
 class Timer {
  public:
-  void Start() {
-    time_ = Clock::now();
-  }
+  void Start() { time_ = Clock::now(); }
 
   T End() {
     Duration span;
@@ -34,7 +32,6 @@ class Timer {
   Clock::time_point time_;
 };
 
-} // utils
+}  // utils
 
-#endif // YCSB_C_TIMER_H_
-
+#endif  // YCSB_C_TIMER_H_

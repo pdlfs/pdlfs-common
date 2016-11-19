@@ -19,15 +19,16 @@ namespace ycsbc {
 
 class SkewedLatestGenerator : public Generator<uint64_t> {
  public:
-  SkewedLatestGenerator(CounterGenerator &counter) :
-      basis_(counter), zipfian_(basis_.Last()) {
+  SkewedLatestGenerator(CounterGenerator& counter)
+      : basis_(counter), zipfian_(basis_.Last()) {
     Next();
   }
-  
+
   uint64_t Next();
   uint64_t Last() { return last_; }
+
  private:
-  CounterGenerator &basis_;
+  CounterGenerator& basis_;
   ZipfianGenerator zipfian_;
   uint64_t last_;
 };
@@ -37,6 +38,6 @@ inline uint64_t SkewedLatestGenerator::Next() {
   return last_ = max - zipfian_.Next(max);
 }
 
-} // ycsbc
+}  // ycsbc
 
-#endif // YCSB_C_SKEWED_LATEST_GENERATOR_H_
+#endif  // YCSB_C_SKEWED_LATEST_GENERATOR_H_

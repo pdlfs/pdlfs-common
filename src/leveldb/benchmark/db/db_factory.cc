@@ -17,15 +17,15 @@ using namespace std;
 using ycsbc::DB;
 using ycsbc::DBFactory;
 
-DB* DBFactory::CreateDB(utils::Properties &props) {
+DB* DBFactory::CreateDB(utils::Properties& props) {
   if (props["dbname"] == "basic") {
     return new BasicDB;
   } else if (props["dbname"] == "lock_stl") {
     return new LockStlDB;
   } else if (props["dbname"] == "columnardb0") {
-  	return new YCSBColumnarDB(pdlfs::kLSMStyle);
+    return new YCSBColumnarDB(pdlfs::kLSMStyle);
   } else if (props["dbname"] == "columnardb1") {
-  	return new YCSBColumnarDB(pdlfs::kLSMKeyStyle);
-  } else return NULL;
+    return new YCSBColumnarDB(pdlfs::kLSMKeyStyle);
+  } else
+    return NULL;
 }
-

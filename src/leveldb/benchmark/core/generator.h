@@ -19,9 +19,9 @@ class Generator {
  public:
   virtual Value Next() = 0;
   virtual Value Last() = 0;
-  virtual ~Generator() { }
+  virtual ~Generator() {}
 };
 
-} // ycsbc
+}  // ycsbc
 
-#endif // YCSB_C_GENERATOR_H_
+#endif  // YCSB_C_GENERATOR_H_
