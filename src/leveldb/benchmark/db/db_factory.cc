@@ -11,6 +11,7 @@
 #include <string>
 #include "basic_db.h"
 #include "lock_stl_db.h"
+#include "ycsb_columnardb.h"
 
 using namespace std;
 using ycsbc::DB;
@@ -21,6 +22,10 @@ DB* DBFactory::CreateDB(utils::Properties &props) {
     return new BasicDB;
   } else if (props["dbname"] == "lock_stl") {
     return new LockStlDB;
+  } else if (props["dbname"] == "columnardb0") {
+  	return new YCSBColumnarDB(pdlfs::kLSMStyle);
+  } else if (props["dbname"] == "columnardb1") {
+  	return new YCSBColumnarDB(pdlfs::kLSMKeyStyle);
   } else return NULL;
 }
 
