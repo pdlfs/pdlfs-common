@@ -63,6 +63,10 @@ class YCSBColumnarDB : public DB {
     options_.compression = pdlfs::kNoCompression;
     // pdlfs::kLSMStyle;
     // styles[0] = kLSMKeyStyle;
+
+    options_.block_size = 1 << 14;           // 16KB
+    options_.table_file_size = 8 * 1048576;  // 8MBcolumn_ocolumn_optionption
+
     Status s = pdlfs::DB::Open(options_, dbname_, &db_);
     ASSERT_OK(s);
   }
