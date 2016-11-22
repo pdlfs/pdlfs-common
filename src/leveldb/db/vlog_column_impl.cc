@@ -33,15 +33,12 @@ VLogColumnImpl::~VLogColumnImpl() {
   // TODO: and ??
 }
 
-<<<<<<< HEAD
-=======
 bool VLogColumnImpl::ShouldSlowdownWrites() {
   return db_->ShouldSlowdownWrites();
 }
 
 bool VLogColumnImpl::ShouldBlockWrites() { return db_->ShouldBlockWrites(); }
 
->>>>>>> htfs
 Status VLogColumnImpl::WriteTableStart() {
   // TODO
   return Status::OK();
