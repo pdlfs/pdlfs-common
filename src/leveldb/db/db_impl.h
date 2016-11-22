@@ -123,6 +123,10 @@ class DBImpl : public DB {
                           SequenceNumber* min_seq, SequenceNumber* max_seq,
                           bool force_level0);
 
+  // Control over write flow.
+  // Subclasses may override default implementation.
+  virtual bool ShouldSlowdownWrites();
+  virtual bool ShouldBlockWrites();
   Status MakeRoomForWrite(bool force /* compact even if there is room? */);
   WriteBatch* BuildBatchGroup(Writer** last_writer);
 
