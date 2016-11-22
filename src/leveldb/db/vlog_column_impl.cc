@@ -33,6 +33,12 @@ VLogColumnImpl::~VLogColumnImpl() {
   // TODO: and ??
 }
 
+bool VLogColumnImpl::ShouldSlowdownWrites() {
+  return db_->ShouldSlowdownWrites();
+}
+
+bool VLogColumnImpl::ShouldBlockWrites() { return db_->ShouldBlockWrites(); }
+
 Status VLogColumnImpl::WriteTableStart() {
   // TODO
   return Status::OK();
