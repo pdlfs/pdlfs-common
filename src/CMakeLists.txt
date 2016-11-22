@@ -249,7 +249,7 @@ set_target_properties(pdlfs-common
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.4.4)
         target_compile_options (pdlfs-common PRIVATE -fno-builtin-memcmp)
-        message ("**** NOTE: adding -fno-builtin-memcmp for old gcc")
+        message (STATUS "**** NOTE: adding -fno-builtin-memcmp for old gcc")
     endif ()
 endif ()
 
@@ -323,9 +323,8 @@ if (NOT TARGET pdl-build-tests)           # can only define it once
 endif ()
 foreach (lcv ${pdlfs-all-tests})
 
-    # need a test name... use regex to extract the file basename into ${id}
-    string (REGEX REPLACE ".*/" "" id ${lcv})
-    string (REGEX REPLACE "([A-Za-z0-9_]+)\\.c+$" "\\1" id ${id})
+    # use basename as test name
+    get_filename_component (id ${lcv} NAME_WE)
 
     add_executable (${id} EXCLUDE_FROM_ALL ${lcv})
     target_link_libraries (${id} pdlfs-common)

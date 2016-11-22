@@ -157,6 +157,12 @@ class VLogColumnImpl : public Column {
   }
   ~VLogColumnImpl();
 
+<<<<<<< HEAD
+=======
+  virtual bool ShouldSlowdownWrites();
+  virtual bool ShouldBlockWrites();
+
+>>>>>>> htfs
   Status WriteTableStart();
   Status WriteTable(Iterator* contents);
   Status WriteTableEnd();

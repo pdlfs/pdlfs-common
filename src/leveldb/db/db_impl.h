@@ -123,6 +123,10 @@ class DBImpl : public DB {
                           SequenceNumber* min_seq, SequenceNumber* max_seq,
                           bool force_level0);
 
+  // Control over write flow.
+  // Subclasses may override default implementation.
+  virtual bool ShouldSlowdownWrites();
+  virtual bool ShouldBlockWrites();
   Status MakeRoomForWrite(bool force /* compact even if there is room? */);
   WriteBatch* BuildBatchGroup(Writer** last_writer);
 
@@ -184,8 +188,8 @@ class DBImpl : public DB {
   // part of ongoing compactions.
   std::set<uint64_t> pending_outputs_;
 
-  // Temporarily stop background compaction
-  bool bg_compaction_paused_;
+  // If not zero, will temporarily stop background compactions
+  unsigned int bg_compaction_paused_;
   // Has a background compaction been scheduled or is running?
   bool bg_compaction_scheduled_;
   // Has an outstanding bulk insertion request?

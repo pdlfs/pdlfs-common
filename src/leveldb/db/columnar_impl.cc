@@ -28,6 +28,10 @@ ColumnarDBWrapper::~ColumnarDBWrapper() { delete impl_; }
 
 ColumnSelector::~ColumnSelector() {}
 
+bool ColumnImpl::ShouldSlowdownWrites() { return db_->ShouldSlowdownWrites(); }
+
+bool ColumnImpl::ShouldBlockWrites() { return db_->ShouldBlockWrites(); }
+
 Status ColumnImpl::WriteTableStart() {
   // TODO
   return Status::OK();
@@ -200,6 +204,32 @@ Column* ColumnarDBImpl::PickColumn(const Slice& key) {
   } else {
     return NULL;
   }
+}
+
+bool ColumnarDBImpl::ShouldSlowdownWrites() {
+  bool result = false;
+  size_t num_columns = columns_.size();
+  assert(num_columns != 0);
+  for (size_t i = 0; i < num_columns; i++) {
+    if (columns_[i]->ShouldSlowdownWrites()) {
+      result = true;
+      break;
+    }
+  }
+  return result;
+}
+
+bool ColumnarDBImpl::ShouldBlockWrites() {
+  bool result = false;
+  size_t num_columns = columns_.size();
+  assert(num_columns != 0);
+  for (size_t i = 0; i < num_columns; i++) {
+    if (columns_[i]->ShouldBlockWrites()) {
+      result = true;
+      break;
+    }
+  }
+  return result;
 }
 
 namespace {

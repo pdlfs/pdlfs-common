@@ -14,9 +14,11 @@
 #include "pdlfs-common/logging.h"
 #include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/rpc.h"
+
 #if defined(PDLFS_MARGO_RPC)
 #include "margo_rpc.h"
 #endif
+
 #if defined(PDLFS_MERCURY_RPC)
 #include "mercury_rpc.h"
 #endif
@@ -128,7 +130,7 @@ class MercuryRPCImpl : public RPC {
   MercuryRPC* rpc_;
 
  public:
-  virtual Status status() const { return looper_->status(); }
+  virtual Status status() const { return rpc_->status(); }
   virtual Status Start() { return looper_->Start(); }
   virtual Status Stop() { return looper_->Stop(); }
 
@@ -204,15 +206,21 @@ RPC* RPC::Open(const RPCOptions& raw_options) {
   if (options.impl == kMargoRPC) {
     rpc = new rpc::MargoRPCImpl(options);
   }
-#elif defined(PDLFS_MERCURY_RPC)
+#endif
+#if defined(PDLFS_MERCURY_RPC)
   if (options.impl == kMercuryRPC) {
     rpc = new rpc::MercuryRPCImpl(options);
   }
 #endif
   if (rpc == NULL) {
+#ifndef NDEBUG
     char msg[] = "No rpc implementation is available\n";
     fwrite(msg, 1, sizeof(msg), stderr);
     abort();
+#else
+    Error(__LOG_ARGS__, "No rpc implementation is available");
+    exit(EXIT_FAILURE);
+#endif
   } else {
     return rpc;
   }
