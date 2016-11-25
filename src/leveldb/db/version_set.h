@@ -113,8 +113,43 @@ class Version {
   int PickLevelForMemTableOutput(const Slice& smallest_user_key,
                                  const Slice& largest_user_key);
 
-  int NumFiles(int level) const { return files_[level].size(); }
+  inline int NumFilesInLevel(int level) const { return files_[level].size(); }
   inline int NumLevels() const { return files_.size(); }
+
+  // Should be used only when sublevel is enabled
+  int NumFilesInLevel_sub(const SublevelPool &pool, int level) const;
+  inline int NumFilesInLevel_sub(int level) const {
+    assert(vset_->options_->enable_sublevel);
+    assert(level>=0);
+    assert(input_pool_.size()==output_pool_.size());
+    int count = 0;
+    if (level==0) {
+      count = files_[0].size();
+    }
+    else if (level<input_pool_.size()) {
+      count += NumFilesInLevel_sub(input_pool_, level);
+      count += NumFilesInLevel_sub(output_pool_, level);
+    }
+    return count;
+  }
+  inline int NumLevels_sub() const {
+    assert(vset_->options_->enable_sublevel);
+    assert(input_pool_.size()==output_pool_.size());
+    return input_pool_.size();
+  }
+  int NumSublevelsInLevel_sub(int level) const {
+    assert(level >= 0);
+    assert(level < input_pool_.size());
+    assert(input_pool_.size()==output_pool_.size());
+    if(level==0)
+      return 1;
+    if(level>=input_pool_.size())
+      return 0;
+    return input_pool_[level].second+output_pool_.[level].second;
+  }
+  int NumFilesInSublevel_sub(int level, int sublevel) const {
+    // TODO implement if needed
+  }
 
   // Return a human readable string that describes this version's contents.
   std::string DebugString() const;
@@ -152,16 +187,13 @@ class Version {
   double compaction_score_;
   int compaction_level_;
 
-  explicit Version(VersionSet* vset)
-      : vset_(vset),
-        next_(this),
-        prev_(this),
-        refs_(0),
-        files_(config::kMaxMemCompactLevel + 1),
-        file_to_compact_(NULL),
-        file_to_compact_level_(-1),
-        compaction_score_(-1),
-        compaction_level_(-1) {}
+  // Only used when sublevel is enabled
+  // <start_index, size>
+  typedef std::vector<std::pair<int, int> > SublevelPool;
+  SublevelPool input_pool_;
+  SublevelPool output_pool_;
+
+  explicit Version(VersionSet* vset);
 
   ~Version();
 
@@ -219,6 +251,9 @@ class VersionSet {
 
   // Return the number of Table files at the specified level.
   int NumLevelFiles(int level) const;
+
+  // Return the number of sublevels at the specified level. Sublevel should be enabled
+  int NumSublevels(int level) const;
 
   // Return the combined file size of all files at the specified level.
   int64_t NumLevelBytes(int level) const;
@@ -327,6 +362,7 @@ class VersionSet {
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
+  // Not used when sublevel is enabled
   std::vector<std::string> compact_pointer_;
 
   // No copying allowed
@@ -349,8 +385,22 @@ class Compaction {
   // by this compaction.
   VersionEdit* edit() { return &edit_; }
 
-  // "which" must be either 0 or 1
-  int num_input_files(int which) const { return inputs_[which].size(); }
+  // "which" must be either 0 or 1 if sublevel is not enabled
+  int num_input_files(int which) const {
+    assert(which<inputs_.size());
+    return inputs_[which].size();
+  }
+
+  int64_t num_input_bytes(int which) const {
+    assert(which<inputs_.size());
+    int64_t bytes = 0;
+    for(int i=0; i<inputs_[which].size(); ++i) {
+      bytes += inputs_[which][i]->file_size;
+    }
+    return bytes;
+  }
+
+  FileMetaData *GetTheOnlyFile() const;
 
   int TotalNumInputFiles() const;
 
@@ -388,17 +438,21 @@ class Compaction {
 
   explicit Compaction(const Options* options, int level, VersionSet* vset);
 
+  Options options_;
   int level_;
+  int base_input_sublevel_;
   uint64_t max_output_file_size_;
   int64_t max_grand_parent_overlap_bytes_;
   Version* input_version_;
   VersionEdit edit_;
 
   // Each compaction reads inputs from "level_" and "level_+1"
-  std::vector<FileMetaData*> inputs_[2];  // The two sets of inputs
+  // Or from multiple sublevels of "level_" if sublevel is enabled
+  std::vector<std::vector<FileMetaData*> > inputs_;
 
-  // State used to check for number of of overlapping grandparent files
+  // State used to check for number of overlapping grandparent files
   // (parent == level_ + 1, grandparent == level_ + 2)
+  // The previous sublevel in level_+1 if sublevel is enabled
   std::vector<FileMetaData*> grandparents_;
   size_t grandparent_index_;  // Index in grandparent_starts_
   bool seen_key_;             // Some output key has been seen
@@ -411,6 +465,7 @@ class Compaction {
   // is that we are positioned at one of the file ranges for each
   // higher level than the ones involved in this compaction (i.e. for
   // all L >= level_ + 2).
+  // Not used when sublevel is enabled
   std::vector<size_t> level_ptrs_;
 };
 

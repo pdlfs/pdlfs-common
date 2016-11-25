@@ -105,6 +105,9 @@ DBOptions SanitizeOptions(const std::string& dbname,
   if (result.table_cache == NULL) {
     result.table_cache = NewLRUCache(1000);
   }
+  if (result.enable_sublevel) {
+    result.disable_seek_compaction = true;
+  }
   return result;
 }
 

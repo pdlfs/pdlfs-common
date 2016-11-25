@@ -70,6 +70,24 @@ static int64_t TotalFileSize(const std::vector<FileMetaData*>& files) {
 }
 }  // namespace
 
+Version::Version(VersionSet *vset)
+    : vset_(vset),
+      next_(this),
+      prev_(this),
+      refs_(0),
+      files_(vset->options_->enable_sublevel? 2: config::kMaxMemCompactLevel + 1),
+      file_to_compact_(NULL),
+      file_to_compact_level_(-1),
+      compaction_score_(-1),
+      compaction_level_(-1) {
+  if(vset->options_->enable_sublevel) {
+    input_pool_.push_back(std::make_pair(0, 1));
+    output_pool_.push_back(std::make_pair(0, 1));
+    input_pool_.push_back(std::make_pair(1, 1));
+    output_pool_.push_back(std::make_pair(2, 0));
+  }
+}
+
 Version::~Version() {
   assert(refs_ == 0);
 
@@ -527,6 +545,15 @@ int Version::PickLevelForMemTableOutput(const Slice& smallest_user_key,
   return level;
 }
 
+int Version::NumFilesInLevel_sub(const SublevelPool &pool, int level) const  {
+  int count = 0;
+  for(int i = input_pool_[level].first, end = input_pool_[level].first+input_pool_[level].second; i<end; ++i) {
+    assert(i<files_.size());
+    count += files_[i].size();
+  }
+  return count;
+}
+
 // Store in "*inputs" all files in "level" that overlap [begin,end]
 void Version::GetOverlappingInputs(int level, const InternalKey* begin,
                                    const InternalKey* end,
@@ -813,7 +840,7 @@ VersionSet::VersionSet(const std::string& dbname, const Options* options,
       descriptor_log_(NULL),
       dummy_versions_(this),
       current_(NULL),
-      compact_pointer_(config::kMaxMemCompactLevel + 1) {
+      compact_pointer_(options->enable_sublevel? 0: config::kMaxMemCompactLevel + 1) {
   AppendVersion(new Version(this));
 }
 
@@ -1265,12 +1292,6 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
   return log->AddRecord(record);
 }
 
-int VersionSet::NumLevelFiles(int level) const {
-  assert(level >= 0);
-  assert(level < current_->files_.size());
-  return current_->files_[level].size();
-}
-
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   // Update code if kNumLevels changes
   size_t size = sizeof(scratch->buffer);
@@ -1578,14 +1599,17 @@ Compaction* VersionSet::CompactRange(int level, const InternalKey* begin,
 }
 
 Compaction::Compaction(const Options* options, int level, VersionSet* vset)
-    : level_(level),
+    : options_(options),
+      level_(level),
+      base_input_sublevel_(vset->current()->output_pool_[level].first),
       max_output_file_size_(MaxFileSizeForLevel(options, level)),
       max_grand_parent_overlap_bytes_(MaxGrandParentOverlapBytes(options)),
-      input_version_(vset->current_),
+      input_version_(vset->current()),
+      inputs_(options->enable_sublevel? vset->current()->output_pool_[level].second: 2),
       grandparent_index_(0),
       seen_key_(false),
       overlapped_bytes_(0),
-      level_ptrs_(vset->current_->files_.size()) {
+      level_ptrs_(options->enable_sublevel? 0: vset->current()->NumLevels()) {
   input_version_->Ref();
   for (int i = 0; i < level_ptrs_.size(); i++) {
     level_ptrs_[i] = 0;
@@ -1598,13 +1622,24 @@ Compaction::~Compaction() {
   }
 }
 
+FileMetaData *Compaction::GetTheOnlyFile() const {
+  for(int i=0; i<inputs_.size(); ++i)
+    if(!inputs_[i].empty())
+      return inputs_[i][0];
+  assert(false);
+  return NULL;
+}
+
 int Compaction::TotalNumInputFiles() const {
-  return inputs_[0].size()+inputs_[1].size();
+  int count = 0;
+  for(int i=0; i<inputs_.size(); ++i)
+    count += inputs_[i].size();
+  return count;
 }
 
 int64_t Compaction::TotalNumInputBytes() const {
   int64_t bytes = 0;
-  for (int which = 0; which < 2; which++) {
+  for (int which = 0; which < inputs_.size(); which++) {
     for (int i = 0; i < inputs_[which].size(); i++) {
       bytes += inputs_[which][i]->file_size;
     }
@@ -1616,12 +1651,17 @@ bool Compaction::IsTrivialMove() const {
   // Avoid a move if there is lots of overlapping grandparent data.
   // Otherwise, the move could create a parent file that will require
   // a very expensive merge later on.
-  return (num_input_files(0) == 1 && num_input_files(1) == 0 &&
-          TotalFileSize(grandparents_) <= max_grand_parent_overlap_bytes_);
+  if (!options_.enable_sublevel) {
+    return (num_input_files(0)==1&&num_input_files(1)==0&&
+            TotalFileSize(grandparents_)<=max_grand_parent_overlap_bytes_);
+  }
+  else {
+    return TotalNumInputFiles()==1;
+  }
 }
 
 void Compaction::AddInputDeletions(VersionEdit* edit) {
-  for (int which = 0; which < 2; which++) {
+  for (int which = 0; which < inputs_.size(); which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
       edit->DeleteFile(level_ + which, inputs_[which][i]->number);
     }
@@ -1650,6 +1690,10 @@ bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
 }
 
 bool Compaction::ShouldStopBefore(const Slice& internal_key) {
+  if (options_.enable_sublevel) {
+    // TODO implement this function if we observe sometimes too many files are compacted in one compaction
+    return false;
+  }
   // Scan to find earliest grandparent file that contains key.
   const InternalKeyComparator* icmp = &input_version_->vset_->icmp_;
   while (grandparent_index_ < grandparents_.size() &&

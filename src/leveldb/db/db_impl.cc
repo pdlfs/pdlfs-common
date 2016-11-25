@@ -502,7 +502,7 @@ Status DBImpl::WriteMemTable(MemTable* mem, VersionEdit* edit, Version* base) {
   SequenceNumber ignored_max_seq;
   Iterator* iter = mem->NewIterator();
   Status s = WriteLevel0Table(iter, edit, base, &ignored_min_seq,
-                              &ignored_max_seq, false);
+                              &ignored_max_seq, options_.enable_sublevel);
   delete iter;
   return s;
 }
@@ -598,22 +598,34 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
   {
     MutexLock l(&mutex_);
     Version* base = versions_->current();
-    for (int level = 1; level < base->NumLevels(); level++) {
-      if (base->OverlapInLevel(level, begin, end)) {
-        max_level_with_files = level;
+    if(!options_.enable_sublevel) {
+      for(int level = 1; level<base->NumLevels(); level++) {
+        if(base->OverlapInLevel(level, begin, end)) {
+          max_level_with_files = level;
+        }
       }
+    }
+    else {
+      // If sublevel is enabled, we cannot compact in the middle of a sublevel
+      begin = NULL;
+      max_level_with_files = base->NumLevels_sub()-1;
     }
   }
   TEST_CompactMemTable();  // TODO(sanjay): Skip if memtable does not overlap
   for (int level = 0; level < max_level_with_files; level++) {
     TEST_CompactRange(level, begin, end);
+    // Compact twice if sublevel is enabled since after the first compaction,
+    // the output_pool might be refilled by moving tables in input_pool into it
+    if(options_.enable_sublevel)
+      TEST_CompactRange(level, begin, end);
   }
 }
 
 void DBImpl::TEST_CompactRange(int level, const Slice* begin,
                                const Slice* end) {
   assert(level >= 0);
-  assert(level + 1 < versions_->current()->NumLevels());
+  assert(options_.enable_sublevel || level + 1 < versions_->current()->NumLevels());
+  assert(!options_.enable_sublevel || level + 1 < versions_->current()->NumLevels_sub());
 
   InternalKey begin_storage, end_storage;
 
@@ -747,6 +759,7 @@ void DBImpl::BackgroundCompaction() {
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
+    // TODO modify this for sublevel
     if (c != NULL) {
       manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
     }
@@ -766,11 +779,18 @@ void DBImpl::BackgroundCompaction() {
     // Nothing to do
   } else if (!is_manual && c->IsTrivialMove()) {
     // Move file to next level
-    assert(c->num_input_files(0) == 1);
-    FileMetaData* f = c->input(0, 0);
-    c->edit()->DeleteFile(c->level(), f->number);
-    c->edit()->AddFile(c->level() + 1, f->number, f->file_size, f->seq_off,
-                       f->smallest, f->largest);
+    assert(c->TotalNumInputFiles()==1);
+    assert(options_.enable_sublevel || c->num_input_files(0) == 1);
+    FileMetaData* f = c->GetTheOnlyFile();
+    // TODO change AddInputDeletions for sublevel
+    c->AddInputDeletions(c->edit());
+    if (!options_.enable_sublevel) {
+      c->edit()->AddFile(c->level()+1, f->number, f->file_size, f->seq_off,
+                         f->smallest, f->largest);
+    }
+    else {
+      // TODO implement this
+    }
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -914,10 +934,15 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
 
 Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   mutex_.AssertHeld();
-  Log(options_.info_log, "Compacted %d@%d + %d@%d files => %lld bytes",
-      compact->compaction->num_input_files(0), compact->compaction->level(),
-      compact->compaction->num_input_files(1), compact->compaction->level() + 1,
-      static_cast<long long>(compact->total_bytes));
+  if (!options_.enable_sublevel) {
+    Log(options_.info_log, "Compacted (%d,%ld)@%d + (%d,%ld)@%d files => (%d,%lld) bytes",
+        compact->compaction->num_input_files(0), (long)compact->compaction->num_input_bytes(0), compact->compaction->level(),
+        compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(0), compact->compaction->level()+1,
+        (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
+  }
+  else {
+    // TODO add log for sublevel
+  }
 
   // Add compaction outputs
   compact->compaction->AddInputDeletions(compact->compaction->edit());
@@ -935,10 +960,14 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
-  Log(options_.info_log, "Compacting %d@%d + %d@%d files",
-      compact->compaction->num_input_files(0), compact->compaction->level(),
-      compact->compaction->num_input_files(1),
-      compact->compaction->level() + 1);
+  if(!options_.enable_sublevel) {
+    Log(options_.info_log, "Compacting (%d,%ld)@%d + (%d,%ld)@%d files",
+        compact->compaction->num_input_files(0), (long)compact->compaction->num_input_bytes(0), compact->compaction->level(),
+        compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(1), compact->compaction->level()+1);
+  }
+  else {
+    // TODO add log for sublevel
+  }
 
   assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
   assert(compact->builder == NULL);
