@@ -35,6 +35,8 @@ class Column {
     }
   }
 
+  virtual bool ShouldSlowdownWrites() = 0;
+  virtual bool ShouldBlockWrites() = 0;
   virtual Status WriteTableStart() = 0;
   virtual Status WriteTable(Iterator* contents) = 0;
   virtual Status WriteTableEnd() = 0;
@@ -59,6 +61,9 @@ class ColumnImpl : public Column {
  public:
   ColumnImpl(DBImpl* db) : db_(db) {}
   virtual ~ColumnImpl();
+
+  virtual bool ShouldSlowdownWrites();
+  virtual bool ShouldBlockWrites();
 
   virtual Status WriteTableStart();
   virtual Status WriteTable(Iterator* contents);
@@ -96,6 +101,8 @@ class ColumnarDBImpl : public DBImpl {
   virtual void CompactMemTable();
   virtual Status RecoverLogFile(uint64_t log_number, VersionEdit* edit,
                                 SequenceNumber* max_sequence);
+  virtual bool ShouldSlowdownWrites();
+  virtual bool ShouldBlockWrites();
 
   Status BeginMemTableCompaction();
   Status WriteToColumn(MemTable* mem, size_t column_index);

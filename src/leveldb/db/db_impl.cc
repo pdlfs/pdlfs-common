@@ -1491,6 +1491,26 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
   return result;
 }
 
+bool DBImpl::ShouldSlowdownWrites() {
+  if (options_.disable_compaction) {
+    return false;
+  } else if (versions_->NumLevelFiles(0) < options_.l0_soft_limit) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool DBImpl::ShouldBlockWrites() {
+  if (options_.disable_compaction) {
+    return false;
+  } else if (versions_->NumLevelFiles(0) < options_.l0_hard_limit) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 // REQUIRES: mutex_ is held
 // REQUIRES: this thread is currently at the front of the writer queue
 Status DBImpl::MakeRoomForWrite(bool force) {
@@ -1503,8 +1523,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // Yield previous error
       s = bg_error_;
       break;
-    } else if (!options_.disable_compaction && allow_delay &&
-               versions_->NumLevelFiles(0) >= options_.l0_soft_limit) {
+    } else if (allow_delay && ShouldSlowdownWrites()) {
       // We are getting close to hitting a hard limit on the number of
       // L0 files.  Rather than delaying a single write by several
       // seconds when we hit the hard limit, start delaying each
@@ -1524,12 +1543,9 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
       bg_cv_.Wait();
-    } else if (!options_.disable_compaction &&
-               versions_->NumLevelFiles(0) >= options_.l0_hard_limit) {
+    } else if (ShouldBlockWrites()) {
       // There are too many level-0 files.
-
       Log(options_.info_log, "Too many L0 files; waiting...\n");
-
       bg_cv_.Wait();
     } else if (!options_.no_memtable) {
       // Close the current log file and open a new one

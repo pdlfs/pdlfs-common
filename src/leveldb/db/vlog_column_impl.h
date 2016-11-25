@@ -157,6 +157,9 @@ class VLogColumnImpl : public Column {
   }
   ~VLogColumnImpl();
 
+  virtual bool ShouldSlowdownWrites();
+  virtual bool ShouldBlockWrites();
+
   Status WriteTableStart();
   Status WriteTable(Iterator* contents);
   Status WriteTableEnd();
