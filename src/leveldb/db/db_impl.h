@@ -212,24 +212,31 @@ class DBImpl : public DB {
     int64_t micros;
     int64_t bytes_read;
     int64_t bytes_written;
-    int64_t num_tables_written;
-    int64_t num_tables_read;
+    int64_t tables_written;
+    int64_t tables_read;
     CompactionStats()
         : micros(0),
           bytes_read(0),
           bytes_written(0),
-          num_tables_written(0),
-          num_tables_read(0) {}
+          tables_written(0),
+          tables_read(0) {}
 
     void Add(const CompactionStats& c) {
       this->micros += c.micros;
       this->bytes_read += c.bytes_read;
       this->bytes_written += c.bytes_written;
-      this->num_tables_written += c.num_tables_written;
-      this->num_tables_read += c.num_tables_read;
+      this->tables_written += c.tables_written;
+      this->tables_read += c.tables_read;
     }
   };
   std::vector<CompactionStats> stats_;
+
+
+  void AddCompactionStat(int level, const CompactionStats &c) {
+    if(stats_.size()<=level)
+      stats_.resize(level+1);
+    stats_[level].Add(c);
+  }
 
   // No copying allowed
   void operator=(const DBImpl&);

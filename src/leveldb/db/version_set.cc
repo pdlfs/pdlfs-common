@@ -1598,6 +1598,20 @@ Compaction::~Compaction() {
   }
 }
 
+int Compaction::TotalNumInputFiles() const {
+  return inputs_[0].size()+inputs_[1].size();
+}
+
+int64_t Compaction::TotalNumInputBytes() const {
+  int64_t bytes = 0;
+  for (int which = 0; which < 2; which++) {
+    for (int i = 0; i < inputs_[which].size(); i++) {
+      bytes += inputs_[which][i]->file_size;
+    }
+  }
+  return bytes;
+}
+
 bool Compaction::IsTrivialMove() const {
   // Avoid a move if there is lots of overlapping grandparent data.
   // Otherwise, the move could create a parent file that will require

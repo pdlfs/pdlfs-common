@@ -80,6 +80,14 @@ struct DBImpl::CompactionState {
 
   Output* current_output() { return &outputs[outputs.size() - 1]; }
 
+  int64_t TotalNumOutputBytes() const {
+    int64_t bytes = 0;
+    for (size_t i = 0; i < outputs.size(); i++) {
+      bytes += outputs[i].file_size;
+    }
+    return bytes;
+  }
+
   explicit CompactionState(Compaction* c)
       : compaction(c), outfile(NULL), builder(NULL), total_bytes(0) {}
 };
@@ -546,13 +554,9 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
-  stats.num_tables_written = 1;
-  // TODO set num_tables_read
+  stats.tables_written = 1;
+  AddCompactionStat(0, stats);
 
-  if (level >= stats_.size()) {
-    stats_.resize(level + 1);
-  }
-  stats_[level].Add(stats);
   return s;
 }
 
@@ -776,10 +780,6 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->number), c->level() + 1,
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(), versions_->LevelSummary(&tmp));
-    if (stats_.size() <= c->level() + 1) {
-      stats_.resize(c->level() + 1);
-    }
-    stats_[c->level() + 1].num_tables_written++;
   } else {
     CompactionState* compact = new CompactionState(c);
     status = DoCompactionWork(compact);
@@ -1064,24 +1064,14 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
-  stats.num_tables_written = compact->outputs.size();
-  stats.num_tables_read = compact->compaction->total_num_input_files();
-  for (int which = 0; which < 2; which++) {
-    for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
-      stats.bytes_read += compact->compaction->input(which, i)->file_size;
-    }
-  }
-  for (size_t i = 0; i < compact->outputs.size(); i++) {
-    stats.bytes_written += compact->outputs[i].file_size;
-  }
+  stats.tables_written = compact->outputs.size();
+  stats.tables_read = compact->compaction->TotalNumInputFiles();
+  stats.bytes_read = compact->compaction->TotalNumInputBytes();
+  stats.bytes_written = compact->TotalNumOutputBytes();
 
   mutex_.Lock();
 
-  int level = compact->compaction->level() + 1;
-  if (level >= stats_.size()) {
-    stats_.resize(level + 1);
-  }
-  stats_[level].Add(stats);
+  AddCompactionStat(compact->compaction->level()+1, stats);
 
   if (status.ok()) {
     status = InstallCompactionResults(compact);
@@ -1643,21 +1633,35 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     char buf[200];
     snprintf(buf, sizeof(buf),
              "                               Compactions\n"
-             "Level  Files Size(MB) Time(sec) Read(MB) Write(MB)\n"
-             "--------------------------------------------------\n");
+                     "Level  Files Size(MB) Time(sec) Read(MB) Write(MB) TableRead TableWritten\n"
+                     "--------------------------------------------------\n");
     value->append(buf);
-    assert(stats_.size() >= versions_->current()->NumLevels());
+    int total_tables_written = 0;
+    int64_t total_bytes_written = 0;
     for (int level = 0; level < versions_->current()->NumLevels(); level++) {
       int files = versions_->NumLevelFiles(level);
-      if (stats_[level].micros > 0 || files > 0) {
-        snprintf(buf, sizeof(buf), "%3d %8d %8.0f %9.0f %8.0f %9.0f\n", level,
-                 files, versions_->NumLevelBytes(level) / 1048576.0,
-                 stats_[level].micros / 1e6,
-                 stats_[level].bytes_read / 1048576.0,
-                 stats_[level].bytes_written / 1048576.0);
+      if(stats_.size()>level) {
+        snprintf(buf, sizeof(buf), "%3d %8d %8.0f %9.0f %8.0f %9.0f %9d %12d\n", level,
+                 files, versions_->NumLevelBytes(level)/1048576.0,
+                 stats_[level].micros/1e6,
+                 stats_[level].bytes_read/1048576.0,
+                 stats_[level].bytes_written/1048576.0,
+                 (int) stats_[level].tables_read,
+                 (int) stats_[level].tables_written);
+        value->append(buf);
+        total_tables_written += stats_[level].tables_written;
+        total_bytes_written += stats_[level].bytes_written;
+      }
+      else {
+        snprintf(buf, sizeof(buf), "%3d %8d %8.0f N/A\n", level,
+                 files, versions_->NumLevelBytes(level)/1048576.0);
         value->append(buf);
       }
     }
+    snprintf(buf, sizeof(buf), "Total tables written: %d\n", total_tables_written);
+    value->append(buf);
+    snprintf(buf, sizeof(buf), "Total bytes written: %f MB\n", total_bytes_written/1048576.0);
+    value->append(buf);
     return true;
   } else if (in == "sstables") {
     *value = versions_->current()->DebugString();
