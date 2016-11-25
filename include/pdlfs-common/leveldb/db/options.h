@@ -237,6 +237,9 @@ struct DBOptions {
   // Default: 12
   int l0_hard_limit;
 
+  // Whether to enable sublevel
+  bool enable_sublevel;
+
   DBOptions();
 };
 
