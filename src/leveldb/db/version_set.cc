@@ -1422,12 +1422,14 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   // Level-0 files have to be merged together.  For other levels,
   // we will make a concatenating iterator per level.
   // TODO(opt): use concatenating iterator for level-0 if there is no overlap
-  const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);
+  const int total_level = options_->enable_sublevel? c->NumInputSublevels(): 2;
+  const int base_level = options_->enable_sublevel? c->base_input_sublevel_: c->level();
+  const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : total_level);
   Iterator** list = new Iterator*[space];
   int num = 0;
-  for (int which = 0; which < 2; which++) {
+  for (int which = 0; which < total_level; which++) {
     if (!c->inputs_[which].empty()) {
-      if (c->level() + which == 0) {
+      if (base_level + which == 0) {
         const std::vector<FileMetaData*>& files = c->inputs_[which];
         for (size_t i = 0; i < files.size(); i++) {
           list[num++] =
@@ -1602,6 +1604,7 @@ Compaction::Compaction(const Options* options, int level, VersionSet* vset)
     : options_(options),
       level_(level),
       base_input_sublevel_(vset->current()->output_pool_[level].first),
+      output_sublevel_(vset->current()->input_pool_[level+1].first),
       max_output_file_size_(MaxFileSizeForLevel(options, level)),
       max_grand_parent_overlap_bytes_(MaxGrandParentOverlapBytes(options)),
       input_version_(vset->current()),
@@ -1661,9 +1664,10 @@ bool Compaction::IsTrivialMove() const {
 }
 
 void Compaction::AddInputDeletions(VersionEdit* edit) {
+  int input_base_level = options_->enable_sublevel? base_input_sublevel_: level_;
   for (int which = 0; which < inputs_.size(); which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
-      edit->DeleteFile(level_ + which, inputs_[which][i]->number);
+      edit->DeleteFile(input_base_level + which, inputs_[which][i]->number);
     }
   }
 }
@@ -1690,7 +1694,7 @@ bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
 }
 
 bool Compaction::ShouldStopBefore(const Slice& internal_key) {
-  if (options_.enable_sublevel) {
+  if (options_->enable_sublevel) {
     // TODO implement this function if we observe sometimes too many files are compacted in one compaction
     return false;
   }

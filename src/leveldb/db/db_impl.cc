@@ -137,7 +137,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       bg_compaction_scheduled_(false),
       bulk_insert_in_progress_(false),
       manual_compaction_(NULL),
-      stats_(config::kMaxMemCompactLevel + 1) {
+      stats_(options_.enable_sublevel? 2: config::kMaxMemCompactLevel + 1) {
   if (!options_.no_memtable) {
     mem_ = new MemTable(internal_comparator_);
     mem_->Ref();
@@ -547,6 +547,8 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
         // all MemTable dumps will only go to level-0.
       }
     }
+    // If sublevel is enabled, must compact memtable to level 0
+    assert(!options_.enable_sublevel||level==0);
     edit->AddFile(level, meta.number, meta.file_size, meta.seq_off,
                   meta.smallest, meta.largest);
   }
@@ -759,9 +761,9 @@ void DBImpl::BackgroundCompaction() {
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
-    // TODO modify this for sublevel
-    if (c != NULL) {
-      manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
+    // TODO add condition for sublevel. Or do we really need to?
+    if (c != NULL && !options_.enable_sublevel) {
+      manual_end = c->input(0, c->num_input_files(0)-1)->largest;
     }
     Log(options_.info_log,
         "Manual compaction at level-%d from %s .. %s; will stop at %s\n",
@@ -782,15 +784,11 @@ void DBImpl::BackgroundCompaction() {
     assert(c->TotalNumInputFiles()==1);
     assert(options_.enable_sublevel || c->num_input_files(0) == 1);
     FileMetaData* f = c->GetTheOnlyFile();
-    // TODO change AddInputDeletions for sublevel
     c->AddInputDeletions(c->edit());
-    if (!options_.enable_sublevel) {
-      c->edit()->AddFile(c->level()+1, f->number, f->file_size, f->seq_off,
+    int output_level = options_.enable_sublevel? c->OutputSublevel(): c->level()+1;
+    c->edit()->AddFile(output_level, f->number, f->file_size, f->seq_off,
                          f->smallest, f->largest);
-    }
-    else {
-      // TODO implement this
-    }
+
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -941,16 +939,19 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
         (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
   }
   else {
-    // TODO add log for sublevel
+    // TODO improve log for sublevel
+    Log(options_.info_log, "Compacted (%d,%ld)@%d files => (%d, %lld) bytes",
+        compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level(),
+        (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
   }
 
   // Add compaction outputs
   compact->compaction->AddInputDeletions(compact->compaction->edit());
-  const int level = compact->compaction->level();
+  const int output_level = options_.enable_sublevel? compact->compaction->OutputSublevel(): compact->compaction->level()+1;
   for (size_t i = 0; i < compact->outputs.size(); i++) {
     const SequenceOff off = 0;
     const CompactionState::Output& out = compact->outputs[i];
-    compact->compaction->edit()->AddFile(level + 1, out.number, out.file_size,
+    compact->compaction->edit()->AddFile(output_level, out.number, out.file_size,
                                          off, out.smallest, out.largest);
   }
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
@@ -966,7 +967,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(1), compact->compaction->level()+1);
   }
   else {
-    // TODO add log for sublevel
+    // TODO improve log for sublevel
+    Log(options_.info_log, "Compacting (%d,%ld)@%d files",
+        compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level());
   }
 
   assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);

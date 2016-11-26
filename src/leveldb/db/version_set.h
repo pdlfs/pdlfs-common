@@ -385,6 +385,16 @@ class Compaction {
   // by this compaction.
   VersionEdit* edit() { return &edit_; }
 
+  inline int NumInputSublevels() const {
+    assert(options_->enable_sublevel);
+    return inputs_.size();
+  }
+
+  inline int OutputSublevel() const {
+    assert(options_->enable_sublevel);
+    return output_sublevel_;
+  }
+
   // "which" must be either 0 or 1 if sublevel is not enabled
   int num_input_files(int which) const {
     assert(which<inputs_.size());
@@ -438,9 +448,10 @@ class Compaction {
 
   explicit Compaction(const Options* options, int level, VersionSet* vset);
 
-  Options options_;
-  int level_;
-  int base_input_sublevel_;
+  const Options *options_;
+  const int level_;
+  const int base_input_sublevel_;
+  const int output_sublevel_;
   uint64_t max_output_file_size_;
   int64_t max_grand_parent_overlap_bytes_;
   Version* input_version_;
