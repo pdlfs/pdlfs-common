@@ -687,26 +687,28 @@ class VersionSet::Builder {
 
   // Apply all of the edits in *edit to the current state.
   void Apply(VersionEdit* edit) {
-    // Make sure the highest level is empty
-    if (vset_->compact_pointer_.size() <= edit->max_level_ + 1) {
-      vset_->compact_pointer_.resize(edit->max_level_ + 2);
-    }
-    if (levels_.size() <= edit->max_level_ + 1) {
-      int from = levels_.size();
-      levels_.resize(edit->max_level_ + 2);
-      BySmallestKey cmp;
-      cmp.internal_comparator = &vset_->icmp_;
-      for (int level = from; level < levels_.size(); level++) {
-        levels_[level].added_files = new FileSet(cmp);
-      }
-    }
 
-    // Update compaction pointers
-    for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
-      const int level = edit->compact_pointers_[i].first;
-      assert(level <= edit->max_level_);
-      vset_->compact_pointer_[level] =
-          edit->compact_pointers_[i].second.Encode().ToString();
+    if (!vset_->options_->enable_sublevel) {
+      // Make sure the highest level is empty
+      if(vset_->compact_pointer_.size()<=edit->max_level_+1) {
+        vset_->compact_pointer_.resize(edit->max_level_+2);
+      }
+      if(levels_.size()<=edit->max_level_+1) {
+        int from = levels_.size();
+        levels_.resize(edit->max_level_+2);
+        BySmallestKey cmp;
+        cmp.internal_comparator = &vset_->icmp_;
+        for(int level = from; level<levels_.size(); level++) {
+          levels_[level].added_files = new FileSet(cmp);
+        }
+      }
+      // Update compaction pointers
+      for(size_t i = 0; i<edit->compact_pointers_.size(); i++) {
+        const int level = edit->compact_pointers_[i].first;
+        assert(level<=edit->max_level_);
+        vset_->compact_pointer_[level] =
+                edit->compact_pointers_[i].second.Encode().ToString();
+      }
     }
 
     // Delete files
