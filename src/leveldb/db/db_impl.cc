@@ -2111,7 +2111,6 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
         impl->log_ = new log::Writer(lfile);
       }
     }
-    // TODO why LogAndApply again
     if (s.ok()) {
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }

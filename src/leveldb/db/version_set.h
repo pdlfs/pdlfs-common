@@ -343,6 +343,8 @@ class VersionSet {
 
   void AppendVersion(Version* v);
 
+  void ReorganizeSublevels(Version *version, VersionEdit *edit);
+
   Env* const env_;
   const std::string dbname_;
   const Options* const options_;

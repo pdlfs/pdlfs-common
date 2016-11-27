@@ -687,7 +687,6 @@ class VersionSet::Builder {
 
   // Apply all of the edits in *edit to the current state.
   void Apply(VersionEdit* edit) {
-
     if (!vset_->options_->enable_sublevel) {
       // Make sure the highest level is empty
       if(vset_->compact_pointer_.size()<=edit->max_level_+1) {
@@ -805,8 +804,8 @@ class VersionSet::Builder {
 #endif
     }
 
-    // Make sure the highest level is always empty
-    assert(v->files_.back().empty());
+    // If sublevel is not enabled, make sure the highest level is always empty
+    assert(vset_->options_->enable_sublevel || v->files_.back().empty());
   }
 
   void MaybeAddFile(Version* v, int level, FileMetaData* f) {
@@ -857,7 +856,8 @@ void VersionSet::AppendVersion(Version* v) {
   // Make "v" current
   assert(v->refs_ == 0);
   assert(v != current_);
-  assert(v->files_.size() <= compact_pointer_.size());
+  assert(options_->enable_sublevel ||
+         v->files_.size() <= compact_pointer_.size());
   if (current_ != NULL) {
     current_->Unref();
   }
@@ -910,6 +910,9 @@ Status VersionSet::ForeighApply(VersionEdit* edit) {
     Builder builder(this, current_);
     builder.Apply(edit);
     builder.SaveTo(v);
+    if(options_->enable_sublevel) {
+      ReorganizeSublevels(v, edit);
+    }
   }
   // No need to finalize the new version since we are not going to
   // do any compaction.
@@ -943,6 +946,9 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     Builder builder(this, current_);
     builder.Apply(edit);
     builder.SaveTo(v);
+    if(options_->enable_sublevel) {
+      ReorganizeSublevels(v, edit);
+    }
   }
   Finalize(v);
 
@@ -1021,6 +1027,30 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
   return s;
 }
 
+void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
+  assert(options_->enable_sublevel);
+  assert(version->input_pool_.size()==version->output_pool_.size());
+
+  // TODO implement this
+
+  // If Any sublevel is empty, remove it. Except it is the only sublevel of any output pool
+  for(int level=1; level<version->input_pool_.size(); ++level) {
+
+  }
+
+  // If the output pool of level i is empty and the top sublevel of the input pool of level i+1 is non-empty (or level i+1 does not exist),
+  // it means we just finished one round of compaction of all sublevels in level i.
+  // Create another sublevel in level i+1's input pool.
+
+  // If the total size of level i exceeds the maximum size, we need to prepare it for compaction.
+  // That is, if its output pool is empty, move all sublevels but the top one in its input pool to its output pool.
+  // If there is only one sublevel in its input pool, move it to the output pool.
+
+  // If the output pool of the last level is non-empty, we need to make room for its compaction.
+  // That is, create another level after it.
+
+}
+
 Status VersionSet::Recover() {
   struct LogReporter : public log::Reader::Reporter {
     Status* status;
@@ -1028,6 +1058,8 @@ Status VersionSet::Recover() {
       if (this->status->ok()) *this->status = s;
     }
   };
+
+  // TODO change this function to enable sublevel recovery
 
   // Try all three candidates, including the odd/even manifest files,
   // and the one that is referenced by "CURRENT"
@@ -1229,35 +1261,67 @@ void VersionSet::Finalize(Version* v) {
   int best_level = -1;
   double best_score = -1;
 
-  assert(v->files_.back().empty());
-  for (int level = 0; level < v->files_.size() - 1; level++) {
-    double score;
-    if (level == 0) {
-      // We treat level-0 specially by bounding the number of files
-      // instead of number of bytes for two reasons:
-      //
-      // (1) With larger write-buffer sizes, it is nice not to do too
-      // many level-0 compactions.
-      //
-      // (2) The files in level-0 are merged on every read and
-      // therefore we wish to avoid too many files when the individual
-      // file size is small (perhaps because of a small write-buffer
-      // setting, or very high compression ratios, or lots of
-      // overwrites/deletions).
-      score = v->files_[level].size() /
-              static_cast<double>(options_->l0_compaction_trigger);
-    } else {
-      // Compute the ratio of current size to size limit.
-      const uint64_t bytes = TotalFileSize(v->files_[level]);
-      score = static_cast<double>(bytes) / MaxBytesForLevel(options_, level);
-    }
-
-    if (score > best_score) {
-      best_level = level;
-      best_score = score;
+  assert(options_->enable_sublevel || v->files_.back().empty());
+  if (options_->enable_sublevel) {
+    assert(v->input_pool_.size()==v->output_pool_.size());
+    for(int level = 0; level<v->input_pool_.size()-1; ++level) {
+      double score;
+      if(level==0) {
+        assert(v->input_pool_[0].first==0 &&
+               v->input_pool_[0].first==v->output_pool_[0].first);
+        assert(v->input_pool_[0].second==1 &&
+               v->input_pool_[0].second==v->output_pool_[0].second);
+        score = v->files_[0].size()/
+                static_cast<double>(options_->l0_compaction_trigger);
+      }
+      else {
+        uint64_t bytes = 0;
+        for(int i=v->input_pool_[level].first, end=v->input_pool_[level].first+v->input_pool_[level].second;
+            i<end; ++i) {
+          bytes += TotalFileSize(v->files_[i]);
+        }
+        for(int i=v->output_pool_[level].first, end=v->output_pool_[level].first+v->output_pool_[level].second;
+            i<end; ++i) {
+          bytes += TotalFileSize(v->files_[i]);
+        }
+        score = static_cast<double>(bytes)/MaxBytesForLevel(options_, level);
+      }
+      if (score>best_score) {
+        best_level = level;
+        best_score = score;
+      }
     }
   }
+  else {
+    for(int level = 0; level<v->files_.size()-1; level++) {
+      double score;
+      if(level==0) {
+        // We treat level-0 specially by bounding the number of files
+        // instead of number of bytes for two reasons:
+        //
+        // (1) With larger write-buffer sizes, it is nice not to do too
+        // many level-0 compactions.
+        //
+        // (2) The files in level-0 are merged on every read and
+        // therefore we wish to avoid too many files when the individual
+        // file size is small (perhaps because of a small write-buffer
+        // setting, or very high compression ratios, or lots of
+        // overwrites/deletions).
+        score = v->files_[level].size()/
+                static_cast<double>(options_->l0_compaction_trigger);
+      }
+      else {
+        // Compute the ratio of current size to size limit.
+        const uint64_t bytes = TotalFileSize(v->files_[level]);
+        score = static_cast<double>(bytes)/MaxBytesForLevel(options_, level);
+      }
 
+      if(score>best_score) {
+        best_level = level;
+        best_score = score;
+      }
+    }
+  }
   v->compaction_level_ = best_level;
   v->compaction_score_ = best_score;
 }
@@ -1265,11 +1329,14 @@ void VersionSet::Finalize(Version* v) {
 Status VersionSet::WriteSnapshot(log::Writer* log) {
   // TODO: Break up into multiple records to reduce memory usage on recovery?
 
+  // TODO add sublevel information to enable sublevel recovery
+
   // Save metadata
   VersionEdit edit;
   edit.SetComparatorName(icmp_.user_comparator()->Name());
 
-  assert(compact_pointer_.size() == current_->files_.size());
+  assert(options_->enable_sublevel ||
+         compact_pointer_.size() == current_->files_.size());
   // Save compaction pointers
   for (int level = 0; level < compact_pointer_.size(); level++) {
     if (!compact_pointer_[level].empty()) {
