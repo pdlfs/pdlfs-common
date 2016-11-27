@@ -446,8 +446,8 @@ class Compaction {
 
   const Options *options_;
   const int level_;
-  int base_input_sublevel_;
-  int output_sublevel_;
+  const int base_input_sublevel_;
+  const int output_sublevel_;
   uint64_t max_output_file_size_;
   int64_t max_grand_parent_overlap_bytes_;
   Version* input_version_;

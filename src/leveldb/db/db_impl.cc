@@ -972,7 +972,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level());
   }
 
-  assert(versions_->current()->NumLevelFiles(compact->compaction->level()) > 0);
+  assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
   assert(compact->builder == NULL);
   assert(compact->outfile == NULL);
   if (snapshots_.empty()) {

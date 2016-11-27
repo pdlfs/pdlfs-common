@@ -1046,8 +1046,16 @@ void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
   // If the output pool of the last level is non-empty, we need to make room for its compaction.
   // That is, create another level after it.
 
-  for(int level=1; level<version->input_pool_.size(); ++level) {
+  bool new_input_sublevel;
+  bool move_input_to_output;
+  int level_shift = 0;
+  for(int level=0; level<version->input_pool_.size(); ++level) {
+    if(level==0) {
 
+    }
+    else {
+
+    }
   }
 
 }
@@ -1593,13 +1601,15 @@ Compaction* VersionSet::PickCompaction(bool allow_seek_compaction) {
 
 void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
   assert(options_->enable_sublevel);
+  assert(current_->output_pool_.size()>level);
   assert(current_->output_pool_[level].second>0);
   assert(c->inputs_.size()==current_->output_pool_[level].second);
 
-  c->base_input_sublevel_ = current_->output_pool_[level].first;
+  assert(c->base_input_sublevel_ == current_->output_pool_[level].first);
+  assert(current_->input_pool_.size()>level+1);
   assert(current_->input_pool_[level+1].second>0);
   assert(current_->input_pool_[level+1].first<current_->files_.size());
-  c->output_sublevel_ = current_->input_pool_[level+1].first;
+  assert(c->output_sublevel_ == current_->input_pool_[level+1].first);
   // Pick up the table with the smallest left bound
   FileMetaData *f = NULL;
   int sublevel = -1;
@@ -1634,6 +1644,7 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
         }
         if(next_visit[i]==current_->files_[row].size())
           continue;
+        assert(user_cmp->Compare(current_->files_[row][next_visit[i]]->largest.user_key(), right_key)>0);
         const InternalKey file_start = current_->files_[row][next_visit[i]]->smallest;
         if(user_cmp->Compare(file_start.user_key(), right_bound.user_key())<=0) {
           right_bound = current_->files_[row][next_visit[i]]->largest;
