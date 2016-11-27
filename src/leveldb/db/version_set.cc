@@ -1033,7 +1033,7 @@ void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
 
   // TODO implement this
 
-  // If Any sublevel is empty, remove it. Except it is the only sublevel of any output pool
+  // If Any sublevel is empty, remove it. Except it is the only sublevel of any input pool
   for(int level=1; level<version->input_pool_.size(); ++level) {
 
   }
@@ -1361,6 +1361,12 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
   return log->AddRecord(record);
 }
 
+int VersionSet::NumLevelFiles(int level) const {
+  assert(level >= 0);
+  assert(level < current_->files_.size());
+  return current_->files_[level].size();
+}
+
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   // Update code if kNumLevels changes
   size_t size = sizeof(scratch->buffer);
@@ -1530,22 +1536,33 @@ Compaction* VersionSet::PickCompaction(bool allow_seek_compaction) {
   if (size_compaction) {
     level = current_->compaction_level_;
     assert(level >= 0);
-    assert(level < current_->files_.size());
-    assert(current_->files_.size() == compact_pointer_.size());
+    if (options_->enable_sublevel) {
+      assert(current_->input_pool_.size()==current_->output_pool_.size());
+      assert(level<current_->input_pool_.size());
+    }
+    else {
+      assert(level < current_->files_.size());
+      assert(current_->files_.size() == compact_pointer_.size());
+    }
     c = new Compaction(options_, level, this);
 
-    // Pick the first file that comes after compact_pointer_[level]
-    for (size_t i = 0; i < current_->files_[level].size(); i++) {
-      FileMetaData* f = current_->files_[level][i];
-      if (compact_pointer_[level].empty() ||
-          icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
-        c->inputs_[0].push_back(f);
-        break;
-      }
+    if (options_->enable_sublevel) {
+      SetupSublevelInputs(level, c);
     }
-    if (c->inputs_[0].empty()) {
-      // Wrap-around to the beginning of the key space
-      c->inputs_[0].push_back(current_->files_[level][0]);
+    else {
+      // Pick the first file that comes after compact_pointer_[level]
+      for(size_t i = 0; i<current_->files_[level].size(); i++) {
+        FileMetaData *f = current_->files_[level][i];
+        if(compact_pointer_[level].empty()||
+           icmp_.Compare(f->largest.Encode(), compact_pointer_[level])>0) {
+          c->inputs_[0].push_back(f);
+          break;
+        }
+      }
+      if(c->inputs_[0].empty()) {
+        // Wrap-around to the beginning of the key space
+        c->inputs_[0].push_back(current_->files_[level][0]);
+      }
     }
   } else if (allow_seek_compaction && seek_compaction) {
     level = current_->file_to_compact_level_;
@@ -1555,20 +1572,81 @@ Compaction* VersionSet::PickCompaction(bool allow_seek_compaction) {
     return NULL;
   }
 
-  // Files in level 0 may overlap each other, so pick up all overlapping ones
-  if (level == 0) {
-    InternalKey smallest, largest;
-    GetRange(c->inputs_[0], &smallest, &largest);
-    // Note that the next call will discard the file we placed in
-    // c->inputs_[0] earlier and replace it with an overlapping set
-    // which will include the picked file.
-    current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0]);
-    assert(!c->inputs_[0].empty());
+  if(!options_->enable_sublevel) {
+    // Files in level 0 may overlap each other, so pick up all overlapping ones
+    if(level==0) {
+      InternalKey smallest, largest;
+      GetRange(c->inputs_[0], &smallest, &largest);
+      // Note that the next call will discard the file we placed in
+      // c->inputs_[0] earlier and replace it with an overlapping set
+      // which will include the picked file.
+      current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0]);
+      assert(!c->inputs_[0].empty());
+    }
+
+    SetupOtherInputs(c);
   }
 
-  SetupOtherInputs(c);
-
   return c;
+}
+
+void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
+  assert(options_->enable_sublevel);
+  assert(current_->output_pool_[level].second>0);
+  assert(c->inputs_.size()==current_->output_pool_[level].second);
+
+  c->base_input_sublevel_ = current_->output_pool_[level].first;
+  assert(current_->input_pool_[level+1].second>0);
+  assert(current_->input_pool_[level+1].first<current_->files_.size());
+  c->output_sublevel_ = current_->input_pool_[level+1].first;
+  // Pick up the table with the smallest left bound
+  FileMetaData *f = NULL;
+  int sublevel = -1;
+  for(int i=0; i<current_->output_pool_[level].second; ++i) {
+    int row = i + current_->output_pool_[level].first;
+    if(f==NULL ||
+       (!current_->files_[row].empty() &&
+        icmp_.Compare(current_->files_[row][0]->smallest.Encode(), f->smallest.Encode())<0)) {
+      f = current_->files_[row][0];
+      sublevel = i;
+    }
+  }
+  assert(f!=NULL);
+  InternalKey left_bound = f->smallest;
+  InternalKey right_bound = f->largest;
+
+  // Get the range covering all overlapping files in all sublevels of this level
+  if (level!=0) {
+    const Comparator* user_cmp = icmp_.user_comparator();
+    int row_start = current_->output_pool_[level].first;
+    std::vector<int> next_visit(current_->output_pool_[level].second);
+    next_visit[sublevel] = 1;
+    bool has_changed;
+    do {
+      has_changed = false;
+      for(int i = 0; i<next_visit.size(); ++i) {
+        int row = i+row_start;
+        const Slice right_key = right_bound.user_key();
+        while(next_visit[i]<current_->files_[row].size() &&
+              user_cmp->Compare(current_->files_[row][next_visit[i]]->largest.user_key(), right_key)<=0) {
+          ++next_visit[i];
+        }
+        if(next_visit[i]==current_->files_[row].size())
+          continue;
+        const InternalKey file_start = current_->files_[row][next_visit[i]]->smallest;
+        if(user_cmp->Compare(file_start.user_key(), right_bound.user_key())<=0) {
+          right_bound = current_->files_[row][next_visit[i]]->largest;
+          has_changed = true;
+          ++next_visit[i];
+        }
+      }
+    }
+    while(has_changed);
+  }
+  for(int i=0; i<c->inputs_.size(); ++i) {
+    int row = i + current_->output_pool_[level].first;
+    current_->GetOverlappingInputs(row, &left_bound, &right_bound, &c->inputs_[i]);
+  }
 }
 
 void VersionSet::SetupOtherInputs(Compaction* c) {
@@ -1639,34 +1717,42 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
 Compaction* VersionSet::CompactRange(int level, const InternalKey* begin,
                                      const InternalKey* end) {
   assert(level < current_->files_.size());
-  assert(current_->files_.size() == compact_pointer_.size());
-  std::vector<FileMetaData*> inputs;
-  current_->GetOverlappingInputs(level, begin, end, &inputs);
-  if (inputs.empty()) {
+  assert(options_->enable_sublevel ||
+         current_->files_.size() == compact_pointer_.size());
+  if (options_->enable_sublevel) {
+    // TODO implement this
+    assert(begin==NULL);
     return NULL;
   }
+  else {
+    std::vector<FileMetaData *> inputs;
+    current_->GetOverlappingInputs(level, begin, end, &inputs);
+    if(inputs.empty()) {
+      return NULL;
+    }
 
-  // Avoid compacting too much in one shot in case the range is large.
-  // But we cannot do this for level-0 since level-0 files can overlap
-  // and we must not pick one file and drop another older file if the
-  // two files overlap.
-  if (level > 0) {
-    const uint64_t limit = MaxFileSizeForLevel(options_, level);
-    uint64_t total = 0;
-    for (size_t i = 0; i < inputs.size(); i++) {
-      uint64_t s = inputs[i]->file_size;
-      total += s;
-      if (total >= limit) {
-        inputs.resize(i + 1);
-        break;
+    // Avoid compacting too much in one shot in case the range is large.
+    // But we cannot do this for level-0 since level-0 files can overlap
+    // and we must not pick one file and drop another older file if the
+    // two files overlap.
+    if(level>0) {
+      const uint64_t limit = MaxFileSizeForLevel(options_, level);
+      uint64_t total = 0;
+      for(size_t i = 0; i<inputs.size(); i++) {
+        uint64_t s = inputs[i]->file_size;
+        total += s;
+        if(total>=limit) {
+          inputs.resize(i+1);
+          break;
+        }
       }
     }
-  }
 
-  Compaction* c = new Compaction(options_, level, this);
-  c->inputs_[0] = inputs;
-  SetupOtherInputs(c);
-  return c;
+    Compaction *c = new Compaction(options_, level, this);
+    c->inputs_[0] = inputs;
+    SetupOtherInputs(c);
+    return c;
+  }
 }
 
 Compaction::Compaction(const Options* options, int level, VersionSet* vset)
@@ -1723,7 +1809,7 @@ bool Compaction::IsTrivialMove() const {
   // Avoid a move if there is lots of overlapping grandparent data.
   // Otherwise, the move could create a parent file that will require
   // a very expensive merge later on.
-  if (!options_.enable_sublevel) {
+  if (!options_->enable_sublevel) {
     return (num_input_files(0)==1&&num_input_files(1)==0&&
             TotalFileSize(grandparents_)<=max_grand_parent_overlap_bytes_);
   }

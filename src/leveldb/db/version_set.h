@@ -113,12 +113,11 @@ class Version {
   int PickLevelForMemTableOutput(const Slice& smallest_user_key,
                                  const Slice& largest_user_key);
 
-  inline int NumFilesInLevel(int level) const { return files_[level].size(); }
   inline int NumLevels() const { return files_.size(); }
 
   // Should be used only when sublevel is enabled
   int NumFilesInLevel_sub(const SublevelPool &pool, int level) const;
-  inline int NumFilesInLevel_sub(int level) const {
+  int NumFilesInLevel_sub(int level) const {
     assert(vset_->options_->enable_sublevel);
     assert(level>=0);
     assert(input_pool_.size()==output_pool_.size());
@@ -132,7 +131,7 @@ class Version {
     }
     return count;
   }
-  inline int NumLevels_sub() const {
+  int NumLevels_sub() const {
     assert(vset_->options_->enable_sublevel);
     assert(input_pool_.size()==output_pool_.size());
     return input_pool_.size();
@@ -146,9 +145,6 @@ class Version {
     if(level>=input_pool_.size())
       return 0;
     return input_pool_[level].second+output_pool_.[level].second;
-  }
-  int NumFilesInSublevel_sub(int level, int sublevel) const {
-    // TODO implement if needed
   }
 
   // Return a human readable string that describes this version's contents.
@@ -252,9 +248,6 @@ class VersionSet {
   // Return the number of Table files at the specified level.
   int NumLevelFiles(int level) const;
 
-  // Return the number of sublevels at the specified level. Sublevel should be enabled
-  int NumSublevels(int level) const;
-
   // Return the combined file size of all files at the specified level.
   int64_t NumLevelBytes(int level) const;
 
@@ -337,6 +330,7 @@ class VersionSet {
                  InternalKey* smallest, InternalKey* largest);
 
   void SetupOtherInputs(Compaction* c);
+  void SetupSublevelInputs(int level, Compaction* c);
 
   // Save current contents to *log
   Status WriteSnapshot(log::Writer* log);
@@ -452,8 +446,8 @@ class Compaction {
 
   const Options *options_;
   const int level_;
-  const int base_input_sublevel_;
-  const int output_sublevel_;
+  int base_input_sublevel_;
+  int output_sublevel_;
   uint64_t max_output_file_size_;
   int64_t max_grand_parent_overlap_bytes_;
   Version* input_version_;
