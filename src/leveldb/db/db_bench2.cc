@@ -64,7 +64,7 @@ static const char* FLAGS_benchmarks =
 // block_size, enable_fork, table_file_size, level_factor, cache_size
 // num, value_size, key_size=16
 
-static bool FLAGS_enable_fork = false;
+static bool FLAGS_enable_sublevel = false;
 static int FLAGS_table_file_size = -1;
 static int FLAGS_level_factor = -1;
 static int FLAGS_range = -1;
@@ -724,8 +724,8 @@ class Benchmark {
     options.filter_policy = filter_policy_;
     if(FLAGS_level_factor>0)
       options.level_factor = FLAGS_level_factor;
-    if(FLAGS_enable_fork)
-      options.enable_input_output_fork = FLAGS_enable_fork;
+    if(FLAGS_enable_sublevel)
+      options.enable_sublevel = FLAGS_enable_sublevel;
     if(FLAGS_table_file_size>0)
       options.table_file_size = FLAGS_table_file_size;
 
@@ -1010,8 +1010,8 @@ int main(int argc, char** argv) {
       FLAGS_db = argv[i] + 5;
     } else if (sscanf(argv[i], "--table_file_size=%d%c", &n, &junk) == 1) {
       FLAGS_table_file_size = n;
-    } else if (sscanf(argv[i], "--enable_fork=%d%c", &n, &junk) == 1) {
-      FLAGS_enable_fork = n;
+    } else if (sscanf(argv[i], "--enable_sublevel=%d%c", &n, &junk) == 1) {
+      FLAGS_enable_sublevel = n;
     } else if (sscanf(argv[i], "--level_factor=%d%c", &n, &junk) == 1) {
       FLAGS_level_factor = n;
     } else if (sscanf(argv[i], "--range=%d%c", &n, &junk) == 1) {

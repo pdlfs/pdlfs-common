@@ -62,6 +62,9 @@ extern bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
                                   const Slice* largest_user_key);
 
 class Version {
+  // Only used when sublevel is enabled
+  // <start_index, size>
+  typedef std::vector<std::pair<int, int> > SublevelPool;
  public:
   // Append to *iters a sequence of iterators that will
   // yield the contents of this Version when merged together.
@@ -116,7 +119,7 @@ class Version {
   inline int NumLevels() const { return files_.size(); }
 
   // Should be used only when sublevel is enabled
-  int NumFilesInLevel_sub(const SublevelPool &pool, int level) const;
+  int NumFilesInLevel_sub(const SublevelPool& pool, int level) const;
   int NumFilesInLevel_sub(int level) const {
     assert(vset_->options_->enable_sublevel);
     assert(level>=0);
@@ -136,6 +139,7 @@ class Version {
     assert(input_pool_.size()==output_pool_.size());
     return input_pool_.size();
   }
+
   int NumSublevelsInLevel_sub(int level) const {
     assert(level >= 0);
     assert(level < input_pool_.size());
@@ -144,7 +148,7 @@ class Version {
       return 1;
     if(level>=input_pool_.size())
       return 0;
-    return input_pool_[level].second+output_pool_.[level].second;
+    return input_pool_[level].second+output_pool_[level].second;
   }
 
   // Return a human readable string that describes this version's contents.
@@ -182,10 +186,6 @@ class Version {
   // are initialized by Finalize().
   double compaction_score_;
   int compaction_level_;
-
-  // Only used when sublevel is enabled
-  // <start_index, size>
-  typedef std::vector<std::pair<int, int> > SublevelPool;
   SublevelPool input_pool_;
   SublevelPool output_pool_;
 

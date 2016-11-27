@@ -1034,9 +1034,6 @@ void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
   // TODO implement this
 
   // If Any sublevel is empty, remove it. Except it is the only sublevel of any input pool
-  for(int level=1; level<version->input_pool_.size(); ++level) {
-
-  }
 
   // If the output pool of level i is empty and the top sublevel of the input pool of level i+1 is non-empty (or level i+1 does not exist),
   // it means we just finished one round of compaction of all sublevels in level i.
@@ -1048,6 +1045,10 @@ void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
 
   // If the output pool of the last level is non-empty, we need to make room for its compaction.
   // That is, create another level after it.
+
+  for(int level=1; level<version->input_pool_.size(); ++level) {
+
+  }
 
 }
 
