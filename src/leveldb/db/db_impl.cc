@@ -625,8 +625,6 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
 
 void DBImpl::TEST_CompactRange(int level, const Slice* begin,
                                const Slice* end) {
-  fprintf(stderr, "Test_CR(%d) %d %d\n", level, versions_->current()->NumLevels(), options_.enable_sublevel);
-  fflush(stderr);
   assert(level >= 0);
   assert(options_.enable_sublevel || level + 1 < versions_->current()->NumLevels());
   assert(!options_.enable_sublevel || level + 1 < versions_->current()->NumLevels_sub());

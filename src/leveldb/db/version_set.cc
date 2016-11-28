@@ -520,7 +520,7 @@ int Version::NumLevels() const { return files_.size(); }
 
 int Version::NumFilesInLevel_sub(const SublevelPool &pool, int level) const  {
   int count = 0;
-  for(int i = input_pool_[level].first, end = input_pool_[level].first+input_pool_[level].second; i<end; ++i) {
+  for(int i = pool[level].first, end = pool[level].first+pool[level].second; i<end; ++i) {
     assert(i<files_.size());
     count += files_[i].size();
   }
@@ -837,9 +837,13 @@ class VersionSet::Builder {
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
+        if (vset_->icmp_.Compare((*files)[files->size() - 1]->largest, f->smallest) < 0) {
+          fprintf(stderr, "MAF %d, %s V.S. %s\n", level, (*files)[files->size() - 1]->largest.DebugString().c_str(), f->smallest.DebugString().c_str());
+          fflush(stderr);
+        }
         // Must not overlap
-        assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
-                                    f->smallest) < 0);
+        //assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
+        //                            f->smallest) < 0);
       }
       f->refs++;
       files->push_back(f);
@@ -1461,7 +1465,10 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
 int VersionSet::NumLevelFiles(int level) const {
   assert(level >= 0);
   assert(level < current_->files_.size());
-  return current_->files_[level].size();
+  if (options_->enable_sublevel)
+    return current_->NumFilesInLevel_sub(level);
+  else
+    return current_->files_[level].size();
 }
 
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
@@ -1800,7 +1807,6 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
     current_->GetOverlappingInputs(level + 2, &all_start, &all_limit,
                                    &c->grandparents_);
   }
-
   if (false) {
     Log(options_->info_log, "Compacting %d '%s' .. '%s'", level,
         smallest.DebugString().c_str(), largest.DebugString().c_str());
@@ -1817,14 +1823,13 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
 Compaction* VersionSet::CompactRange(int level, const InternalKey* begin,
                                      const InternalKey* end) {
   assert(level < current_->files_.size());
-  assert(options_->enable_sublevel ||
-         current_->files_.size() == compact_pointer_.size());
   if (options_->enable_sublevel) {
     // TODO implement this
     assert(begin==NULL);
     return NULL;
   }
   else {
+    assert(current_->files_.size() == compact_pointer_.size());
     std::vector<FileMetaData *> inputs;
     current_->GetOverlappingInputs(level, begin, end, &inputs);
     if(inputs.empty()) {
@@ -1858,8 +1863,8 @@ Compaction* VersionSet::CompactRange(int level, const InternalKey* begin,
 Compaction::Compaction(const Options* options, int level, VersionSet* vset)
     : options_(options),
       level_(level),
-      base_input_sublevel_(vset->current()->output_pool_[level].first),
-      output_sublevel_(vset->current()->input_pool_[level+1].first),
+      base_input_sublevel_(options->enable_sublevel? vset->current()->output_pool_[level].first: -1),
+      output_sublevel_(options->enable_sublevel? vset->current()->input_pool_[level+1].first: -1),
       max_output_file_size_(MaxFileSizeForLevel(options, level)),
       max_grand_parent_overlap_bytes_(MaxGrandParentOverlapBytes(options)),
       input_version_(vset->current()),

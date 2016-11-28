@@ -201,7 +201,7 @@ class DBTest {
   const FilterPolicy* filter_policy_;
 
   // Sequence of option configurations to try
-  enum OptionConfig { kDefault, kFilter, kUncompressed, /*kSublevel,*/ kEnd };
+  enum OptionConfig { kDefault, kFilter, kUncompressed, kSublevel, kEnd };
   int option_config_;
 
  public:
@@ -248,8 +248,8 @@ class DBTest {
       case kUncompressed:
         options.compression = kNoCompression;
         break;
-      //case kSublevel:
-      //  options.enable_sublevel = true;
+      case kSublevel:
+        options.enable_sublevel = true;
       default:
         break;
     }
