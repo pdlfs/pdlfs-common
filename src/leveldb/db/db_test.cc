@@ -201,7 +201,7 @@ class DBTest {
   const FilterPolicy* filter_policy_;
 
   // Sequence of option configurations to try
-  enum OptionConfig { kDefault, kFilter, kUncompressed, kSublevel, kEnd };
+  enum OptionConfig { kDefault, kFilter, kUncompressed, /*kSublevel,*/ kEnd };
   int option_config_;
 
  public:
@@ -248,8 +248,8 @@ class DBTest {
       case kUncompressed:
         options.compression = kNoCompression;
         break;
-      case kSublevel:
-        options.enable_sublevel = true;
+      //case kSublevel:
+      //  options.enable_sublevel = true;
       default:
         break;
     }
@@ -682,9 +682,12 @@ TEST(DBTest, GetEncountersEmptyLevel) {
       Put("z", "end");
       dbfull()->TEST_CompactMemTable();
     }
-
+    fprintf(stderr, "Done 1.\n");
+    fflush(stderr);
     // Step 2: clear level 1 if necessary.
     dbfull()->TEST_CompactRange(1, NULL, NULL);
+    fprintf(stderr, "Done 2.\n");
+    fflush(stderr);
     ASSERT_EQ(NumTableFilesAtLevel(0), 1);
     ASSERT_EQ(NumTableFilesAtLevel(1), 0);
     ASSERT_EQ(NumTableFilesAtLevel(2), 1);
@@ -693,11 +696,15 @@ TEST(DBTest, GetEncountersEmptyLevel) {
     for (int i = 0; i < 1000; i++) {
       ASSERT_EQ("NOT_FOUND", Get("missing"));
     }
+    fprintf(stderr, "Done 3.\n");
+    fflush(stderr);
 
     // Step 4: Wait for compaction to finish
     DelayMilliseconds(1000);
 
     ASSERT_EQ(NumTableFilesAtLevel(0), 0);
+    fprintf(stderr, "Done 4.\n");
+    fflush(stderr);
   } while (ChangeOptions());
 }
 

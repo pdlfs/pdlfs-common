@@ -119,7 +119,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
   uint32_t tag;
 
   // Temporary storage for parsing
-  int level;
+  int level = 0;
   uint64_t number;
   uint64_t off;
   FileMetaData f;

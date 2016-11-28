@@ -116,40 +116,12 @@ class Version {
   int PickLevelForMemTableOutput(const Slice& smallest_user_key,
                                  const Slice& largest_user_key);
 
-  inline int NumLevels() const { return files_.size(); }
+  int NumLevels() const;
 
   // Should be used only when sublevel is enabled
   int NumFilesInLevel_sub(const SublevelPool& pool, int level) const;
-  int NumFilesInLevel_sub(int level) const {
-    assert(vset_->options_->enable_sublevel);
-    assert(level>=0);
-    assert(input_pool_.size()==output_pool_.size());
-    int count = 0;
-    if (level==0) {
-      count = files_[0].size();
-    }
-    else if (level<input_pool_.size()) {
-      count += NumFilesInLevel_sub(input_pool_, level);
-      count += NumFilesInLevel_sub(output_pool_, level);
-    }
-    return count;
-  }
-  int NumLevels_sub() const {
-    assert(vset_->options_->enable_sublevel);
-    assert(input_pool_.size()==output_pool_.size());
-    return input_pool_.size();
-  }
-
-  int NumSublevelsInLevel_sub(int level) const {
-    assert(level >= 0);
-    assert(level < input_pool_.size());
-    assert(input_pool_.size()==output_pool_.size());
-    if(level==0)
-      return 1;
-    if(level>=input_pool_.size())
-      return 0;
-    return input_pool_[level].second+output_pool_[level].second;
-  }
+  int NumFilesInLevel_sub(int level) const;
+  int NumLevels_sub() const;
 
   // Return a human readable string that describes this version's contents.
   std::string DebugString() const;

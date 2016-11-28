@@ -516,6 +516,38 @@ bool Version::OverlapInLevel(int level, const Slice* smallest_user_key,
                                smallest_user_key, largest_user_key);
 }
 
+int Version::NumLevels() const { return files_.size(); }
+
+int Version::NumFilesInLevel_sub(const SublevelPool &pool, int level) const  {
+  int count = 0;
+  for(int i = input_pool_[level].first, end = input_pool_[level].first+input_pool_[level].second; i<end; ++i) {
+    assert(i<files_.size());
+    count += files_[i].size();
+  }
+  return count;
+}
+
+int Version::NumFilesInLevel_sub(int level) const {
+  assert(vset_->options_->enable_sublevel);
+  assert(level>=0);
+  assert(input_pool_.size()==output_pool_.size());
+  int count = 0;
+  if (level==0) {
+    count = files_[0].size();
+  }
+  else if (level<input_pool_.size()) {
+    count += NumFilesInLevel_sub(input_pool_, level);
+    count += NumFilesInLevel_sub(output_pool_, level);
+  }
+  return count;
+}
+
+int Version::NumLevels_sub() const {
+  assert(vset_->options_->enable_sublevel);
+  assert(input_pool_.size()==output_pool_.size());
+  return input_pool_.size();
+}
+
 int Version::PickLevelForMemTableOutput(const Slice& smallest_user_key,
                                         const Slice& largest_user_key) {
   assert(config::kMaxMemCompactLevel < files_.size());
@@ -543,15 +575,6 @@ int Version::PickLevelForMemTableOutput(const Slice& smallest_user_key,
     }
   }
   return level;
-}
-
-int Version::NumFilesInLevel_sub(const SublevelPool &pool, int level) const  {
-  int count = 0;
-  for(int i = input_pool_[level].first, end = input_pool_[level].first+input_pool_[level].second; i<end; ++i) {
-    assert(i<files_.size());
-    count += files_[i].size();
-  }
-  return count;
 }
 
 // Store in "*inputs" all files in "level" that overlap [begin,end]
@@ -1030,8 +1053,7 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
 void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
   assert(options_->enable_sublevel);
   assert(version->input_pool_.size()==version->output_pool_.size());
-
-  // TODO implement this
+  assert(version->input_pool_.size()==2);
 
   // If Any sublevel is empty, remove it. Except it is the only sublevel of any input pool
 
@@ -1046,18 +1068,84 @@ void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
   // If the output pool of the last level is non-empty, we need to make room for its compaction.
   // That is, create another level after it.
 
-  bool new_input_sublevel;
-  bool move_input_to_output;
-  int level_shift = 0;
-  for(int level=0; level<version->input_pool_.size(); ++level) {
+  bool new_input_sublevel = false;
+  const std::vector<std::vector<FileMetaData*> > files = version->files_;
+  version->files_.clear();
+  version->files_.reserve(files.size()+1);
+  version->input_pool_.clear();
+  version->output_pool_.clear();
+  for(int level=0; level<current_->input_pool_.size(); ++level) {
     if(level==0) {
-
+      version->files_.push_back(files[0]);
+      version->input_pool_.push_back(std::make_pair(0, 1));
+      version->output_pool_.push_back(std::make_pair(0, 1));
+      // Hacky way of determining whether the compaction happened at level 0
+      if(!edit->deleted_files_.empty() &&
+         edit->deleted_files_.begin()->first==0) {
+        new_input_sublevel = true;
+      }
     }
     else {
+      int base_sublevel = version->files_.size();
+      int bytes = 0;
+      bool first = true;
+      if(new_input_sublevel) {
+        version->files_.push_back(std::vector<FileMetaData *>());
+        first = false;
+      }
+      for(int i=0; i<current_->input_pool_[level].second; ++i) {
+        int row = current_->input_pool_[level].first + i;
+        if(first||!files[row].empty()) {
+          bytes += TotalFileSize(files[row]);
+          version->files_.push_back(files[row]);
+        }
+        first = false;
+      }
+      int length = version->files_.size()-base_sublevel;
+      assert(version->input_pool_.size()==level);
+      version->input_pool_.push_back(std::make_pair(base_sublevel, length));
 
+      new_input_sublevel = false;
+      base_sublevel = version->files_.size();
+      for(int i=0; i<current_->output_pool_[level].second; ++i) {
+        int row = current_->output_pool_[level].first+i;
+        if(!files[row].empty()) {
+          version->files_.push_back(files[row]);
+        }
+      }
+      length = version->files_.size()-base_sublevel;
+      if(length==0&&
+         level+1<current_->input_pool_.size()&&
+         current_->input_pool_[level+1].second>0) {
+        new_input_sublevel = true;
+      }
+      assert(version->output_pool_.size()==level);
+      if(length==0&&bytes>MaxBytesForLevel(options_, level)) {
+        if(version->input_pool_[level].second==1) {
+          assert(version->input_pool_[level].first==version->files_.size()-1);
+          version->files_.push_back(std::vector<FileMetaData *>());
+          version->files_[version->files_.size()-1] = version->files_[version->files_.size()-2];
+          version->files_[version->files_.size()-2].clear();
+          version->input_pool_[level].second = 2;
+        }
+        length = version->input_pool_[level].second-1;
+        version->input_pool_[level].second = 1;
+        version->output_pool_.push_back(
+                std::make_pair(version->input_pool_[level].first+1, length));
+      }
+      else {
+        version->output_pool_.push_back(std::make_pair(base_sublevel, length));
+      }
     }
   }
-
+  assert(version->input_pool_.size()==version->output_pool_.size());
+  if(version->output_pool_[version->output_pool_.size()-1].second>0) {
+    version->files_.push_back(std::vector<FileMetaData *>());
+    version->input_pool_.push_back(std::make_pair(version->files_.size()-1, 1));
+    version->output_pool_.push_back(std::make_pair(version->files_.size(), 0));
+  }
+  assert(version->output_pool_[version->output_pool_.size()-1].first==version->files_.size());
+  assert(version->output_pool_[version->output_pool_.size()-1].second==0);
 }
 
 Status VersionSet::Recover() {
