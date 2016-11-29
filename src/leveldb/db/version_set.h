@@ -78,6 +78,11 @@ class Version {
   struct GetStats {
     FileMetaData* seek_file;
     int seek_file_level;
+    // stats for checking read performance
+    int number_tables_read;
+    int number_cache_hits; // of those tables read, how many are in cache
+    GetStats(): seek_file(NULL), seek_file_level(-1),
+                number_tables_read(0), number_cache_hits(0) {}
   };
   bool Get(const ReadOptions& options, const LookupKey& key, Buffer* val,
            Status* s, GetStats* stats);
@@ -121,6 +126,8 @@ class Version {
   // Should be used only when sublevel is enabled
   int NumFilesInLevel_sub(const SublevelPool& pool, int level) const;
   int NumFilesInLevel_sub(int level) const;
+  int64_t NumBytesInLevel_sub(const SublevelPool& pool, int level) const;
+  int64_t NumBytesInLevel_sub(int level) const;
   int NumLevels_sub() const;
 
   // Return a human readable string that describes this version's contents.

@@ -46,7 +46,7 @@ class TableCache {
   // call (*handle_result)(arg, found_key, found_value).
   Status Get(const ReadOptions& options, uint64_t file_number,
              uint64_t file_size, SequenceOff seq_off, const Slice& k, void* arg,
-             void (*handle_result)(void*, const Slice&, const Slice&));
+             void (*handle_result)(void*, const Slice&, const Slice&), bool* found_in_cache);
 
   // Evict any entry for the specified file number
   void Evict(uint64_t file_number);
@@ -58,7 +58,7 @@ class TableCache {
   // Load the table for the specified file number.  Bind the
   // given sequence offset to the table.
   Status FindTable(uint64_t file_number, uint64_t file_size,
-                   SequenceOff seq_off, Cache::Handle**);
+                   SequenceOff seq_off, Cache::Handle**, bool* found_in_cache);
 
   // No copying allowed
   TableCache(const TableCache&);

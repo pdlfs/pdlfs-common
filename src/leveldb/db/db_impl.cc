@@ -555,8 +555,11 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
+  stats.bytes_read = meta.file_size;
   stats.bytes_written = meta.file_size;
+  stats.tables_read = 1;
   stats.tables_written = 1;
+  stats.compactions_performed = 1;
   AddCompactionStat(0, stats);
 
   return s;
@@ -1096,10 +1099,15 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
+  stats.tables_read = options_.enable_sublevel?
+                      compact->compaction->TotalNumInputFiles():
+                      compact->compaction->num_input_files(0);
   stats.tables_written = compact->outputs.size();
-  stats.tables_read = compact->compaction->TotalNumInputFiles();
-  stats.bytes_read = compact->compaction->TotalNumInputBytes();
+  stats.bytes_read = options_.enable_sublevel?
+                     compact->compaction->TotalNumInputBytes():
+                     compact->compaction->num_input_bytes(0);
   stats.bytes_written = compact->TotalNumOutputBytes();
+  stats.compactions_performed = 1;
 
   mutex_.Lock();
 
@@ -1208,6 +1216,8 @@ Status DBImpl::Get(const ReadOptions& options, const LookupKey& lkey,
     mutex_.Lock();
   }
 
+  get_stats_.AddOneGet(stats);
+
   if (have_stat_update && current->UpdateStats(stats)) {
     if (!options_.disable_seek_compaction) {
       MaybeScheduleCompaction();
@@ -1256,6 +1266,8 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     mutex_.Lock();
   }
 
+  get_stats_.AddOneGet(stats);
+
   if (have_stat_update && current->UpdateStats(stats)) {
     if (!options_.disable_seek_compaction) {
       MaybeScheduleCompaction();
@@ -1288,6 +1300,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key, Slice* value,
 }
 
 Iterator* DBImpl::NewIterator(const ReadOptions& options) {
+  // TODO add stats for checking scan performance
   SequenceNumber latest_snapshot;
   uint32_t seed;
   Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed);
@@ -1668,11 +1681,18 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       return false;
     } else {
       char buf[100];
-      if (level >= versions_->current()->NumLevels()) {
-        sprintf(buf, "0");
-      } else {
+      if(options_.enable_sublevel) {
         snprintf(buf, sizeof(buf), "%d",
-                 versions_->NumLevelFiles(static_cast<int>(level)));
+                 versions_->current()->NumFilesInLevel_sub(level));
+      }
+      else {
+        if(level>=versions_->current()->NumLevels()) {
+          sprintf(buf, "0");
+        }
+        else {
+          snprintf(buf, sizeof(buf), "%d",
+                   versions_->NumLevelFiles(static_cast<int>(level)));
+        }
       }
       *value = buf;
       return true;
@@ -1681,23 +1701,33 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     char buf[200];
     snprintf(buf, sizeof(buf),
              "                               Compactions\n"
-                     "Level  Files Size(MB) Time(sec) Read(MB) Write(MB) TableRead TableWritten\n"
+                     "Level  Files Size(MB) Time(sec) WA_Table WA_Bytes\n"
                      "--------------------------------------------------\n");
     value->append(buf);
-    int total_tables_written = 0;
+    int64_t total_tables_read = 0;
+    int64_t total_tables_written = 0;
+    int64_t total_bytes_read = 0;
     int64_t total_bytes_written = 0;
-    for (int level = 0; level < versions_->current()->NumLevels(); level++) {
-      int files = versions_->NumLevelFiles(level);
+    int levels = options_.enable_sublevel?
+                 versions_->current()->NumLevels_sub():
+                 versions_->current()->NumLevels();
+    for (int level = 0; level < levels; level++) {
+      int files = options_.enable_sublevel?
+                  versions_->current()->NumFilesInLevel_sub(level):
+                  versions_->NumLevelFiles(level);
+      int64_t bytes = options_.enable_sublevel?
+                      versions_->current()->NumBytesInLevel_sub(level):
+                      versions_->NumLevelBytes(level);
       if(stats_.size()>level) {
-        snprintf(buf, sizeof(buf), "%3d %8d %8.0f %9.0f %8.0f %9.0f %9d %12d\n", level,
-                 files, versions_->NumLevelBytes(level)/1048576.0,
+        snprintf(buf, sizeof(buf), "%3d %8d %8.0f %9.0f %8.3f %8.3f\n", level,
+                 files, bytes/1048576.0,
                  stats_[level].micros/1e6,
-                 stats_[level].bytes_read/1048576.0,
-                 stats_[level].bytes_written/1048576.0,
-                 (int) stats_[level].tables_read,
-                 (int) stats_[level].tables_written);
+                 stats_[level].tables_written*1.0/stats_[level].tables_read,
+                 stats_[level].bytes_written*1.0/stats_[level].bytes_read);
         value->append(buf);
+        total_tables_read += stats_[level].tables_read;
         total_tables_written += stats_[level].tables_written;
+        total_bytes_read += stats_[level].bytes_read;
         total_bytes_written += stats_[level].bytes_written;
       }
       else {
@@ -1706,17 +1736,37 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
         value->append(buf);
       }
     }
-    snprintf(buf, sizeof(buf), "Total tables written: %d\n", total_tables_written);
+    snprintf(buf, sizeof(buf), "Overall WA_table: %8.3f\n", total_tables_written*1.0/total_tables_read);
     value->append(buf);
-    snprintf(buf, sizeof(buf), "Total bytes written: %f MB\n", total_bytes_written/1048576.0);
+    snprintf(buf, sizeof(buf), "Overall WA_bytes: %8.3f\n", total_bytes_written*1.0/total_bytes_read);
     value->append(buf);
+    snprintf(buf, sizeof(buf), "Total # Gets: %ld\n",
+             (long)get_stats_.gets_performed);
+    value->append(buf);
+    if (get_stats_.gets_performed>0) {
+      snprintf(buf, sizeof(buf), "Average # tables read in each Get: %8.3f\n",
+               get_stats_.tables_read*1.0/get_stats_.gets_performed);
+      value->append(buf);
+      snprintf(buf, sizeof(buf), "Average # tables load in each Get: %8.3f\n",
+               (get_stats_.tables_read-get_stats_.cache_hits)*1.0/get_stats_.gets_performed);
+      value->append(buf);
+      if (get_stats_.tables_read>0) {
+        snprintf(buf, sizeof(buf), "Cache hit rate: %8.3f\n",
+                 get_stats_.cache_hits*1.0/get_stats_.tables_read);
+      }
+      else {
+        sprintf(buf, "No read happened at MemTables\n");
+      }
+      value->append(buf);
+    }
     return true;
   } else if (in == "sstables") {
     *value = versions_->current()->DebugString();
     return true;
   } else if (in == "num-levels") {
     char buf[10];
-    snprintf(buf, sizeof(buf), "%d", versions_->current()->NumLevels());
+    int levels = options_.enable_sublevel? versions_->current()->NumLevels_sub(): versions_->current()->NumLevels();
+    snprintf(buf, sizeof(buf), "%d", levels);
     *value = buf;
     return true;
   }

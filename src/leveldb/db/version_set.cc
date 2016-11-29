@@ -355,8 +355,6 @@ bool Version::Get(const ReadOptions& options, const LookupKey& k, Buffer* buf,
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();
 
-  stats->seek_file = NULL;
-  stats->seek_file_level = -1;
   FileMetaData* last_file_read = NULL;
   int last_file_read_level = -1;
 
@@ -413,6 +411,8 @@ bool Version::Get(const ReadOptions& options, const LookupKey& k, Buffer* buf,
         stats->seek_file_level = last_file_read_level;
       }
 
+      ++stats->number_tables_read;
+
       FileMetaData* f = files[i];
       last_file_read = f;
       last_file_read_level = level;
@@ -423,8 +423,12 @@ bool Version::Get(const ReadOptions& options, const LookupKey& k, Buffer* buf,
       saver.ucmp = ucmp;
       saver.user_key = user_key;
       saver.buf = buf;
+      bool found_in_cache;
       *s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                    f->seq_off, ikey, &saver, SaveValue);
+                                    f->seq_off, ikey, &saver, SaveValue, &found_in_cache);
+      if(found_in_cache) {
+        ++stats->number_cache_hits;
+      }
       if (!s->ok()) {
         return true;  // Read error
       }
@@ -518,7 +522,7 @@ bool Version::OverlapInLevel(int level, const Slice* smallest_user_key,
 
 int Version::NumLevels() const { return files_.size(); }
 
-int Version::NumFilesInLevel_sub(const SublevelPool &pool, int level) const  {
+int Version::NumFilesInLevel_sub(const SublevelPool& pool, int level) const {
   int count = 0;
   for(int i = pool[level].first, end = pool[level].first+pool[level].second; i<end; ++i) {
     assert(i<files_.size());
@@ -540,6 +544,32 @@ int Version::NumFilesInLevel_sub(int level) const {
     count += NumFilesInLevel_sub(output_pool_, level);
   }
   return count;
+}
+
+int64_t Version::NumBytesInLevel_sub(const SublevelPool& pool, int level) const {
+  int64_t bytes = 0;
+  for(int i = pool[level].first, end = pool[level].first+pool[level].second; i<end; ++i) {
+    assert(i<files_.size());
+    for(int j=0; j<files_[i].size(); ++j) {
+      bytes += files_[i][j]->file_size;
+    }
+  }
+  return bytes;
+}
+
+int64_t Version::NumBytesInLevel_sub(int level) const {
+  assert(vset_->options_->enable_sublevel);
+  assert(level>=0);
+  assert(input_pool_.size()==output_pool_.size());
+  int64_t bytes = 0;
+  if (level==0) {
+    bytes += NumBytesInLevel_sub(input_pool_, 0);
+  }
+  else if (level<input_pool_.size()) {
+    bytes += NumBytesInLevel_sub(input_pool_, level);
+    bytes += NumBytesInLevel_sub(output_pool_, level);
+  }
+  return bytes;
 }
 
 int Version::NumLevels_sub() const {

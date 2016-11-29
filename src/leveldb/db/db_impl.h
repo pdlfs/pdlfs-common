@@ -22,6 +22,7 @@
 #include "pdlfs-common/leveldb/db/snapshot.h"
 #include "pdlfs-common/log_writer.h"
 #include "pdlfs-common/port.h"
+#include "version_set.h"
 
 namespace pdlfs {
 
@@ -216,14 +217,17 @@ class DBImpl : public DB {
     int64_t micros;
     int64_t bytes_read;
     int64_t bytes_written;
-    int64_t tables_written;
     int64_t tables_read;
+    int64_t tables_written;
+    int64_t compactions_performed;
+
     CompactionStats()
         : micros(0),
           bytes_read(0),
           bytes_written(0),
+          tables_read(0),
           tables_written(0),
-          tables_read(0) {}
+          compactions_performed(0) {}
 
     void Add(const CompactionStats& c) {
       this->micros += c.micros;
@@ -231,16 +235,38 @@ class DBImpl : public DB {
       this->bytes_written += c.bytes_written;
       this->tables_written += c.tables_written;
       this->tables_read += c.tables_read;
+      this->compactions_performed += c.compactions_performed;
     }
   };
   std::vector<CompactionStats> stats_;
-
 
   void AddCompactionStat(int level, const CompactionStats &c) {
     if(stats_.size()<=level)
       stats_.resize(level+1);
     stats_[level].Add(c);
   }
+
+  struct GetStats {
+    int64_t gets_performed;
+    int64_t tables_read;
+    int64_t cache_hits;
+    GetStats()
+        : gets_performed(0),
+          tables_read(0),
+          cache_hits(0) {}
+    void Add(const GetStats& s) {
+      gets_performed += s.gets_performed;
+      tables_read += s.tables_read;
+      cache_hits += s.cache_hits;
+    }
+    void AddOneGet(const Version::GetStats& s) {
+      ++gets_performed;
+      tables_read += s.number_tables_read;
+      cache_hits += s.number_cache_hits;
+    }
+  };
+
+  GetStats get_stats_;
 
   // No copying allowed
   void operator=(const DBImpl&);

@@ -78,7 +78,7 @@ Status TableCache::LoadTable(uint64_t fnum, uint64_t fsize, Table** table,
 }
 
 Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
-                             Cache::Handle** handle) {
+                             Cache::Handle** handle, bool* found_in_cache) {
   Status s;
   char buf[16];
   EncodeFixed64(buf, id_);
@@ -87,6 +87,7 @@ Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
 
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
+    *found_in_cache = false;
     // Load table from storage
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -100,6 +101,7 @@ Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   } else {
+    *found_in_cache = true;
     // Fetch table from cache
     TableAndFile* tf = FetchTableAndFile(cache_, *handle);
     if (tf->off != off) {
@@ -217,7 +219,8 @@ Iterator* TableCache::NewIterator(const ReadOptions& options, uint64_t fnum,
                                   uint64_t fsize, SequenceOff off,
                                   Table** tableptr) {
   Cache::Handle* handle = NULL;
-  Status s = FindTable(fnum, fsize, off, &handle);
+  bool ignore;
+  Status s = FindTable(fnum, fsize, off, &handle, &ignore);
   if (!s.ok()) {
     if (tableptr != NULL) {
       *tableptr = NULL;
@@ -277,9 +280,9 @@ static void ApplyOffset(void* arg, const Slice& key, const Slice& value) {
 
 Status TableCache::Get(const ReadOptions& options, uint64_t fnum,
                        uint64_t fsize, SequenceOff off, const Slice& key,
-                       void* arg, Saver saver) {
+                       void* arg, Saver saver, bool* found_in_cache) {
   Cache::Handle* handle;
-  Status s = FindTable(fnum, fsize, off, &handle);
+  Status s = FindTable(fnum, fsize, off, &handle, found_in_cache);
   if (!s.ok()) {
     return s;
   }
