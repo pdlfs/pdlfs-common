@@ -936,14 +936,14 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
 Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   mutex_.AssertHeld();
   if (!options_.enable_sublevel) {
-    Log(options_.info_log, "Compacted (%d,%ld)@%d + (%d,%ld)@%d files => (%d,%lld) bytes",
+    Log(options_.info_log, "Compacted (%d,%ld)@%d + (%d,%ld)@%d => (%d,%lld)",
         compact->compaction->num_input_files(0), (long)compact->compaction->num_input_bytes(0), compact->compaction->level(),
-        compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(0), compact->compaction->level()+1,
+        compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(1), compact->compaction->level()+1,
         (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
   }
   else {
     // TODO improve log for sublevel
-    Log(options_.info_log, "Compacted (%d,%ld)@%d files => (%d,%lld) bytes",
+    Log(options_.info_log, "Compacted (%d,%ld)@%d => (%d,%lld)",
         compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level(),
         (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
   }
@@ -965,13 +965,13 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
   if(!options_.enable_sublevel) {
-    Log(options_.info_log, "Compacting (%d,%ld)@%d + (%d,%ld)@%d files",
+    Log(options_.info_log, "Compacting (%d,%ld)@%d + (%d,%ld)@%d",
         compact->compaction->num_input_files(0), (long)compact->compaction->num_input_bytes(0), compact->compaction->level(),
         compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(1), compact->compaction->level()+1);
   }
   else {
     // TODO improve log for sublevel
-    Log(options_.info_log, "Compacting (%d,%ld)@%d files",
+    Log(options_.info_log, "Compacting (%d,%ld)@%d",
         compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level());
   }
 

@@ -62,9 +62,6 @@ extern bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
                                   const Slice* largest_user_key);
 
 class Version {
-  // Only used when sublevel is enabled
-  // <start_index, size>
-  typedef std::vector<std::pair<int, int> > SublevelPool;
  public:
   // Append to *iters a sequence of iterators that will
   // yield the contents of this Version when merged together.
@@ -84,6 +81,11 @@ class Version {
     GetStats(): seek_file(NULL), seek_file_level(-1),
                 number_tables_read(0), number_cache_hits(0) {}
   };
+
+  // Only used when sublevel is enabled
+  // <start_index, size>
+  typedef std::vector<std::pair<int, int> > SublevelPool;
+
   bool Get(const ReadOptions& options, const LookupKey& key, Buffer* val,
            Status* s, GetStats* stats);
 

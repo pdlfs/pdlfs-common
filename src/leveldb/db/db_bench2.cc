@@ -716,6 +716,7 @@ class Benchmark {
   void Open() {
     assert(db_ == NULL);
     Options options;
+    options.l1_compaction_trigger = 50;
     options.env = g_env;
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
