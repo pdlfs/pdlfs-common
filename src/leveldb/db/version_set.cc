@@ -1753,6 +1753,19 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
 
   // Get the range covering all overlapping files in all sublevels of this level
   if (level!=0) {
+    int row;
+    FileMetaData *last;
+    c->inputs_[sublevel].push_back(f);
+    for(int i=sublevel+1; i<c->inputs_.size(); ++i) {
+      row = i+current_->output_pool_[level].first;
+      current_->GetOverlappingInputs(row, &left_bound, &right_bound, &c->inputs_[i]);
+      if (!c->inputs_[i].empty()) {
+        assert(icmp_.Compare(c->inputs_[i][0]->smallest.Encode(), left_bound.Encode())>=0);
+        last = c->inputs_[i][c->inputs_[i].size()-1];
+        if(icmp_.Compare(last->largest.Encode(), right_bound.Encode())>0)
+          right_bound = last->largest;
+      }
+    }
     const Comparator* user_cmp = icmp_.user_comparator();
     int row_start = current_->output_pool_[level].first;
     std::vector<int> next_visit(current_->output_pool_[level].second);

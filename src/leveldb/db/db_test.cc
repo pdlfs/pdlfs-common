@@ -1959,6 +1959,10 @@ static void MTThreadBody(void* arg) {
 
 TEST(DBTest, MultiThreaded) {
   do {
+    if(!CurrentOptions().enable_sublevel) {
+      continue;
+    }
+    fprintf(stderr, "We are testing sublevel!\n");
     // Initialize state
     MTState mt;
     mt.test = this;
