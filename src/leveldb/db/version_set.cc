@@ -867,10 +867,10 @@ class VersionSet::Builder {
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
-        //if (vset_->icmp_.Compare((*files)[files->size() - 1]->largest, f->smallest) >= 0) {
-        //  fprintf(stderr, "MAF %d, %s V.S. %s\n", level, (*files)[files->size() - 1]->largest.DebugString().c_str(), f->smallest.DebugString().c_str());
-        //  fflush(stderr);
-        //}
+        if (vset_->icmp_.Compare((*files)[files->size() - 1]->largest, f->smallest) >= 0) {
+          fprintf(stderr, "MAF %d, %s V.S. %s\n", level, (*files)[files->size() - 1]->largest.DebugString().c_str(), f->smallest.DebugString().c_str());
+          fflush(stderr);
+        }
         // Must not overlap
         assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
                                     f->smallest) < 0);
@@ -1726,6 +1726,7 @@ Compaction* VersionSet::PickCompaction(bool allow_seek_compaction) {
 
 void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
   assert(options_->enable_sublevel);
+  assert(level>=0);
   assert(current_->output_pool_.size()>level);
   assert(current_->output_pool_[level].second>0);
   assert(c->inputs_.size()==current_->output_pool_[level].second);
@@ -1740,10 +1741,14 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
   int sublevel = -1;
   for(int i=0; i<current_->output_pool_[level].second; ++i) {
     int row = i + current_->output_pool_[level].first;
-    if(f==NULL ||
-       (!current_->files_[row].empty() &&
+    if(!current_->files_[row].empty() &&
+       (f==NULL ||
         icmp_.Compare(current_->files_[row][0]->smallest.Encode(), f->smallest.Encode())<0)) {
       f = current_->files_[row][0];
+#ifndef NDEBUG
+      if(level>0 && current_->files_[row].size()>1)
+        assert(icmp_.Compare(current_->files_[row][1]->smallest.Encode(), f->largest.Encode())>0);
+#endif
       sublevel = i;
     }
   }
@@ -1752,7 +1757,7 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
   InternalKey right_bound = f->largest;
 
   // Get the range covering all overlapping files in all sublevels of this level
-  if (level!=0) {
+  if (level>0) {
     int row;
     FileMetaData *last;
     c->inputs_[sublevel].push_back(f);
@@ -1766,36 +1771,35 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
           right_bound = last->largest;
       }
     }
-    const Comparator* user_cmp = icmp_.user_comparator();
-    int row_start = current_->output_pool_[level].first;
-    std::vector<int> next_visit(current_->output_pool_[level].second);
-    next_visit[sublevel] = 1;
-    bool has_changed;
-    do {
-      has_changed = false;
-      for(int i = 0; i<next_visit.size(); ++i) {
-        int row = i+row_start;
-        const Slice right_key = right_bound.user_key();
-        while(next_visit[i]<current_->files_[row].size() &&
-              user_cmp->Compare(current_->files_[row][next_visit[i]]->largest.user_key(), right_key)<=0) {
-          ++next_visit[i];
-        }
-        if(next_visit[i]==current_->files_[row].size())
+#ifndef NDEBUG
+      bool set = false;
+      InternalKey l, r;
+      for(int i = 0; i<c->inputs_.size(); ++i) {
+        if(c->inputs_[i].empty())
           continue;
-        assert(user_cmp->Compare(current_->files_[row][next_visit[i]]->largest.user_key(), right_key)>0);
-        const InternalKey file_start = current_->files_[row][next_visit[i]]->smallest;
-        if(user_cmp->Compare(file_start.user_key(), right_bound.user_key())<=0) {
-          right_bound = current_->files_[row][next_visit[i]]->largest;
-          has_changed = true;
-          ++next_visit[i];
+        for(int j = 1; j<c->inputs_[i].size(); ++j) {
+          assert(icmp_.Compare(c->inputs_[i][j-1]->largest, c->inputs_[i][j]->smallest)<0);
+        }
+        if(!set) {
+          assert(c->inputs_[i].size()==1);
+          l = c->inputs_[i][0]->smallest;
+          r = c->inputs_[i][0]->largest;
+          set = true;
+        }
+        else {
+          int row2 = i+current_->output_pool_[level].first;
+          assert(current_->files_[row2].size()==c->inputs_[i].size()||
+                 icmp_.Compare(r, current_->files_[row2][c->inputs_[i].size()]->smallest)<0);
+          FileMetaData *last2 = c->inputs_[i][c->inputs_[i].size()-1];
+          if(icmp_.Compare(last2->largest, r)>0)
+            r = last2->largest;
         }
       }
-    }
-    while(has_changed);
+      assert(icmp_.Compare(r, right_bound)==0);
+#endif
   }
-  for(int i=0; i<c->inputs_.size(); ++i) {
-    int row = i + current_->output_pool_[level].first;
-    current_->GetOverlappingInputs(row, &left_bound, &right_bound, &c->inputs_[i]);
+  else {
+    current_->GetOverlappingInputs(0, &left_bound, &right_bound, &c->inputs_[0]);
   }
 }
 
