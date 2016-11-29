@@ -940,7 +940,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   }
   else {
     // TODO improve log for sublevel
-    Log(options_.info_log, "Compacted (%d,%ld)@%d files => (%d, %lld) bytes",
+    Log(options_.info_log, "Compacted (%d,%ld)@%d files => (%d,%lld) bytes",
         compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level(),
         (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
   }

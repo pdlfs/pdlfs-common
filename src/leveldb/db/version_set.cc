@@ -837,13 +837,13 @@ class VersionSet::Builder {
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
-        if (vset_->icmp_.Compare((*files)[files->size() - 1]->largest, f->smallest) < 0) {
-          fprintf(stderr, "MAF %d, %s V.S. %s\n", level, (*files)[files->size() - 1]->largest.DebugString().c_str(), f->smallest.DebugString().c_str());
-          fflush(stderr);
-        }
+        //if (vset_->icmp_.Compare((*files)[files->size() - 1]->largest, f->smallest) >= 0) {
+        //  fprintf(stderr, "MAF %d, %s V.S. %s\n", level, (*files)[files->size() - 1]->largest.DebugString().c_str(), f->smallest.DebugString().c_str());
+        //  fflush(stderr);
+        //}
         // Must not overlap
-        //assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
-        //                            f->smallest) < 0);
+        assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
+                                    f->smallest) < 0);
       }
       f->refs++;
       files->push_back(f);
