@@ -952,6 +952,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   }
 
   if(compact->need_truncate) {
+    assert(options_.enable_sublevel);
     compact->compaction->AddInputDeletionsOrUpdates(compact->compaction->edit(), compact->truncate_key);
   }
   else {
@@ -997,12 +998,31 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
   size_t output_size = 0;
+  int level = compact->compaction->level();
   input->SeekToFirst();
   Status status;
   ParsedInternalKey ikey;
   std::string current_user_key;
   bool has_current_user_key = false;
   SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
+
+  if(options_.enable_sublevel && level>0) {
+    input->Seek(compact->compaction->GetStart().Encode());
+#if 0
+    if(input->key().compare(compact->compaction->GetStart().Encode())!=0) {
+      InternalKey k1;
+      k1.DecodeFrom(input->key());
+      fprintf(stderr, "DCW::Seek %d: %s v.s. %s\n",
+              compact->compaction->level(),
+              k1.DebugString().c_str(),
+              compact->compaction->GetStart().DebugString().c_str());
+      fflush(stderr);
+    }
+#endif
+    assert(input->Valid());
+    assert(input->key().compare(compact->compaction->GetStart().Encode())==0);
+  }
+
   for (; input->Valid() && !shutting_down_.Acquire_Load();) {
     // Prioritize immutable compaction work
     if (has_imm_.NoBarrier_Load() != NULL) {
@@ -1037,7 +1057,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
           user_comparator()->Compare(ikey.user_key, Slice(current_user_key)) !=
               0) {
         // Too many bytes involved in this compaction
-        if(options_.enable_sublevel &&
+        // Note that we do not force stop when compacting level 0
+        if(level>0 &&
+           options_.enable_sublevel &&
            output_size>compact->compaction->MaxCompactionSize())
           break;
         // First occurrence of this user key
@@ -1112,7 +1134,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   assert(!status.ok() || options_.enable_sublevel || !input->Valid());
   // We haven't finished all tables, but we have to stop because we have done too much compaction
-  compact->need_truncate = input->Valid();
+  compact->need_truncate = options_.enable_sublevel && input->Valid();
   if(compact->need_truncate)
     compact->truncate_key.DecodeFrom(input->key());
   delete input;

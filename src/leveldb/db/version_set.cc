@@ -858,8 +858,9 @@ class VersionSet::Builder {
 
     truncated_key_ = edit->truncate_key_;
     // Update files, should only happen when sublevel is enabled
-    const VersionEdit::DeletedFileSet& updated = edit->updated_files_;
-    for (VersionEdit::UpdatedFileSet::const_iterator iter = updated.begin(); iter!=updated.end(); ++iter) {
+    const VersionEdit::UpdatedFileSet& updated = edit->updated_files_;
+    for (VersionEdit::UpdatedFileSet::const_iterator iter = updated.begin();
+         iter!=updated.end(); ++iter) {
       assert(vset_->options_->enable_sublevel);
       const int level = iter->first;
       assert(level < levels_.size());
@@ -944,7 +945,7 @@ class VersionSet::Builder {
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
-#if 1
+#if 0
         if(vset_->icmp_.Compare((*files)[files->size()-1]->largest, f->smallest)>=0) {
           fprintf(stderr, "MAF %d, %s V.S. %s\n", level,
                   (*files)[files->size()-1]->largest.DebugString().c_str(),
@@ -1869,11 +1870,11 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
     int row = i + current_->output_pool_[level].first;
     if(!current_->files_[row].empty() &&
        (f==NULL ||
-        icmp_.Compare(current_->files_[row][0]->smallest.Encode(), f->smallest.Encode())<0)) {
+        icmp_.Compare(current_->files_[row][0]->smallest, f->smallest)<0)) {
       f = current_->files_[row][0];
 #ifndef NDEBUG
       if(level>0 && current_->files_[row].size()>1)
-        assert(icmp_.Compare(current_->files_[row][1]->smallest.Encode(), f->largest.Encode())>0);
+        assert(icmp_.Compare(current_->files_[row][1]->smallest, f->largest)>0);
 #endif
       sublevel = i;
     }
@@ -1884,6 +1885,7 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
 
   // Get the range covering all overlapping files in all sublevels of this level
   if (level>0) {
+    c->start_key_ = left_bound;
     const Comparator* user_cmp = icmp_.user_comparator();
     int row_start = current_->output_pool_[level].first;
     std::vector<int> next_visit(current_->output_pool_[level].second);

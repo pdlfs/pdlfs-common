@@ -393,6 +393,11 @@ class Compaction {
 
   int64_t TotalNumInputBytes() const;
 
+  const InternalKey &GetStart() const {
+    assert(options_->enable_sublevel);
+    return start_key_;
+  }
+
   // Return the ith input file at "level()+which" ("which" must be 0 or 1).
   FileMetaData* input(int which, int i) const { return inputs_[which][i]; }
 
@@ -446,6 +451,7 @@ class Compaction {
   int64_t max_compaction_size_;
   Version* input_version_;
   VersionEdit edit_;
+  InternalKey start_key_;
 
   // Each compaction reads inputs from "level_" and "level_+1"
   // Or from multiple sublevels of "level_" if sublevel is enabled
