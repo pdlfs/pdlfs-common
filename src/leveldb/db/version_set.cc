@@ -56,6 +56,11 @@ static double MaxBytesForLevel(const Options* options, int level) {
   return result;
 }
 
+static int64_t MaxCompactionSizeForLevel(const Options* options, int level) {
+  assert(options->enable_sublevel);
+  return options->level_factor * options->table_file_size;
+}
+
 static uint64_t MaxFileSizeForLevel(const Options* options, int level) {
   // TODO(opt): we could vary per level to reduce number of files?
   return options->table_file_size;
@@ -747,11 +752,13 @@ class VersionSet::Builder {
   struct LevelState {
     std::set<uint64_t> deleted_files;
     FileSet* added_files;
+    std::set<uint64_t> updated_files;
   };
 
   VersionSet* vset_;
   Version* base_;
   std::vector<LevelState> levels_;
+  InternalKey truncated_key_;
 
  public:
   // Initialize a builder with the files from *base and other info from *vset
@@ -816,6 +823,7 @@ class VersionSet::Builder {
     for (VersionEdit::DeletedFileSet::const_iterator iter = del.begin();
          iter != del.end(); ++iter) {
       const int level = iter->first;
+      assert(level < levels_.size());
       const uint64_t number = iter->second;
       assert(level <= edit->max_level_);
       levels_[level].deleted_files.insert(number);
@@ -824,6 +832,7 @@ class VersionSet::Builder {
     // Add new files
     for (size_t i = 0; i < edit->new_files_.size(); i++) {
       const int level = edit->new_files_[i].first;
+      assert(level < levels_.size());
       FileMetaData* f = new FileMetaData(edit->new_files_[i].second);
       f->refs = 1;
 
@@ -845,6 +854,17 @@ class VersionSet::Builder {
       assert(level <= edit->max_level_);
       levels_[level].deleted_files.erase(f->number);
       levels_[level].added_files->insert(f);
+    }
+
+    truncated_key_ = edit->truncate_key_;
+    // Update files, should only happen when sublevel is enabled
+    const VersionEdit::DeletedFileSet& updated = edit->updated_files_;
+    for (VersionEdit::UpdatedFileSet::const_iterator iter = updated.begin(); iter!=updated.end(); ++iter) {
+      assert(vset_->options_->enable_sublevel);
+      const int level = iter->first;
+      assert(level < levels_.size());
+      const uint64_t number = iter->second;
+      levels_[level].updated_files.insert(number);
     }
   }
 
@@ -912,10 +932,19 @@ class VersionSet::Builder {
   void MaybeAddFile(Version* v, int level, FileMetaData* f) {
     if (levels_[level].deleted_files.count(f->number) > 0) {
       // File is deleted: do nothing
+    } else if(levels_[level].updated_files.count(f->number) > 0) {
+      // File is updated (which means truncated now): create new meta data and set smallest to be the truncated key
+      assert(vset_->options_->enable_sublevel);
+      assert(vset_->icmp_.Compare(f->smallest, truncated_key_)<0);
+      assert(vset_->icmp_.Compare(f->largest, truncated_key_)>=0);
+      FileMetaData* updated_f = new FileMetaData(*f);
+      updated_f->refs = 1;
+      updated_f->smallest = truncated_key_;
+      v->files_[level].push_back(updated_f);
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
-#if 0
+#if 1
         if(vset_->icmp_.Compare((*files)[files->size()-1]->largest, f->smallest)>=0) {
           fprintf(stderr, "MAF %d, %s V.S. %s\n", level,
                   (*files)[files->size()-1]->largest.DebugString().c_str(),
@@ -1999,6 +2028,7 @@ Compaction::Compaction(const Options* options, int level, VersionSet* vset)
       output_sublevel_(options->enable_sublevel? vset->current()->input_pool_[level+1].first: -1),
       max_output_file_size_(MaxFileSizeForLevel(options, level)),
       max_grand_parent_overlap_bytes_(MaxGrandParentOverlapBytes(options)),
+      max_compaction_size_(options->enable_sublevel? MaxCompactionSizeForLevel(options, level): -1),
       input_version_(vset->current()),
       inputs_(options->enable_sublevel? vset->current()->output_pool_[level].second: 2),
       grandparent_index_(0),
@@ -2061,6 +2091,31 @@ void Compaction::AddInputDeletions(VersionEdit* edit) {
   for (int which = 0; which < inputs_.size(); which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
       edit->DeleteFile(input_base_level + which, inputs_[which][i]->number);
+    }
+  }
+}
+
+void Compaction::AddInputDeletionsOrUpdates(VersionEdit* edit, const InternalKey &key) {
+  assert(options_->enable_sublevel);
+  edit->SetUpdateTruncate(key);
+  const InternalKeyComparator& icmp = input_version_->vset_->icmp_;
+
+  for (int which = 0; which < inputs_.size(); which++) {
+    for (size_t i = 0; i < inputs_[which].size(); i++) {
+      const FileMetaData *meta = inputs_[which][i];
+      if(icmp.Compare(meta->largest, key)<0) {
+        edit->DeleteFile(base_input_sublevel_+which, inputs_[which][i]->number);
+      }
+      else {
+        if(icmp.Compare(meta->smallest, key)<0) {
+          edit->UpdateFile(base_input_sublevel_+which, meta->number);
+        }
+        if(level_>0) {
+          assert(i==inputs_[which].size()-1 ||
+                 icmp.Compare(inputs_[which][i+1]->smallest, key)>0);
+          break;
+        }
+      }
     }
   }
 }

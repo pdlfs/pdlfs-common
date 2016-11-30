@@ -78,6 +78,9 @@ struct DBImpl::CompactionState {
 
   uint64_t total_bytes;
 
+  bool need_truncate;
+  InternalKey truncate_key;
+
   Output* current_output() { return &outputs[outputs.size() - 1]; }
 
   int64_t TotalNumOutputBytes() const {
@@ -89,7 +92,7 @@ struct DBImpl::CompactionState {
   }
 
   explicit CompactionState(Compaction* c)
-      : compaction(c), outfile(NULL), builder(NULL), total_bytes(0) {}
+      : compaction(c), outfile(NULL), builder(NULL), total_bytes(0), need_truncate(false) {}
 };
 
 struct DBImpl::InsertionState {
@@ -649,7 +652,6 @@ void DBImpl::TEST_CompactRange(int level, const Slice* begin,
     end_storage = InternalKey(*end, 0, static_cast<ValueType>(0));
     manual.end = &end_storage;
   }
-
   MutexLock l(&mutex_);
   while (!manual.done && !shutting_down_.Acquire_Load() && bg_error_.ok()) {
     if (manual_compaction_ == NULL) {  // Idle
@@ -762,6 +764,7 @@ void DBImpl::BackgroundCompaction() {
   InternalKey manual_end;
   if (is_manual) {
     ManualCompaction* m = manual_compaction_;
+
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
     // TODO add condition for sublevel. Or do we really need to?
@@ -948,8 +951,13 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
         (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
   }
 
-  // Add compaction outputs
-  compact->compaction->AddInputDeletions(compact->compaction->edit());
+  if(compact->need_truncate) {
+    compact->compaction->AddInputDeletionsOrUpdates(compact->compaction->edit(), compact->truncate_key);
+  }
+  else {
+    // Add compaction outputs
+    compact->compaction->AddInputDeletions(compact->compaction->edit());
+  }
   const int output_level = options_.enable_sublevel? compact->compaction->OutputSublevel(): compact->compaction->level()+1;
   for (size_t i = 0; i < compact->outputs.size(); i++) {
     const SequenceOff off = 0;
@@ -988,6 +996,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   mutex_.Unlock();
 
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
+  size_t output_size = 0;
   input->SeekToFirst();
   Status status;
   ParsedInternalKey ikey;
@@ -1027,6 +1036,10 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       if (!has_current_user_key ||
           user_comparator()->Compare(ikey.user_key, Slice(current_user_key)) !=
               0) {
+        // Too many bytes involved in this compaction
+        if(options_.enable_sublevel &&
+           output_size>compact->compaction->MaxCompactionSize())
+          break;
         // First occurrence of this user key
         current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
         has_current_user_key = true;
@@ -1070,7 +1083,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         }
       }
 
+      size_t temp = compact->builder->FileSize();
       compact->builder->Add(key, input->value());
+      output_size += compact->builder->FileSize() - temp;
 
       // Close output file if it is big enough
       if (compact->builder->FileSize() >=
@@ -1094,6 +1109,12 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   if (status.ok()) {
     status = input->status();
   }
+
+  assert(!status.ok() || options_.enable_sublevel || !input->Valid());
+  // We haven't finished all tables, but we have to stop because we have done too much compaction
+  compact->need_truncate = input->Valid();
+  if(compact->need_truncate)
+    compact->truncate_key.DecodeFrom(input->key());
   delete input;
   input = NULL;
 

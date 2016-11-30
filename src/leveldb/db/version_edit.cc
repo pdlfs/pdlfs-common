@@ -43,6 +43,7 @@ void VersionEdit::Clear() {
   deleted_files_.clear();
   new_files_.clear();
   max_level_ = config::kMaxMemCompactLevel;
+  truncate_key_.Clear();
 }
 
 void VersionEdit::EncodeTo(std::string* dst) const {

@@ -399,12 +399,23 @@ class Compaction {
   // Maximum size of files to build during this compaction.
   uint64_t MaxOutputFileSize() const { return max_output_file_size_; }
 
+  // Maximum size of files produced in this compaction
+  // Used when sublevel is enabled
+  int64_t MaxCompactionSize() const {
+    assert(options_->enable_sublevel);
+    return max_compaction_size_;
+  }
+
   // Is this a trivial compaction that can be implemented by just
   // moving a single input file to the next level (no merging or splitting)
   bool IsTrivialMove() const;
 
   // Add all inputs to this compaction as delete operations to *edit.
   void AddInputDeletions(VersionEdit* edit);
+
+  // Add all input files before the key as deleted files
+  // Add all input files overlapping this key as updated files
+  void AddInputDeletionsOrUpdates(VersionEdit* edit, const InternalKey &key);
 
   // Returns true if the information we have available guarantees that
   // the compaction is producing data in "level+1" for which no data exists
@@ -431,6 +442,8 @@ class Compaction {
   const int output_sublevel_;
   uint64_t max_output_file_size_;
   int64_t max_grand_parent_overlap_bytes_;
+  // Used when sublevel is enabled
+  int64_t max_compaction_size_;
   Version* input_version_;
   VersionEdit edit_;
 

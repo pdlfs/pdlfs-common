@@ -75,6 +75,14 @@ class VersionEdit {
     deleted_files_.insert(std::make_pair(level, file));
   }
 
+  void UpdateFile(int level, uint64_t file) {
+    updated_files_.insert(std::make_pair(level, file));
+  }
+
+  void SetUpdateTruncate(const InternalKey &key) {
+    truncate_key_ = key;
+  }
+
   void EncodeTo(std::string* dst) const;
   Status DecodeFrom(const Slice& src);
 
@@ -84,6 +92,7 @@ class VersionEdit {
   friend class VersionSet;
 
   typedef std::set<std::pair<int, uint64_t> > DeletedFileSet;
+  typedef DeletedFileSet UpdatedFileSet;
 
   std::string comparator_;
   uint64_t log_number_;
@@ -96,10 +105,14 @@ class VersionEdit {
   bool has_next_file_number_;
   bool has_last_sequence_;
   int max_level_;
+  // TODO add updated_file and truncate_key_ into serialization
+  // this is the new smallest for updated tables
+  InternalKey truncate_key_;
 
   std::vector<std::pair<int, InternalKey> > compact_pointers_;
   DeletedFileSet deleted_files_;
   std::vector<std::pair<int, FileMetaData> > new_files_;
+  UpdatedFileSet updated_files_;
 };
 
 }  // namespace pdlfs
