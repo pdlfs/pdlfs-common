@@ -957,9 +957,8 @@ class VersionSet::Builder {
               fprintf(stderr, "\n    %4d: [%s,\t\t%s]", j,
                       v->files_[i][j]->smallest.DebugString().c_str(),
                       v->files_[i][j]->largest.DebugString().c_str());
-              if(i>0&&j>0&&vset_->icmp_.Compare(v->files_[i][j]->smallest, v->files_[i][j-1]->largest)<=0) {
-                fprintf(stderr, "!!!!!!fuck le!!!!!!");
-              }
+              assert(!(i>0&&j>0&&
+                       vset_->icmp_.Compare(v->files_[i][j]->smallest, v->files_[i][j-1]->largest)<=0));
             }
             fprintf(stderr, "\n");
           }
@@ -1630,7 +1629,7 @@ int VersionSet::NumLevelFiles(int level) const {
 
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   // Update code if kNumLevels changes
-  size_t size = sizeof(scratch->buffer);
+  size_t size = sizeof(scratch->buffer)-1;
   char* next_position = scratch->buffer;
   int number = sprintf(next_position, "files[ ");
   size -= number;
@@ -1641,7 +1640,7 @@ const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
     size -= number;
     next_position += number;
   }
-  if (size > 2) {
+  if (size >= 2) {
     sprintf(next_position, " ]");
   }
   return scratch->buffer;
