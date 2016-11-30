@@ -1598,15 +1598,20 @@ int VersionSet::NumLevelFiles(int level) const {
 }
 
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
-  // Update code if kNumLevels changes
+  assert(!options_->enable_sublevel || current_->output_pool_.size()==current_->input_pool_.size());
+  int total_level = options_->enable_sublevel?
+                    current_->input_pool_.size():
+                    current_->files_.size();
   size_t size = sizeof(scratch->buffer)-1;
-  char* next_position = scratch->buffer;
+  char *next_position = scratch->buffer;
   int number = sprintf(next_position, "files[ ");
   size -= number;
   next_position += number;
-  for (int level = 0; level < current_->files_.size() && size > 0; ++level) {
-    number = snprintf(next_position, size, " %d",
-                      int(current_->files_[level].size()));
+  for(int level = 0; level<total_level&&size>0; ++level) {
+    int num_files = options_->enable_sublevel?
+                    current_->NumFilesInLevel_sub(level):
+                    (int)current_->files_[level].size();
+    number = snprintf(next_position, size, " %d", num_files);
     size -= number;
     next_position += number;
   }
