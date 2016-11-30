@@ -68,6 +68,8 @@ static bool FLAGS_enable_sublevel = false;
 static int FLAGS_table_file_size = -1;
 static int FLAGS_level_factor = -1;
 static int FLAGS_range = -1;
+static bool FLAGS_enable_should_stop_before = true;
+static int FLAGS_l1_compaction_trigger = 50;
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -716,13 +718,14 @@ class Benchmark {
   void Open() {
     assert(db_ == NULL);
     Options options;
-    options.l1_compaction_trigger = 50;
+    options.l1_compaction_trigger = FLAGS_l1_compaction_trigger;
     options.env = g_env;
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
     options.write_buffer_size = FLAGS_write_buffer_size;
     options.block_size = FLAGS_block_size;
     options.filter_policy = filter_policy_;
+    options.enable_should_stop_before = FLAGS_enable_should_stop_before;
     if(FLAGS_level_factor>0)
       options.level_factor = FLAGS_level_factor;
     if(FLAGS_enable_sublevel)
@@ -1013,8 +1016,12 @@ int main(int argc, char** argv) {
       FLAGS_table_file_size = n;
     } else if (sscanf(argv[i], "--enable_sublevel=%d%c", &n, &junk) == 1) {
       FLAGS_enable_sublevel = n;
+    } else if (sscanf(argv[i], "--enable_should_stop_before=%d%c", &n, &junk) == 1) {
+      FLAGS_enable_should_stop_before = n;
     } else if (sscanf(argv[i], "--level_factor=%d%c", &n, &junk) == 1) {
       FLAGS_level_factor = n;
+    } else if (sscanf(argv[i], "--l1_compaction_trigger=%d%c", &n, &junk) == 1) {
+      FLAGS_l1_compaction_trigger = n;
     } else if (sscanf(argv[i], "--range=%d%c", &n, &junk) == 1) {
       FLAGS_range = n;
     } else {
@@ -1035,7 +1042,6 @@ int main(int argc, char** argv) {
   if (FLAGS_range<0) {
     FLAGS_range = FLAGS_num;
   }
-  printf("FLAGS_range=%d\n", FLAGS_range);
 
   pdlfs::Benchmark benchmark;
   benchmark.Run();

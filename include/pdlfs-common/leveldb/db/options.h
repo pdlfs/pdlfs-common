@@ -240,6 +240,8 @@ struct DBOptions {
   // Whether to enable sublevel
   bool enable_sublevel;
 
+  bool enable_should_stop_before;
+
   DBOptions();
 };
 

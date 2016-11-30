@@ -915,48 +915,48 @@ class VersionSet::Builder {
     } else {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
-        if (false) {
-          if(vset_->icmp_.Compare((*files)[files->size()-1]->largest, f->smallest)>=0) {
-            fprintf(stderr, "MAF %d, %s V.S. %s\n", level,
-                    (*files)[files->size()-1]->largest.DebugString().c_str(),
-                    f->smallest.DebugString().c_str());
-            fprintf(stderr, "version files:\n");
-            for(int i = 0; i<v->files_.size(); ++i) {
-              fprintf(stderr, "level %d:", i);
-              for(int j = 0; j<v->files_[i].size(); ++j) {
-                fprintf(stderr, "\n    %4d: [%s,\t\t%s]", j,
-                        v->files_[i][j]->smallest.DebugString().c_str(),
-                        v->files_[i][j]->largest.DebugString().c_str());
-                if(i>0&&j>0&&vset_->icmp_.Compare(v->files_[i][j]->smallest, v->files_[i][j-1]->largest)<=0) {
-                  fprintf(stderr, "!!!!!!fuck le!!!!!!");
-                }
-              }
-              fprintf(stderr, "\n");
-            }
-            fprintf(stderr, "added files:\n");
-            for(int i = 0; i<levels_.size(); ++i) {
-              fprintf(stderr, "level %d:", i);
-              for(FileSet::const_iterator iter = levels_[i].added_files->begin();
-                  iter!=levels_[i].added_files->end(); ++iter) {
-                fprintf(stderr, "\n    [%s,\t\t%s]",
-                        (*iter)->smallest.DebugString().c_str(),
-                        (*iter)->largest.DebugString().c_str());
-              }
-              fprintf(stderr, "\n");
-            }
-            if(vset_->options_->enable_sublevel) {
-              fprintf(stderr, "level information:\n");
-              const Version &cur = *vset_->current_;
-              assert(cur.input_pool_.size()==cur.output_pool_.size());
-              for(int i = 0; i<cur.input_pool_.size(); ++i) {
-                fprintf(stderr, "level %d:\n    input pool: %5d\t-\t%4d\n    output pool: %4d\t-\t%4d\n",
-                        i, cur.input_pool_[i].first, cur.input_pool_[i].first+cur.input_pool_[i].second-1,
-                        cur.output_pool_[i].first, cur.output_pool_[i].first+cur.output_pool_[i].second-1);
+#if 0
+        if(vset_->icmp_.Compare((*files)[files->size()-1]->largest, f->smallest)>=0) {
+          fprintf(stderr, "MAF %d, %s V.S. %s\n", level,
+                  (*files)[files->size()-1]->largest.DebugString().c_str(),
+                  f->smallest.DebugString().c_str());
+          fprintf(stderr, "version files:\n");
+          for(int i = 0; i<v->files_.size(); ++i) {
+            fprintf(stderr, "level %d:", i);
+            for(int j = 0; j<v->files_[i].size(); ++j) {
+              fprintf(stderr, "\n    %4d: [%s,\t\t%s]", j,
+                      v->files_[i][j]->smallest.DebugString().c_str(),
+                      v->files_[i][j]->largest.DebugString().c_str());
+              if(i>0&&j>0&&vset_->icmp_.Compare(v->files_[i][j]->smallest, v->files_[i][j-1]->largest)<=0) {
+                fprintf(stderr, "!!!!!!fuck le!!!!!!");
               }
             }
-            fflush(stderr);
+            fprintf(stderr, "\n");
           }
-        }
+          fprintf(stderr, "added files:\n");
+          for(int i = 0; i<levels_.size(); ++i) {
+            fprintf(stderr, "level %d:", i);
+            for(FileSet::const_iterator iter = levels_[i].added_files->begin();
+                iter!=levels_[i].added_files->end(); ++iter) {
+              fprintf(stderr, "\n    [%s,\t\t%s]",
+                      (*iter)->smallest.DebugString().c_str(),
+                      (*iter)->largest.DebugString().c_str());
+            }
+            fprintf(stderr, "\n");
+          }
+          if(vset_->options_->enable_sublevel) {
+            fprintf(stderr, "level information:\n");
+            const Version &cur = *vset_->current_;
+            assert(cur.input_pool_.size()==cur.output_pool_.size());
+            for(int i = 0; i<cur.input_pool_.size(); ++i) {
+              fprintf(stderr, "level %d:\n    input pool: %5d\t-\t%4d\n    output pool: %4d\t-\t%4d\n",
+                      i, cur.input_pool_[i].first, cur.input_pool_[i].first+cur.input_pool_[i].second-1,
+                      cur.output_pool_[i].first, cur.output_pool_[i].first+cur.output_pool_[i].second-1);
+            }
+          }
+          fflush(stderr);
+      }
+#endif
         // Must not overlap
         assert(vset_->icmp_.Compare((*files)[files->size() - 1]->largest,
                                     f->smallest) < 0);
@@ -1269,13 +1269,14 @@ void VersionSet::ReorganizeSublevels(Version *version, VersionEdit *edit) {
   assert(version->output_pool_[version->output_pool_.size()-1].first==version->files_.size());
   assert(version->output_pool_[version->output_pool_.size()-1].second==0);
 
-  if (false) {
-    fprintf(stderr, "before reorganize:\n");
-    fprintf(stderr, "%s", SublevelInfo(files, current_->input_pool_, current_->output_pool_).c_str());
-    fprintf(stderr, "after reorganize:\n");
-    fprintf(stderr, "%s", SublevelInfo(version->files_, version->input_pool_, version->output_pool_).c_str());
-    fflush(stderr);
-  }
+#if 0
+  fprintf(stderr, "before reorganize:\n");
+  fprintf(stderr, "%s", SublevelInfo(files, current_->input_pool_, current_->output_pool_).c_str());
+  fprintf(stderr, "after reorganize:\n");
+  fprintf(stderr, "%s", SublevelInfo(version->files_, version->input_pool_, version->output_pool_).c_str());
+  fflush(stderr);
+#endif
+
 }
 
 Status VersionSet::Recover() {
@@ -2047,7 +2048,8 @@ bool Compaction::IsTrivialMove() const {
   // a very expensive merge later on.
   if (!options_->enable_sublevel) {
     return (num_input_files(0)==1&&num_input_files(1)==0&&
-            TotalFileSize(grandparents_)<=max_grand_parent_overlap_bytes_);
+            (!options_->enable_should_stop_before ||
+             TotalFileSize(grandparents_)<=max_grand_parent_overlap_bytes_));
   }
   else {
     return TotalNumInputFiles()==1;
@@ -2085,6 +2087,8 @@ bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
 }
 
 bool Compaction::ShouldStopBefore(const Slice& internal_key) {
+  if(!options_->enable_should_stop_before)
+    return false;
   if (options_->enable_sublevel) {
     // TODO implement this function if we observe sometimes too many files are compacted in one compaction
     return false;

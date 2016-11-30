@@ -48,7 +48,8 @@ DBOptions::DBOptions()
       l0_compaction_trigger(4),
       l0_soft_limit(8),
       l0_hard_limit(12),
-      enable_sublevel(false) {}
+      enable_sublevel(false),
+      enable_should_stop_before(true) {}
 
 ReadOptions::ReadOptions()
     : verify_checksums(false),
