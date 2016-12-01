@@ -70,6 +70,7 @@ static int FLAGS_level_factor = -1;
 static int FLAGS_range = -1;
 static bool FLAGS_enable_should_stop_before = true;
 static int FLAGS_l1_compaction_trigger = 50;
+static bool FLAGS_silent_mode = false;
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -237,7 +238,7 @@ class Stats {
       double now = g_env->NowMicros();
       double micros = now - last_op_finish_;
       hist_.Add(micros);
-      if (micros > 20000) {
+      if (!FLAGS_silent_mode && micros > 20000) {
         fprintf(stderr, "long op: %.1f micros%30s\r", micros, "");
         fflush(stderr);
       }
@@ -245,7 +246,7 @@ class Stats {
     }
 
     done_++;
-    if (done_ >= next_report_) {
+    if (!FLAGS_silent_mode && done_ >= next_report_) {
       if      (next_report_ < 1000)   next_report_ += 100;
       else if (next_report_ < 5000)   next_report_ += 500;
       else if (next_report_ < 10000)  next_report_ += 1000;
@@ -816,6 +817,7 @@ class Benchmark {
     ReadOptions options;
     std::string value;
     int found = 0;
+    int64_t bytes = 0;
     for (int i = 0; i < reads_; i++) {
       char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
@@ -823,10 +825,12 @@ class Benchmark {
       if (db_->Get(options, key, &value).ok()) {
         found++;
       }
+      bytes += value_size_ + strlen(key);
       thread->stats.FinishedSingleOp();
     }
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
+    thread->stats.AddBytes(bytes);
     thread->stats.AddMessage(msg);
   }
 
@@ -1024,6 +1028,8 @@ int main(int argc, char** argv) {
       FLAGS_l1_compaction_trigger = n;
     } else if (sscanf(argv[i], "--range=%d%c", &n, &junk) == 1) {
       FLAGS_range = n;
+    } else if (sscanf(argv[i], "--silent_mode=%d%c", &n, &junk) == 1) {
+      FLAGS_silent_mode = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
