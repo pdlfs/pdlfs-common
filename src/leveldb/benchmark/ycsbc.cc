@@ -16,6 +16,9 @@
 #include "core/timer.h"
 #include "core/utils.h"
 #include "db/db_factory.h"
+#include "../format.h"
+#include <thread>
+#include <chrono>
 
 using namespace std;
 
@@ -76,6 +79,10 @@ int main(const int argc, const char* argv[]) {
   cerr << "# Loading throughput (KTPS)" << endl;
   cerr << props["dbname"] << '\t' << file_name << '\t' << num_threads << '\t';
   cerr << total_ops / duration / 1000 << endl;
+  cerr << "block miss count after loading:" << pdlfs::block_missed_num << endl;
+
+  cerr << "Sleep for 30s" << std::endl;
+  std::this_thread::sleep_for (std::chrono::seconds(5));
 
   // Peforms transactions
   actual_ops.clear();
@@ -99,6 +106,8 @@ int main(const int argc, const char* argv[]) {
   cerr << "# Transaction throughput (KTPS)" << endl;
   cerr << props["dbname"] << '\t' << file_name << '\t' << num_threads << '\t';
   cerr << total_ops / duration / 1000 << endl;
+
+  cerr << "block miss count after ops:" << pdlfs::block_missed_num << endl;
 }
 
 string ParseCommandLine(int argc, const char* argv[],

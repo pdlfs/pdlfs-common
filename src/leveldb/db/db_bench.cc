@@ -28,6 +28,7 @@
 #include "pdlfs-common/random.h"
 #include "pdlfs-common/testutil.h"
 
+#include "../format.h"
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
 //      fillseq       -- write N values in sequential key order in async mode
@@ -53,12 +54,13 @@
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
     "fillseq,"
-    "fillsync,"
+//    "fillsync,"
     "fillrandom,"
     "overwrite,"
     "readrandom,"
     "readrandom,"  // Extra run to allow previous compactions to quiesce
-    "readseq,"
+    "readseq,";
+/*
     "readreverse,"
     "compact,"
     "readrandom,"
@@ -69,6 +71,7 @@ static const char* FLAGS_benchmarks =
     "snappycomp,"
     "snappyuncomp,"
     "acquireload,";
+	*/
 
 // Use which DBImpl
 static int FLAGS_db_impl = 0;
@@ -739,6 +742,8 @@ class Benchmark {
 
     Status s;
     if (FLAGS_db_impl == 0) {
+    	options.block_size = 1 << 14;           // 16KB
+    	options.table_file_size = 8 * 1048576;  // 8MBcolumn_ocolumn_optionption
       s = DB::Open(options, FLAGS_db, &db_);
     } else {
       ColumnStyle styles[1];
@@ -1031,7 +1036,8 @@ int main(int argc, char** argv) {
 
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == NULL) {
-    pdlfs::g_env->GetTestDirectory(&default_db_path);
+    // pdlfs::g_env->GetTestDirectory(&default_db_path);
+    default_db_path = "/m";
     default_db_path += "/dbbench";
     fprintf(stdout, "\n===path===:%s\n", default_db_path.c_str());
     FLAGS_db = default_db_path.c_str();
@@ -1039,6 +1045,7 @@ int main(int argc, char** argv) {
 
   pdlfs::Benchmark benchmark;
   benchmark.Run();
+	fprintf(stdout, "block miss count after ops:%lu\n", block_missed_num);
   return 0;
 }
 /*

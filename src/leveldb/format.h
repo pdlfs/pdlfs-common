@@ -19,6 +19,9 @@
 
 namespace pdlfs {
 
+extern uint64_t block_missed_num;
+
+
 class Block;
 class RandomAccessFile;
 struct ReadOptions;

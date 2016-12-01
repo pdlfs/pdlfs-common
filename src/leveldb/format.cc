@@ -22,6 +22,8 @@
 
 namespace pdlfs {
 
+uint64_t block_missed_num = 0;
+
 void BlockHandle::EncodeTo(std::string* dst) const {
   // Sanity check that all fields have been set
   assert(offset_ != ~static_cast<uint64_t>(0));
@@ -74,6 +76,7 @@ Status Footer::DecodeFrom(Slice* input) {
 
 Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
                  const BlockHandle& handle, BlockContents* result) {
+	block_missed_num++;
   result->data = Slice();
   result->cachable = false;
   result->heap_allocated = false;

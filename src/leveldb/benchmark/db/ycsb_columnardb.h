@@ -40,7 +40,7 @@ class YCSBColumnarDB : public DB {
   ~YCSBColumnarDB() { delete db_; }
 
   explicit YCSBColumnarDB(pdlfs::ColumnStyle style)
-      : dbname_(pdlfs::test::TmpDir() + "/ycsb_test") {
+      : dbname_("/m/ycsb_bench") {
     pdlfs::DestroyDB(dbname_, Options());
     options_.create_if_missing = true;
     options_.skip_lock_file = true;
@@ -55,7 +55,7 @@ class YCSBColumnarDB : public DB {
     ASSERT_OK(s);
   }
 
-  explicit YCSBColumnarDB() : dbname_(pdlfs::test::TmpDir() + "/ycsb_test") {
+  explicit YCSBColumnarDB() : dbname_("/m/ycsb_bench") {
     pdlfs::DestroyDB(dbname_, Options());
     options_.create_if_missing = true;
     options_.skip_lock_file = true;

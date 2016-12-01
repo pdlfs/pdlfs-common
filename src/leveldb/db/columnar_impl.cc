@@ -17,6 +17,7 @@
 #include "version_edit.h"
 #include "version_set.h"
 #include "vlog_column_impl.h"
+#include "pdlfs-common/cache.h"
 
 namespace pdlfs {
 
@@ -476,6 +477,11 @@ Status ColumnarDB::Open(const Options& options, const std::string& dbname,
     Options column_option(options);
     column_option.block_size = 1 << 14;           // 16KB
     column_option.table_file_size = 8 * 1048576;  // 8MB
+
+		/////////////////////////////////////////////////////
+		// Open a 1G LRU Cache
+		column_option.block_cache = NewLRUCache(1 << 30); // 1G
+		/////////////////////////////////////////////////////
 
     for (size_t i = 0; i < num_columns; i++) {
       Column* column;

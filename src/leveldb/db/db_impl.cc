@@ -2032,16 +2032,22 @@ Status DBImpl::Dump(const DumpOptions& options, const Range& r,
 Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   *dbptr = NULL;
 
-  DBImpl* impl = new DBImpl(options, dbname);
+	/////////////////////////////////////////////////////
+  // Open a 1G LRU Cache
+  Options new_options(options);
+	new_options.block_cache = NewLRUCache(1 << 30); // 1G
+	/////////////////////////////////////////////////////
+
+  DBImpl* impl = new DBImpl(new_options, dbname);
   impl->mutex_.Lock();
   VersionEdit edit;
   Status s =
       impl->Recover(&edit);  // Handles create_if_missing, error_if_exists
   if (s.ok()) {
-    if (!options.disable_write_ahead_log) {
+    if (!new_options.disable_write_ahead_log) {
       uint64_t new_log_number = impl->versions_->NewFileNumber();
       WritableFile* lfile;
-      s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
+      s = new_options.env->NewWritableFile(LogFileName(dbname, new_log_number),
                                        &lfile);
       if (s.ok()) {
         edit.SetLogNumber(new_log_number);
