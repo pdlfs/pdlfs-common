@@ -99,7 +99,7 @@ DBOptions SanitizeOptions(const std::string& dbname,
     result.disable_seek_compaction = true;
   }
   if (result.block_cache == NULL) {
-    result.block_cache = NewLRUCache(8 << 20);
+    result.block_cache = NewLRUCache(1 << 30);
   }
   if (result.table_cache == NULL) {
     result.table_cache = NewLRUCache(1000);
