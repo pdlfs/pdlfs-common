@@ -77,19 +77,11 @@ struct DBImpl::CompactionState {
   TableBuilder* builder;
 
   uint64_t total_bytes;
-
+  int64_t read_size;
   bool need_truncate;
   InternalKey truncate_key;
 
   Output* current_output() { return &outputs[outputs.size() - 1]; }
-
-  int64_t TotalNumOutputBytes() const {
-    int64_t bytes = 0;
-    for (size_t i = 0; i < outputs.size(); i++) {
-      bytes += outputs[i].file_size;
-    }
-    return bytes;
-  }
 
   explicit CompactionState(Compaction* c)
       : compaction(c), outfile(NULL), builder(NULL), total_bytes(0), need_truncate(false) {}
@@ -787,7 +779,7 @@ void DBImpl::BackgroundCompaction() {
     // Nothing to do
   } else if (!is_manual && c->IsTrivialMove()) {
     // Move file to next level
-    assert(c->TotalNumInputFiles()==1);
+    assert(c->TotalNumInputFiles(false, NULL)==1);
     assert(options_.enable_sublevel || c->num_input_files(0) == 1);
     FileMetaData* f = c->GetTheOnlyFile();
     c->AddInputDeletions(c->edit());
@@ -947,8 +939,13 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   else {
     // TODO improve log for sublevel
     Log(options_.info_log, "Compacted (%d,%ld)@%d => (%d,%lld)",
-        compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level(),
-        (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
+        compact->compaction->TotalNumInputFiles(
+                compact->need_truncate,
+                &compact->truncate_key),
+        (long)compact->read_size,
+        compact->compaction->level(),
+        (int)compact->outputs.size(),
+        static_cast<long long>(compact->total_bytes));
   }
 
   if(compact->need_truncate) {
@@ -981,7 +978,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   else {
     // TODO improve log for sublevel
     Log(options_.info_log, "Compacting (%d,%ld)@%d",
-        compact->compaction->TotalNumInputFiles(), (long)compact->compaction->TotalNumInputBytes(), compact->compaction->level());
+        compact->compaction->TotalNumInputFiles(false, NULL),
+        (long)compact->compaction->TotalNumInputBytes(false, NULL),
+        compact->compaction->level());
   }
 
   assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
@@ -997,7 +996,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   mutex_.Unlock();
 
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
-  size_t output_size = 0;
+  int64_t read_size = 0;
+  const int64_t max_compaction_size = compact->compaction->MaxCompactionSize();
   int level = compact->compaction->level();
   input->SeekToFirst();
   Status status;
@@ -1044,6 +1044,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         break;
       }
     }
+    read_size += key.size();
+    read_size += input->value().size();
 
     // Handle key/value, add to state, etc.
     bool drop = false;
@@ -1058,9 +1060,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
               0) {
         // Too many bytes involved in this compaction
         // Note that we do not force stop when compacting level 0
-        if(level>0 &&
-           options_.enable_sublevel &&
-           output_size>compact->compaction->MaxCompactionSize())
+        if(level>0 && options_.enable_sublevel && read_size>max_compaction_size)
           break;
         // First occurrence of this user key
         current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
@@ -1105,9 +1105,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         }
       }
 
-      size_t temp = compact->builder->FileSize();
       compact->builder->Add(key, input->value());
-      output_size += compact->builder->FileSize() - temp;
 
       // Close output file if it is big enough
       if (compact->builder->FileSize() >=
@@ -1137,19 +1135,23 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   compact->need_truncate = options_.enable_sublevel && input->Valid();
   if(compact->need_truncate)
     compact->truncate_key.DecodeFrom(input->key());
+  compact->read_size = read_size;
+
   delete input;
   input = NULL;
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
   stats.tables_read = options_.enable_sublevel?
-                      compact->compaction->TotalNumInputFiles():
+                      compact->compaction->TotalNumInputFiles(
+                              compact->need_truncate,
+                              &compact->truncate_key):
                       compact->compaction->num_input_files(0);
   stats.tables_written = compact->outputs.size();
   stats.bytes_read = options_.enable_sublevel?
-                     compact->compaction->TotalNumInputBytes():
+                     read_size:
                      compact->compaction->num_input_bytes(0);
-  stats.bytes_written = compact->TotalNumOutputBytes();
+  stats.bytes_written = compact->total_bytes;
   stats.compactions_performed = 1;
 
   mutex_.Lock();

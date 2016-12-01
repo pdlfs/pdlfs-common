@@ -389,9 +389,11 @@ class Compaction {
 
   FileMetaData *GetTheOnlyFile() const;
 
-  int TotalNumInputFiles() const;
+  int TotalNumInputFiles(const bool need_truncate,
+                         const InternalKey *truncate_key) const;
 
-  int64_t TotalNumInputBytes() const;
+  int64_t TotalNumInputBytes(const bool need_truncate,
+                             const InternalKey *truncate_key) const;
 
   const InternalKey &GetStart() const {
     assert(options_->enable_sublevel);

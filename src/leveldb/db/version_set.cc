@@ -2061,19 +2061,28 @@ FileMetaData *Compaction::GetTheOnlyFile() const {
   return NULL;
 }
 
-int Compaction::TotalNumInputFiles() const {
+int Compaction::TotalNumInputFiles(const bool need_truncate,
+                                   const InternalKey* truncate_key) const {
   int count = 0;
-  for(int i=0; i<inputs_.size(); ++i)
-    count += inputs_[i].size();
+  for(int i=0; i<inputs_.size(); ++i) {
+    if (need_truncate) {
+      for(std::vector<FileMetaData*>::const_iterator iter = inputs_[i].begin();
+          iter!=inputs_[i].end() && input_version_->vset_->icmp_.Compare((*iter)->smallest, *truncate_key)<0;
+          ++count, ++iter) ;
+    }
+    else
+      count += inputs_[i].size();
+  }
   return count;
 }
 
-int64_t Compaction::TotalNumInputBytes() const {
+int64_t Compaction::TotalNumInputBytes(const bool need_truncate,
+                                       const InternalKey *truncate_key) const {
   int64_t bytes = 0;
   for (int which = 0; which < inputs_.size(); which++) {
-    for (int i = 0; i < inputs_[which].size(); i++) {
-      bytes += inputs_[which][i]->file_size;
-    }
+    for (std::vector<FileMetaData *>::const_iterator iter=inputs_[which].begin();
+         iter!=inputs_[which].end()&&(!need_truncate||input_version_->vset_->icmp_.Compare((*iter)->smallest, *truncate_key)<0);
+         bytes += (*iter)->file_size, ++iter) ;
   }
   return bytes;
 }
@@ -2088,7 +2097,7 @@ bool Compaction::IsTrivialMove() const {
              TotalFileSize(grandparents_)<=max_grand_parent_overlap_bytes_));
   }
   else {
-    return TotalNumInputFiles()==1;
+    return TotalNumInputFiles(false, NULL)==1;
   }
 }
 
