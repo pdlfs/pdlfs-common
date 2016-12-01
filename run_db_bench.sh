@@ -19,8 +19,14 @@ echo -e "leveldb"
 setup;
 build/src/db_bench  --db_impl=0 --value_size="$1" --num="$2"
 
+cat /m/dbbench/LOG | grep Compacted | awk 'BEGIN{sum=0;} {sum+=$9/1024/1024/1024} END{print "Total Write:", sum} '
+
+
 
 echo -e "\n==============db_bench=============="
 echo -e "columnardb1\n"
 setup;
 build/src/db_bench  --db_impl=2 --value_size="$1" --num="$2"
+
+cat /m/dbbench/COLUMN-000000-LEVELDB/LOG | grep Compacted | awk 'BEGIN{sum=0;} {sum+=$9/1024/1024/1024} END{print "Total Write:", sum} '    
+du -h /m/dbbench/COLUMN-000000-VLOG

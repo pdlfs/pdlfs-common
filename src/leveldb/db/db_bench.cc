@@ -29,6 +29,7 @@
 #include "pdlfs-common/testutil.h"
 
 #include "../format.h"
+
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
 //      fillseq       -- write N values in sequential key order in async mode
@@ -1045,7 +1046,7 @@ int main(int argc, char** argv) {
 
   pdlfs::Benchmark benchmark;
   benchmark.Run();
-	fprintf(stdout, "block miss count after ops:%lu\n", block_missed_num);
+	fprintf(stdout, "block miss count after ops:%lu\n", pdlfs::block_missed_num);
   return 0;
 }
 /*
