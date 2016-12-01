@@ -78,8 +78,11 @@ class Version {
     // stats for checking read performance
     int number_tables_read;
     int number_cache_hits; // of those tables read, how many are in cache
+    int number_blocks_read;
+    int number_block_cache_hits;
     GetStats(): seek_file(NULL), seek_file_level(-1),
-                number_tables_read(0), number_cache_hits(0) {}
+                number_tables_read(0), number_cache_hits(0),
+                number_blocks_read(0), number_block_cache_hits(0) {}
   };
 
   // Only used when sublevel is enabled
