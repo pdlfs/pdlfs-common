@@ -202,7 +202,7 @@ class Stats {
   Stats() { Start(); }
 
   void Start() {
-    next_report_ = 100;
+    next_report_ = 0;
     last_op_finish_ = start_;
     hist_.Clear();
     done_ = 0;
