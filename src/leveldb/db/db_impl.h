@@ -248,30 +248,37 @@ class DBImpl : public DB {
 
   struct GetStats {
     int64_t gets_performed;
-    int64_t tables_read;
-    int64_t cache_hits;
-    int64_t blocks_read;
-    int64_t block_cache_hits;
+    int64_t index_block_reads;
+    int64_t index_block_cache_hits;
+    int64_t data_block_reads;
+    int64_t data_block_cache_hits;
 
     GetStats()
         : gets_performed(0),
-          tables_read(0),
-          cache_hits(0),
-          blocks_read(0),
-          block_cache_hits(0) {}
+          index_block_reads(0),
+          index_block_cache_hits(0),
+          data_block_reads(0),
+          data_block_cache_hits(0) {}
+    void Clear() {
+      gets_performed = 0;
+      index_block_reads = 0;
+      index_block_cache_hits = 0;
+      data_block_reads = 0;
+      data_block_cache_hits = 0;
+    }
     void Add(const GetStats& s) {
       gets_performed += s.gets_performed;
-      tables_read += s.tables_read;
-      cache_hits += s.cache_hits;
-      blocks_read += s.blocks_read;
-      block_cache_hits += s.block_cache_hits;
+      index_block_reads += s.index_block_reads;
+      index_block_cache_hits += s.index_block_cache_hits;
+      data_block_reads += s.data_block_reads;
+      data_block_cache_hits += s.data_block_cache_hits;
     }
     void AddOneGet(const Version::GetStats& s) {
       ++gets_performed;
-      tables_read += s.number_tables_read;
-      cache_hits += s.number_cache_hits;
-      blocks_read += s.number_blocks_read;
-      block_cache_hits += s.number_block_cache_hits;
+      index_block_reads += s.index_block_reads;
+      index_block_cache_hits += s.index_block_cache_hits;
+      data_block_reads += s.data_block_reads;
+      data_block_cache_hits += s.data_block_cache_hits;
     }
   };
 

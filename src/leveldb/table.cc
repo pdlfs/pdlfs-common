@@ -203,7 +203,7 @@ static void ReleaseBlock(void* arg, void* h) {
 // Convert an index iterator value (i.e., an encoded BlockHandle)
 // into an iterator over the contents of the corresponding block.
 Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
-                             const Slice& index_value) {
+                             const Slice& index_value, TableGetStats* tstats) {
   Table* table = reinterpret_cast<Table*>(arg);
   Cache* block_cache = table->rep_->options.block_cache;
   Block* block = NULL;
@@ -224,6 +224,8 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
       Slice key(cache_key_buffer, sizeof(cache_key_buffer));
       cache_handle = block_cache->Lookup(key);
       if (cache_handle != NULL) {
+        if(tstats!=NULL)
+          ++tstats->data_block_cache_hits;
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
         s = ReadBlock(table->rep_->file, options, handle, &contents);
@@ -264,7 +266,7 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
 }
 
 Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
-                          void (*saver)(void*, const Slice&, const Slice&)) {
+                          void (*saver)(void*, const Slice&, const Slice&), TableGetStats* tstats) {
   Status s;
   Iterator* iiter = rep_->index_block->NewIterator();
   iiter->Seek(k);
@@ -276,7 +278,9 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
         !filter->KeyMayMatch(handle.offset(), k)) {
       // Not found
     } else {
-      Iterator* block_iter = BlockReader(this, options, iiter->value());
+      if(tstats!=NULL)
+        ++tstats->data_block_reads;
+      Iterator* block_iter = BlockReader(this, options, iiter->value(), tstats);
       block_iter->Seek(k);
       if (block_iter->Valid()) {
         Slice v = (options.limit != 0) ? block_iter->value() : Slice();

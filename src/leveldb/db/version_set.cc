@@ -281,7 +281,7 @@ class Version::LevelFileNumIterator : public Iterator {
 };
 
 static Iterator* GetFileIterator(void* arg, const ReadOptions& options,
-                                 const Slice& file_value) {
+                                 const Slice& file_value, TableGetStats*) {
   TableCache* cache = reinterpret_cast<TableCache*>(arg);
   if (file_value.size() != 24) {
     return NewErrorIterator(
@@ -459,7 +459,7 @@ bool Version::Get(const ReadOptions& options, const LookupKey& k, Buffer* buf,
         stats->seek_file_level = last_file_read_level;
       }
 
-      ++stats->number_tables_read;
+      ++stats->index_block_reads;
 
       FileMetaData* f = files[i];
       last_file_read = f;
@@ -471,12 +471,11 @@ bool Version::Get(const ReadOptions& options, const LookupKey& k, Buffer* buf,
       saver.ucmp = ucmp;
       saver.user_key = user_key;
       saver.buf = buf;
-      bool found_in_cache;
+      TableGetStats tstats;
       *s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                    f->seq_off, ikey, &saver, SaveValue, &found_in_cache);
-      if(found_in_cache) {
-        ++stats->number_cache_hits;
-      }
+                                    f->seq_off, ikey, &saver, SaveValue, &tstats);
+      stats->AddTableGetStat(tstats);
+      
       if (!s->ok()) {
         return true;  // Read error
       }

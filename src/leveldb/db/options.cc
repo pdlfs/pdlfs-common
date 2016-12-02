@@ -49,7 +49,8 @@ DBOptions::DBOptions()
       l0_soft_limit(8),
       l0_hard_limit(12),
       enable_sublevel(false),
-      enable_should_stop_before(true) {}
+      enable_should_stop_before(true),
+      clear_get_stats_after_stats(false) {}
 
 ReadOptions::ReadOptions()
     : verify_checksums(false),

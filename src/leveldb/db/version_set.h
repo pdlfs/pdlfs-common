@@ -16,6 +16,7 @@
 
 #include "options_internal.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
+#include "pdlfs-common/leveldb/db/table_get_stats.h"
 #include "pdlfs-common/port.h"
 #include "version_edit.h"
 
@@ -42,6 +43,7 @@ class TableCache;
 class Version;
 class VersionSet;
 class WritableFile;
+
 
 // Return the smallest index i such that files[i]->largest >= key.
 // Return files.size() if there is no such file.
@@ -76,13 +78,19 @@ class Version {
     FileMetaData* seek_file;
     int seek_file_level;
     // stats for checking read performance
-    int number_tables_read;
-    int number_cache_hits; // of those tables read, how many are in cache
-    int number_blocks_read;
-    int number_block_cache_hits;
+    int index_block_reads;
+    int index_block_cache_hits; // of those tables read, how many are in cache
+    int data_block_reads;
+    int data_block_cache_hits;
     GetStats(): seek_file(NULL), seek_file_level(-1),
-                number_tables_read(0), number_cache_hits(0),
-                number_blocks_read(0), number_block_cache_hits(0) {}
+                index_block_reads(0), index_block_cache_hits(0),
+                data_block_reads(0), data_block_cache_hits(0) {}
+    void AddTableGetStat(const TableGetStats& tstats) {
+      index_block_reads += tstats.index_block_reads;
+      index_block_cache_hits += tstats.index_block_cache_hits;
+      data_block_reads += tstats.data_block_reads;
+      data_block_cache_hits += tstats.data_block_cache_hits;
+    }
   };
 
   // Only used when sublevel is enabled
