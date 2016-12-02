@@ -71,6 +71,7 @@ static int FLAGS_range = -1;
 static bool FLAGS_enable_should_stop_before = true;
 static int FLAGS_l1_compaction_trigger = 50;
 static bool FLAGS_silent_mode = false;
+static bool FLAGS_clear_get_stats_after_stats = true;
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -727,6 +728,8 @@ class Benchmark {
     options.block_size = FLAGS_block_size;
     options.filter_policy = filter_policy_;
     options.enable_should_stop_before = FLAGS_enable_should_stop_before;
+    options.clear_get_stats_after_stats = FLAGS_clear_get_stats_after_stats;
+
     if(FLAGS_level_factor>0)
       options.level_factor = FLAGS_level_factor;
     if(FLAGS_enable_sublevel)
@@ -1030,6 +1033,8 @@ int main(int argc, char** argv) {
       FLAGS_range = n;
     } else if (sscanf(argv[i], "--silent_mode=%d%c", &n, &junk) == 1) {
       FLAGS_silent_mode = n;
+    } else if (sscanf(argv[i], "--clear_get_stats_after_stats=%d%c", &n, &junk) == 1) {
+      FLAGS_clear_get_stats_after_stats = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);

@@ -1785,24 +1785,37 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     value->append(buf);
     snprintf(buf, sizeof(buf), "Overall WA_bytes: %8.3f\n", total_bytes_written*1.0/total_bytes_read);
     value->append(buf);
+
     snprintf(buf, sizeof(buf), "Total # Gets: %ld\n",
              (long)get_stats_.gets_performed);
     value->append(buf);
     if (get_stats_.gets_performed>0) {
-      snprintf(buf, sizeof(buf), "Average # tables read in each Get: %8.3f\n",
-               get_stats_.tables_read*1.0/get_stats_.gets_performed);
+      snprintf(buf, sizeof(buf), "Average # table index blocks read in each Get: %8.3f\n",
+               get_stats_.index_block_reads*1.0/get_stats_.gets_performed);
       value->append(buf);
-      snprintf(buf, sizeof(buf), "Average # tables load in each Get: %8.3f\n",
-               (get_stats_.tables_read-get_stats_.cache_hits)*1.0/get_stats_.gets_performed);
+      snprintf(buf, sizeof(buf), "Average # table index blocks load in each Get: %8.3f\n",
+               (get_stats_.index_block_reads-get_stats_.index_block_cache_hits)*1.0/get_stats_.gets_performed);
       value->append(buf);
-      if (get_stats_.tables_read>0) {
-        snprintf(buf, sizeof(buf), "Cache hit rate: %8.3f\n",
-                 get_stats_.cache_hits*1.0/get_stats_.tables_read);
+      snprintf(buf, sizeof(buf), "Average # table data blocks read in each Get: %8.3f\n",
+               get_stats_.data_block_reads*1.0/get_stats_.gets_performed);
+      value->append(buf);
+      snprintf(buf, sizeof(buf), "Average # table data blocks load in each Get: %8.3f\n",
+               (get_stats_.data_block_reads-get_stats_.data_block_cache_hits)*1.0/get_stats_.gets_performed);
+      value->append(buf);
+      if (get_stats_.index_block_reads>0) {
+        snprintf(buf, sizeof(buf),
+                 "Index block cache hit rate: %8.3f\nData block cache hit rate: %8.3f\n",
+                 get_stats_.index_block_cache_hits*1.0/get_stats_.index_block_reads,
+                 get_stats_.data_block_cache_hits*1.0/get_stats_.data_block_reads);
       }
       else {
-        sprintf(buf, "No read happened at MemTables\n");
+        assert(get_stats_.data_block_reads==0);
+        sprintf(buf, "No read happened at SSTables\n");
       }
       value->append(buf);
+    }
+    if (options_.clear_get_stats_after_stats) {
+      get_stats_.Clear();
     }
     return true;
   } else if (in == "sstables") {

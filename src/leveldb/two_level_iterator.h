@@ -10,6 +10,8 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
+#include <pdlfs-common/leveldb/db/table_get_stats.h>
+
 namespace pdlfs {
 
 class Slice;
@@ -28,7 +30,7 @@ struct ReadOptions;
 extern Iterator* NewTwoLevelIterator(
     Iterator* index_iter,
     Iterator* (*block_function)(void* arg, const ReadOptions& options,
-                                const Slice& index_value),
+                                const Slice& index_value, TableGetStats* tstats),
     void* arg, const ReadOptions& options);
 
 }  // namespace pdlfs

@@ -17,7 +17,7 @@
 namespace pdlfs {
 namespace {
 
-typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&);
+typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&, TableGetStats* tstats);
 
 class TwoLevelIterator : public Iterator {
  public:
@@ -156,7 +156,7 @@ void TwoLevelIterator::InitDataBlock() {
       // data_iter_ is already constructed with this iterator, so
       // no need to change anything
     } else {
-      Iterator* iter = (*block_function_)(arg_, options_, handle);
+      Iterator* iter = (*block_function_)(arg_, options_, handle, NULL);
       data_block_handle_.assign(handle.data(), handle.size());
       SetDataIterator(iter);
     }

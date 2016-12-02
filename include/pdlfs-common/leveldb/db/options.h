@@ -242,6 +242,8 @@ struct DBOptions {
 
   bool enable_should_stop_before;
 
+  bool clear_get_stats_after_stats;
+
   DBOptions();
 };
 

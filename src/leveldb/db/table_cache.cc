@@ -78,16 +78,14 @@ Status TableCache::LoadTable(uint64_t fnum, uint64_t fsize, Table** table,
 }
 
 Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
-                             Cache::Handle** handle, bool* found_in_cache) {
+                             Cache::Handle** handle, TableGetStats* tstats) {
   Status s;
   char buf[16];
   EncodeFixed64(buf, id_);
   EncodeFixed64(buf + 8, fnum);
   Slice key(buf, 16);
-
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
-    *found_in_cache = false;
     // Load table from storage
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -101,7 +99,8 @@ Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   } else {
-    *found_in_cache = true;
+    if(tstats!=NULL)
+      ++tstats->index_block_cache_hits;
     // Fetch table from cache
     TableAndFile* tf = FetchTableAndFile(cache_, *handle);
     if (tf->off != off) {
@@ -219,7 +218,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options, uint64_t fnum,
                                   uint64_t fsize, SequenceOff off,
                                   Table** tableptr) {
   Cache::Handle* handle = NULL;
-  bool ignore;
+  TableGetStats ignore;
   Status s = FindTable(fnum, fsize, off, &handle, &ignore);
   if (!s.ok()) {
     if (tableptr != NULL) {
@@ -280,16 +279,18 @@ static void ApplyOffset(void* arg, const Slice& key, const Slice& value) {
 
 Status TableCache::Get(const ReadOptions& options, uint64_t fnum,
                        uint64_t fsize, SequenceOff off, const Slice& key,
-                       void* arg, Saver saver, bool* found_in_cache) {
+                       void* arg, Saver saver, TableGetStats* tstat) {
   Cache::Handle* handle;
-  Status s = FindTable(fnum, fsize, off, &handle, found_in_cache);
+  if(tstat!=NULL)
+    ++tstat->index_block_reads;
+  Status s = FindTable(fnum, fsize, off, &handle, tstat);
   if (!s.ok()) {
     return s;
   }
 
   Table* t = FetchTableAndFile(cache_, handle)->table;
   if (off == 0) {
-    s = t->InternalGet(options, key, arg, saver);
+    s = t->InternalGet(options, key, arg, saver, tstat);
     cache_->Release(handle);
     return s;
   }
@@ -332,7 +333,7 @@ Status TableCache::Get(const ReadOptions& options, uint64_t fnum,
   }
 
   if (s.ok()) {
-    s = t->InternalGet(options, _key, _arg, _saver);
+    s = t->InternalGet(options, _key, _arg, _saver, tstat);
   }
   cache_->Release(handle);
   return s;
