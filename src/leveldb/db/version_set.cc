@@ -572,7 +572,19 @@ bool Version::OverlapInLevel(int level, const Slice* smallest_user_key,
 
 int Version::NumLevels() const { return files_.size(); }
 
+int Version::NumSublevelsInLevel(int level) const {
+  assert(vset_->options_->enable_sublevel);
+  assert(level>=0);
+  assert(input_pool_.size()==output_pool_.size());
+  if(level>=input_pool_.size())
+    return 0;
+  if(level==0)
+    return 1;
+  return input_pool_[level].second+output_pool_[level].second;
+}
+
 int Version::NumFilesInLevel_sub(const SublevelPool& pool, int level) const {
+  assert(vset_->options_->enable_sublevel);
   int count = 0;
   for(int i = pool[level].first, end = pool[level].first+pool[level].second; i<end; ++i) {
     assert(i<files_.size());
@@ -1635,10 +1647,18 @@ const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   size -= number;
   next_position += number;
   for(int level = 0; level<total_level&&size>0; ++level) {
-    int num_files = options_->enable_sublevel?
-                    current_->NumFilesInLevel_sub(level):
-                    (int)current_->files_[level].size();
-    number = snprintf(next_position, size, " %d", num_files);
+    int num_files;
+    if(options_->enable_sublevel) {
+      num_files = current_->NumFilesInLevel_sub(level);
+      number = snprintf(next_position, size, " %d@%d&%d", num_files,
+                        current_->input_pool_[level].second,
+                        current_->output_pool_[level].second);
+    }
+    else {
+      num_files = (int)current_->files_[level].size();
+      number = snprintf(next_position, size, " %d", num_files);
+
+    }
     size -= number;
     next_position += number;
   }

@@ -135,8 +135,8 @@ class Version {
                                  const Slice& largest_user_key);
 
   int NumLevels() const;
-
   // Should be used only when sublevel is enabled
+  int NumSublevelsInLevel(int level) const;
   int NumFilesInLevel_sub(const SublevelPool& pool, int level) const;
   int NumFilesInLevel_sub(int level) const;
   int64_t NumBytesInLevel_sub(const SublevelPool& pool, int level) const;
