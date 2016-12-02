@@ -459,8 +459,6 @@ bool Version::Get(const ReadOptions& options, const LookupKey& k, Buffer* buf,
         stats->seek_file_level = last_file_read_level;
       }
 
-      ++stats->index_block_reads;
-
       FileMetaData* f = files[i];
       last_file_read = f;
       last_file_read_level = level;
