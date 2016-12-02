@@ -238,10 +238,15 @@ struct DBOptions {
   int l0_hard_limit;
 
   // Whether to enable sublevel
+  // Default: false
   bool enable_sublevel;
 
+  // Whether to enable should_stop_before function when sublevel is not enabled
+  // Default: true
   bool enable_should_stop_before;
 
+  // Whether to clear statistics about Get operations after print stats
+  // Default: false
   bool clear_get_stats_after_stats;
 
   DBOptions();
