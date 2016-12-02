@@ -29,6 +29,7 @@
 #include "pdlfs-common/testutil.h"
 
 #include "../format.h"
+#include <thread>
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -56,10 +57,10 @@
 static const char* FLAGS_benchmarks =
     "fillseq,"
 //    "fillsync,"
-    "fillrandom,"
+//    "fillrandom,"
     "overwrite,"
-    "readrandom,"
-    "readrandom,"  // Extra run to allow previous compactions to quiesce
+//    "readrandom,"
+//    "readrandom,"  // Extra run to allow previous compactions to quiesce
     "readseq,";
 /*
     "readreverse,"
@@ -78,7 +79,7 @@ static const char* FLAGS_benchmarks =
 static int FLAGS_db_impl = 0;
 
 // Number of key/values to place in database
-static int FLAGS_num = 1000000;
+static int FLAGS_num = 100000;
 
 // Number of read operations to do.  If negative, do FLAGS_num reads.
 static int FLAGS_reads = -1;
@@ -127,8 +128,10 @@ static bool FLAGS_use_existing_db = false;
 // If true, reuse existing log/MANIFEST files when re-opening a database.
 static bool FLAGS_reuse_logs = false;
 
-// Use the db with the following name.
+// Use the db with the following nameFLASG_seq_scan_thread_num.
 static const char* FLAGS_db = NULL;
+
+static uint8_t FLASG_seq_scan_thread_num = 1;
 
 namespace pdlfs {
 
@@ -507,7 +510,7 @@ class Benchmark {
         value_size_ = 100 * 1000;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("readseq")) {
-        method = &Benchmark::ReadSequential;
+        method = &Benchmark::ParallelReadSequential;
       } else if (name == Slice("readreverse")) {
         method = &Benchmark::ReadReverse;
       } else if (name == Slice("readrandom")) {
@@ -805,11 +808,41 @@ class Benchmark {
     thread->stats.AddBytes(bytes);
   }
 
-  void ReadSequential(ThreadState* thread) {
+  void ParallelReadSequential(ThreadState* thread) {
+  	fprintf(stdout, "ParallelReadSequential called.\n");
+    // Should follow FillSeq, and overwrite.
+    assert(reads_ = FLAGS_num); // No interference with FLAGS_read
+
+    int thread_num = FLASG_seq_scan_thread_num;
+		uint64_t each_cnt = reads_ / thread_num;
+		std::vector<std::thread*> vec;
+		for (int i = 0; i < thread_num; i++) {
+			uint64_t begin_key = each_cnt * i;
+			std::thread* t = new std::thread(&Benchmark::ReadSequential, this, thread, begin_key, each_cnt);
+			vec.push_back(t);
+		}
+		for (int i = 0; i < thread_num; i++) {
+			vec[i]->join();
+			delete vec[i];
+		}
+  }
+
+  void tmp(){}
+
+  void ReadSequential(ThreadState* thread, uint64_t begin_key,
+  		uint64_t cnt) {
     Iterator* iter = db_->NewIterator(ReadOptions());
     int i = 0;
     int64_t bytes = 0;
-    for (iter->SeekToFirst(); i < reads_ && iter->Valid(); iter->Next()) {
+
+		char key[100];
+		snprintf(key, sizeof(key), "%016lu", begin_key);
+//    for (iter->SeekToFirst(); i < reads_ && iter->Valid(); iter->Next()) {
+
+		fprintf(stdout, "-----beginkey:%lu, cnt:%lu, thread:%d, total:%lu\n",
+							begin_key, cnt, FLASG_seq_scan_thread_num, static_cast<uint64_t>(reads_));
+
+    for (iter->Seek(key); i < cnt && iter->Valid(); iter->Next()) {
       bytes += iter->key().size() + iter->value().size();
       thread->stats.FinishedSingleOp();
       ++i;
@@ -1027,6 +1060,8 @@ int main(int argc, char** argv) {
       FLAGS_db_impl = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--seqscan_num=%d%c", &n, &junk) == 1) {
+      FLASG_seq_scan_thread_num = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
