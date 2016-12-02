@@ -262,7 +262,7 @@ class Stats {
       else {
         time_t now = time(NULL);
         fprintf(stdout, "finished %d ops at %s", done_, ctime(&now));
-        fflush(stderr);
+        fflush(stdout);
         next_report_ += 1000000;
       }
     }
