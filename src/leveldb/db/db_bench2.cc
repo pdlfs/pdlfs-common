@@ -72,6 +72,7 @@ static bool FLAGS_enable_should_stop_before = true;
 static int FLAGS_l1_compaction_trigger = -1;
 static bool FLAGS_silent_mode = false;
 static bool FLAGS_clear_get_stats_after_stats = true;
+static bool FLAGS_disable_seek_compaction = true;
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -736,7 +737,8 @@ class Benchmark {
     options.filter_policy = filter_policy_;
     options.enable_should_stop_before = FLAGS_enable_should_stop_before;
     options.clear_get_stats_after_stats = FLAGS_clear_get_stats_after_stats;
-
+    options.disable_seek_compaction = FLAGS_disable_seek_compaction;
+    
     if(FLAGS_l1_compaction_trigger>0)
       options.l1_compaction_trigger = FLAGS_l1_compaction_trigger;
     if(FLAGS_level_factor>0)
