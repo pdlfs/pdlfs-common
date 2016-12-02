@@ -997,7 +997,6 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
   int64_t read_size = 0;
-  const int64_t max_compaction_size = compact->compaction->MaxCompactionSize();
   int level = compact->compaction->level();
   input->SeekToFirst();
   Status status;
@@ -1060,7 +1059,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
               0) {
         // Too many bytes involved in this compaction
         // Note that we do not force stop when compacting level 0
-        if(level>0 && options_.enable_sublevel && read_size>max_compaction_size)
+        if(level>0 && options_.enable_sublevel && read_size>compact->compaction->MaxCompactionSize())
           break;
         // First occurrence of this user key
         current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
