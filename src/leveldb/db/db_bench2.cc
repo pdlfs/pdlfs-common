@@ -69,7 +69,7 @@ static int FLAGS_table_file_size = -1;
 static int FLAGS_level_factor = -1;
 static int FLAGS_range = -1;
 static bool FLAGS_enable_should_stop_before = true;
-static int FLAGS_l1_compaction_trigger = 50;
+static int FLAGS_l1_compaction_trigger = -1;
 static bool FLAGS_silent_mode = false;
 static bool FLAGS_clear_get_stats_after_stats = true;
 
@@ -262,6 +262,7 @@ class Stats {
       else {
         time_t now = time(NULL);
         fprintf(stdout, "finished %d ops at %s", done_, ctime(&now));
+        fflush(stderr);
         next_report_ += 1000000;
       }
     }
@@ -727,7 +728,6 @@ class Benchmark {
   void Open() {
     assert(db_ == NULL);
     Options options;
-    options.l1_compaction_trigger = FLAGS_l1_compaction_trigger;
     options.env = g_env;
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
@@ -737,6 +737,8 @@ class Benchmark {
     options.enable_should_stop_before = FLAGS_enable_should_stop_before;
     options.clear_get_stats_after_stats = FLAGS_clear_get_stats_after_stats;
 
+    if(FLAGS_l1_compaction_trigger>0)
+      options.l1_compaction_trigger = FLAGS_l1_compaction_trigger;
     if(FLAGS_level_factor>0)
       options.level_factor = FLAGS_level_factor;
     if(FLAGS_enable_sublevel)
