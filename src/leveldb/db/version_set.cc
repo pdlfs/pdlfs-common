@@ -1258,7 +1258,7 @@ void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
       }
     } else {
       int base_sublevel = version->files_.size();
-      int bytes = 0;
+      double bytes = 0;
       bool first = true;
       if (new_input_sublevel) {
         version->files_.push_back(std::vector<FileMetaData*>());
@@ -1292,7 +1292,6 @@ void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
       }
       assert(version->output_pool_.size() == level);
       if (length == 0 && bytes >= MaxBytesForLevel(options_, level) - 1) {
-        fprintf(stderr, "VersionSet::ReorganizeSublevels(%d)\n", ++count);
         if (version->input_pool_[level].second == 1) {
           assert(version->input_pool_[level].first ==
                  version->files_.size() - 1);
@@ -1300,21 +1299,6 @@ void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
               version->files_[version->files_.size() - 1]);
           version->files_[version->files_.size() - 2].clear();
           version->input_pool_[level].second = 2;
-        }
-        fprintf(stderr, "%d version->input_pool_[level].second=%d\n", count,
-                version->input_pool_[level].second);
-        fprintf(stderr, "%d version->input_pool_[level].second-1=%d\n", count,
-                version->input_pool_[level].second - 1);
-        length = version->input_pool_[level].second - 1;
-        fprintf(stderr, "%d length=%d\n", count, length);
-        fprintf(stderr, "~VersionSet::ReorganizeSublevels(%d)\n", count);
-        fflush(stderr);
-        if (length == 0) {
-          fprintf(stderr, "%d length2=%d\n", count, length);
-          fflush(stderr);
-          fprintf(stderr, "abort1\n");
-          fflush(stderr);
-          abort();
         }
         version->input_pool_[level].second = 1;
         version->output_pool_.push_back(
@@ -1339,11 +1323,7 @@ void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
       double score =
           static_cast<double>(bbytes) / MaxBytesForLevel(options_, level);
       const bool size_compaction = (score >= 1);
-      if (length == 0 && size_compaction) {
-        fprintf(stderr, "abort2\n");
-        fflush(stderr);
-        abort();
-      }
+      assert (length != 0 || !size_compaction);
 #endif
     }
   }
@@ -1926,11 +1906,6 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
   assert(level >= 0);
   assert(current_->output_pool_.size() > level);
   assert(current_->output_pool_[level].second > 0);
-  if (current_->output_pool_[level].second == 0) {
-    fprintf(stderr, "abort3\n");
-    fflush(stderr);
-    abort();
-  }
   assert(c->inputs_.size() == current_->output_pool_[level].second);
 
   assert(c->base_input_sublevel_ == current_->output_pool_[level].first);
