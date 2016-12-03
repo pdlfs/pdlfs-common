@@ -42,24 +42,23 @@
 //      sstables    -- Print sstable info
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
-        "fillseq,"
-                "fillsync,"
-                "fillrandom,"
-                "overwrite,"
-                "readrandom,"
-                "readrandom,"  // Extra run to allow previous compactions to quiesce
-                "readseq,"
-                "readreverse,"
-                "compact,"
-                "readrandom,"
-                "readseq,"
-                "readreverse,"
-                "fill100K,"
-                "crc32c,"
-                "snappycomp,"
-                "snappyuncomp,"
-                "acquireload,"
-;
+    "fillseq,"
+    "fillsync,"
+    "fillrandom,"
+    "overwrite,"
+    "readrandom,"
+    "readrandom,"  // Extra run to allow previous compactions to quiesce
+    "readseq,"
+    "readreverse,"
+    "compact,"
+    "readrandom,"
+    "readseq,"
+    "readreverse,"
+    "fill100K,"
+    "crc32c,"
+    "snappycomp,"
+    "snappyuncomp,"
+    "acquireload,";
 
 // block_size, enable_fork, table_file_size, level_factor, cache_size
 // num, value_size, key_size=16
@@ -172,7 +171,7 @@ static Slice TrimSpace(Slice s) {
     start++;
   }
   size_t limit = s.size();
-  while (limit > start && isspace(s[limit-1])) {
+  while (limit > start && isspace(s[limit - 1])) {
     limit--;
   }
   return Slice(s.data() + start, limit - start);
@@ -231,9 +230,7 @@ class Stats {
     seconds_ = (finish_ - start_) * 1e-6;
   }
 
-  void AddMessage(Slice msg) {
-    AppendWithSpace(&message_, msg);
-  }
+  void AddMessage(Slice msg) { AppendWithSpace(&message_, msg); }
 
   void FinishedSingleOp() {
     if (FLAGS_histogram) {
@@ -250,17 +247,23 @@ class Stats {
     done_++;
     if (done_ >= next_report_) {
       if (!FLAGS_silent_mode) {
-        if      (next_report_ < 1000)   next_report_ += 100;
-        else if (next_report_ < 5000)   next_report_ += 500;
-        else if (next_report_ < 10000)  next_report_ += 1000;
-        else if (next_report_ < 50000)  next_report_ += 5000;
-        else if (next_report_ < 100000) next_report_ += 10000;
-        else if (next_report_ < 500000) next_report_ += 50000;
-        else                            next_report_ += 100000;
+        if (next_report_ < 1000)
+          next_report_ += 100;
+        else if (next_report_ < 5000)
+          next_report_ += 500;
+        else if (next_report_ < 10000)
+          next_report_ += 1000;
+        else if (next_report_ < 50000)
+          next_report_ += 5000;
+        else if (next_report_ < 100000)
+          next_report_ += 10000;
+        else if (next_report_ < 500000)
+          next_report_ += 50000;
+        else
+          next_report_ += 100000;
         fprintf(stderr, "... finished %d ops%30s\r", done_, "");
         fflush(stderr);
-      }
-      else {
+      } else {
         time_t now = time(NULL);
         fprintf(stdout, "finished %d ops at %s", done_, ctime(&now));
         fflush(stdout);
@@ -269,9 +272,7 @@ class Stats {
     }
   }
 
-  void AddBytes(int64_t n) {
-    bytes_ += n;
-  }
+  void AddBytes(int64_t n) { bytes_ += n; }
 
   void Report(const Slice& name) {
     // Pretend at least one op was done in case we are running a benchmark
@@ -290,11 +291,8 @@ class Stats {
     }
     AppendWithSpace(&extra, message_);
 
-    fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n",
-            name.ToString().c_str(),
-            seconds_ * 1e6 / done_,
-            (extra.empty() ? "" : " "),
-            extra.c_str());
+    fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n", name.ToString().c_str(),
+            seconds_ * 1e6 / done_, (extra.empty() ? "" : " "), extra.c_str());
     if (FLAGS_histogram) {
       fprintf(stdout, "Microseconds per op:\n%s\n", hist_.ToString().c_str());
     }
@@ -318,20 +316,17 @@ struct SharedState {
   int num_done;
   bool start;
 
-  SharedState() : cv(&mu) { }
+  SharedState() : cv(&mu) {}
 };
 
 // Per-thread state for concurrent executions of the same benchmark.
 struct ThreadState {
-  int tid;             // 0..n-1 when running in n threads
-  Random rand;         // Has different seeds for different threads
+  int tid;      // 0..n-1 when running in n threads
+  Random rand;  // Has different seeds for different threads
   Stats stats;
   SharedState* shared;
 
-  ThreadState(int index)
-          : tid(index),
-            rand(1000 + index) {
-  }
+  ThreadState(int index) : tid(index), rand(1000 + index) {}
 };
 
 }  // namespace
@@ -357,20 +352,20 @@ class Benchmark {
             static_cast<int>(FLAGS_value_size * FLAGS_compression_ratio + 0.5));
     fprintf(stdout, "Entries:    %d\n", num_);
     fprintf(stdout, "RawSize:    %.1f MB (estimated)\n",
-            ((static_cast<int64_t>(kKeySize + FLAGS_value_size) * num_)
-             / 1048576.0));
+            ((static_cast<int64_t>(kKeySize + FLAGS_value_size) * num_) /
+             1048576.0));
     fprintf(stdout, "FileSize:   %.1f MB (estimated)\n",
-            (((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_)
-             / 1048576.0));
+            (((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_) /
+             1048576.0));
     PrintWarnings();
     fprintf(stdout, "------------------------------------------------\n");
   }
 
   void PrintWarnings() {
 #if defined(__GNUC__) && !defined(__OPTIMIZE__)
-    fprintf(stdout,
-            "WARNING: Optimization is disabled: benchmarks unnecessarily slow\n"
-    );
+    fprintf(
+        stdout,
+        "WARNING: Optimization is disabled: benchmarks unnecessarily slow\n");
 #endif
 #ifndef NDEBUG
     fprintf(stdout,
@@ -388,7 +383,6 @@ class Benchmark {
   }
 
   void PrintEnvironment() {
-
 #if defined(__linux)
     time_t now = time(NULL);
     fprintf(stdout, "Date:       %s", ctime(&now));  // ctime() adds newline
@@ -422,16 +416,16 @@ class Benchmark {
 
  public:
   Benchmark()
-          : cache_(FLAGS_cache_size >= 0 ? NewLRUCache(FLAGS_cache_size) : NULL),
-            filter_policy_(FLAGS_bloom_bits >= 0
+      : cache_(FLAGS_cache_size >= 0 ? NewLRUCache(FLAGS_cache_size) : NULL),
+        filter_policy_(FLAGS_bloom_bits >= 0
                            ? NewBloomFilterPolicy(FLAGS_bloom_bits)
                            : NULL),
-            db_(NULL),
-            num_(FLAGS_num),
-            value_size_(FLAGS_value_size),
-            entries_per_batch_(1),
-            reads_(FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads),
-            heap_counter_(0) {
+        db_(NULL),
+        num_(FLAGS_num),
+        value_size_(FLAGS_value_size),
+        entries_per_batch_(1),
+        reads_(FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads),
+        heap_counter_(0) {
     std::vector<std::string> files;
     g_env->GetChildren(FLAGS_db, &files);
     for (size_t i = 0; i < files.size(); i++) {
@@ -667,7 +661,7 @@ class Benchmark {
     int dummy;
     port::AtomicPointer ap(&dummy);
     int count = 0;
-    void *ptr = NULL;
+    void* ptr = NULL;
     thread->stats.AddMessage("(each op is 1000 loads)");
     while (count < 100000) {
       for (int i = 0; i < 1000; i++) {
@@ -676,7 +670,7 @@ class Benchmark {
       count++;
       thread->stats.FinishedSingleOp();
     }
-    if (ptr == NULL) exit(1); // Disable unused variable warning.
+    if (ptr == NULL) exit(1);  // Disable unused variable warning.
   }
 
   void SnappyCompress(ThreadState* thread) {
@@ -712,8 +706,8 @@ class Benchmark {
     int64_t bytes = 0;
     char* uncompressed = new char[input.size()];
     while (ok && bytes < 1024 * 1048576) {  // Compress 1G
-      ok =  port::Snappy_Uncompress(compressed.data(), compressed.size(),
-                                    uncompressed);
+      ok = port::Snappy_Uncompress(compressed.data(), compressed.size(),
+                                   uncompressed);
       bytes += input.size();
       thread->stats.FinishedSingleOp();
     }
@@ -738,14 +732,12 @@ class Benchmark {
     options.enable_should_stop_before = FLAGS_enable_should_stop_before;
     options.clear_get_stats_after_stats = FLAGS_clear_get_stats_after_stats;
     options.disable_seek_compaction = FLAGS_disable_seek_compaction;
-    
-    if(FLAGS_l1_compaction_trigger>0)
+
+    if (FLAGS_l1_compaction_trigger > 0)
       options.l1_compaction_trigger = FLAGS_l1_compaction_trigger;
-    if(FLAGS_level_factor>0)
-      options.level_factor = FLAGS_level_factor;
-    if(FLAGS_enable_sublevel)
-      options.enable_sublevel = FLAGS_enable_sublevel;
-    if(FLAGS_table_file_size>0)
+    if (FLAGS_level_factor > 0) options.level_factor = FLAGS_level_factor;
+    if (FLAGS_enable_sublevel) options.enable_sublevel = FLAGS_enable_sublevel;
+    if (FLAGS_table_file_size > 0)
       options.table_file_size = FLAGS_table_file_size;
 
     Status s = DB::Open(options, FLAGS_db, &db_);
@@ -763,13 +755,9 @@ class Benchmark {
     }
   }
 
-  void WriteSeq(ThreadState* thread) {
-    DoWrite(thread, true);
-  }
+  void WriteSeq(ThreadState* thread) { DoWrite(thread, true); }
 
-  void WriteRandom(ThreadState* thread) {
-    DoWrite(thread, false);
-  }
+  void WriteRandom(ThreadState* thread) { DoWrite(thread, false); }
 
   void DoWrite(ThreadState* thread, bool seq) {
     if (num_ != FLAGS_num) {
@@ -785,7 +773,7 @@ class Benchmark {
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : (thread->rand.Next() % FLAGS_range);
+        const int k = seq ? i + j : (thread->rand.Next() % FLAGS_range);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         batch.Put(key, gen.Generate(value_size_));
@@ -898,7 +886,7 @@ class Benchmark {
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
+        const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         batch.Delete(key);
@@ -912,13 +900,9 @@ class Benchmark {
     }
   }
 
-  void DeleteSeq(ThreadState* thread) {
-    DoDelete(thread, true);
-  }
+  void DeleteSeq(ThreadState* thread) { DoDelete(thread, true); }
 
-  void DeleteRandom(ThreadState* thread) {
-    DoDelete(thread, false);
-  }
+  void DeleteRandom(ThreadState* thread) { DoDelete(thread, false); }
 
   void ReadWhileWriting(ThreadState* thread) {
     if (thread->tid > 0) {
@@ -950,9 +934,7 @@ class Benchmark {
     }
   }
 
-  void Compact(ThreadState* thread) {
-    db_->CompactRange(NULL, NULL);
-  }
+  void Compact(ThreadState* thread) { db_->CompactRange(NULL, NULL); }
 
   void PrintStats(const char* key) {
     std::string stats;
@@ -1034,17 +1016,20 @@ int main(int argc, char** argv) {
       FLAGS_table_file_size = n;
     } else if (sscanf(argv[i], "--enable_sublevel=%d%c", &n, &junk) == 1) {
       FLAGS_enable_sublevel = n;
-    } else if (sscanf(argv[i], "--enable_should_stop_before=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--enable_should_stop_before=%d%c", &n, &junk) ==
+               1) {
       FLAGS_enable_should_stop_before = n;
     } else if (sscanf(argv[i], "--level_factor=%d%c", &n, &junk) == 1) {
       FLAGS_level_factor = n;
-    } else if (sscanf(argv[i], "--l1_compaction_trigger=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--l1_compaction_trigger=%d%c", &n, &junk) ==
+               1) {
       FLAGS_l1_compaction_trigger = n;
     } else if (sscanf(argv[i], "--range=%d%c", &n, &junk) == 1) {
       FLAGS_range = n;
     } else if (sscanf(argv[i], "--silent_mode=%d%c", &n, &junk) == 1) {
       FLAGS_silent_mode = n;
-    } else if (sscanf(argv[i], "--clear_get_stats_after_stats=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--clear_get_stats_after_stats=%d%c", &n,
+                      &junk) == 1) {
       FLAGS_clear_get_stats_after_stats = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
@@ -1061,7 +1046,7 @@ int main(int argc, char** argv) {
     FLAGS_db = default_db_path.c_str();
   }
 
-  if (FLAGS_range<0) {
+  if (FLAGS_range < 0) {
     FLAGS_range = FLAGS_num;
   }
 

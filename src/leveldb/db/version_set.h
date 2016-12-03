@@ -44,7 +44,6 @@ class Version;
 class VersionSet;
 class WritableFile;
 
-
 // Return the smallest index i such that files[i]->largest >= key.
 // Return files.size() if there is no such file.
 // REQUIRES: "files" contains a sorted list of non-overlapping files.
@@ -79,12 +78,16 @@ class Version {
     int seek_file_level;
     // stats for checking read performance
     int index_block_reads;
-    int index_block_cache_hits; // of those tables read, how many are in cache
+    int index_block_cache_hits;  // of those tables read, how many are in cache
     int data_block_reads;
     int data_block_cache_hits;
-    GetStats(): seek_file(NULL), seek_file_level(-1),
-                index_block_reads(0), index_block_cache_hits(0),
-                data_block_reads(0), data_block_cache_hits(0) {}
+    GetStats()
+        : seek_file(NULL),
+          seek_file_level(-1),
+          index_block_reads(0),
+          index_block_cache_hits(0),
+          data_block_reads(0),
+          data_block_cache_hits(0) {}
     void AddTableGetStat(const TableGetStats& tstats) {
       index_block_reads += tstats.index_block_reads;
       index_block_cache_hits += tstats.index_block_cache_hits;
@@ -329,7 +332,7 @@ class VersionSet {
 
   void AppendVersion(Version* v);
 
-  void ReorganizeSublevels(Version *version, VersionEdit *edit);
+  void ReorganizeSublevels(Version* version, VersionEdit* edit);
 
   Env* const env_;
   const std::string dbname_;
@@ -385,28 +388,28 @@ class Compaction {
 
   // "which" must be either 0 or 1 if sublevel is not enabled
   int num_input_files(int which) const {
-    assert(which<inputs_.size());
+    assert(which < inputs_.size());
     return inputs_[which].size();
   }
 
   int64_t num_input_bytes(int which) const {
-    assert(which<inputs_.size());
+    assert(which < inputs_.size());
     int64_t bytes = 0;
-    for(int i=0; i<inputs_[which].size(); ++i) {
+    for (int i = 0; i < inputs_[which].size(); ++i) {
       bytes += inputs_[which][i]->file_size;
     }
     return bytes;
   }
 
-  FileMetaData *GetTheOnlyFile() const;
+  FileMetaData* GetTheOnlyFile() const;
 
   int TotalNumInputFiles(const bool need_truncate,
-                         const InternalKey *truncate_key) const;
+                         const InternalKey* truncate_key) const;
 
   int64_t TotalNumInputBytes(const bool need_truncate,
-                             const InternalKey *truncate_key) const;
+                             const InternalKey* truncate_key) const;
 
-  const InternalKey &GetStart() const {
+  const InternalKey& GetStart() const {
     assert(options_->enable_sublevel);
     return start_key_;
   }
@@ -433,7 +436,7 @@ class Compaction {
 
   // Add all input files before the key as deleted files
   // Add all input files overlapping this key as updated files
-  void AddInputDeletionsOrUpdates(VersionEdit* edit, const InternalKey &key);
+  void AddInputDeletionsOrUpdates(VersionEdit* edit, const InternalKey& key);
 
   // Returns true if the information we have available guarantees that
   // the compaction is producing data in "level+1" for which no data exists
@@ -454,7 +457,7 @@ class Compaction {
 
   explicit Compaction(const Options* options, int level, VersionSet* vset);
 
-  const Options *options_;
+  const Options* options_;
   const int level_;
   const int base_input_sublevel_;
   const int output_sublevel_;

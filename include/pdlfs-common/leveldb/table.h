@@ -12,9 +12,9 @@
 
 #include <stdint.h>
 
-#include "pdlfs-common/status.h"
 #include "pdlfs-common/leveldb/db/db.h"
 #include "pdlfs-common/leveldb/db/table_get_stats.h"
+#include "pdlfs-common/status.h"
 
 namespace pdlfs {
 
@@ -75,7 +75,8 @@ class Table {
   Rep* rep_;
 
   explicit Table(Rep* rep) { rep_ = rep; }
-  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&, TableGetStats*);
+  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&,
+                               TableGetStats*);
 
   // Calls (*handle_result)(arg, ...) with the entry found after a call
   // to Seek(key).  May not make such a call if filter policy says
@@ -83,7 +84,8 @@ class Table {
   friend class TableCache;
   Status InternalGet(const ReadOptions&, const Slice& key, void* arg,
                      void (*handle_result)(void* arg, const Slice& k,
-                                           const Slice& v), TableGetStats* tstats);
+                                           const Slice& v),
+                     TableGetStats* tstats);
 
   void ReadMeta(const Footer& footer);
   void ReadFilter(const Slice& filter_handle_value);

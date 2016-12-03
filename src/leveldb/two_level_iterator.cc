@@ -17,7 +17,8 @@
 namespace pdlfs {
 namespace {
 
-typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&, TableGetStats* tstats);
+typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&,
+                                   TableGetStats* tstats);
 
 class TwoLevelIterator : public Iterator {
  public:

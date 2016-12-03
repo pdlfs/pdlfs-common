@@ -84,7 +84,11 @@ struct DBImpl::CompactionState {
   Output* current_output() { return &outputs[outputs.size() - 1]; }
 
   explicit CompactionState(Compaction* c)
-      : compaction(c), outfile(NULL), builder(NULL), total_bytes(0), need_truncate(false) {}
+      : compaction(c),
+        outfile(NULL),
+        builder(NULL),
+        total_bytes(0),
+        need_truncate(false) {}
 };
 
 struct DBImpl::InsertionState {
@@ -132,7 +136,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       bg_compaction_scheduled_(false),
       bulk_insert_in_progress_(false),
       manual_compaction_(NULL),
-      stats_(options_.enable_sublevel? 2: config::kMaxMemCompactLevel + 1) {
+      stats_(options_.enable_sublevel ? 2 : config::kMaxMemCompactLevel + 1) {
   if (!options_.no_memtable) {
     mem_ = new MemTable(internal_comparator_);
     mem_->Ref();
@@ -543,7 +547,7 @@ Status DBImpl::WriteLevel0Table(Iterator* iter, VersionEdit* edit,
       }
     }
     // If sublevel is enabled, must compact memtable to level 0
-    assert(!options_.enable_sublevel||level==0);
+    assert(!options_.enable_sublevel || level == 0);
     edit->AddFile(level, meta.number, meta.file_size, meta.seq_off,
                   meta.smallest, meta.largest);
   }
@@ -598,17 +602,16 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
   {
     MutexLock l(&mutex_);
     Version* base = versions_->current();
-    if(!options_.enable_sublevel) {
-      for(int level = 1; level<base->NumLevels(); level++) {
-        if(base->OverlapInLevel(level, begin, end)) {
+    if (!options_.enable_sublevel) {
+      for (int level = 1; level < base->NumLevels(); level++) {
+        if (base->OverlapInLevel(level, begin, end)) {
           max_level_with_files = level;
         }
       }
-    }
-    else {
+    } else {
       // If sublevel is enabled, we cannot compact in the middle of a sublevel
       begin = NULL;
-      max_level_with_files = base->NumLevels_sub()-1;
+      max_level_with_files = base->NumLevels_sub() - 1;
     }
   }
   TEST_CompactMemTable();  // TODO(sanjay): Skip if memtable does not overlap
@@ -616,16 +619,17 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
     TEST_CompactRange(level, begin, end);
     // Compact twice if sublevel is enabled since after the first compaction,
     // the output_pool might be refilled by moving tables in input_pool into it
-    if(options_.enable_sublevel)
-      TEST_CompactRange(level, begin, end);
+    if (options_.enable_sublevel) TEST_CompactRange(level, begin, end);
   }
 }
 
 void DBImpl::TEST_CompactRange(int level, const Slice* begin,
                                const Slice* end) {
   assert(level >= 0);
-  assert(options_.enable_sublevel || level + 1 < versions_->current()->NumLevels());
-  assert(!options_.enable_sublevel || level + 1 < versions_->current()->NumLevels_sub());
+  assert(options_.enable_sublevel ||
+         level + 1 < versions_->current()->NumLevels());
+  assert(!options_.enable_sublevel ||
+         level + 1 < versions_->current()->NumLevels_sub());
 
   InternalKey begin_storage, end_storage;
 
@@ -761,7 +765,7 @@ void DBImpl::BackgroundCompaction() {
     m->done = (c == NULL);
     // TODO add condition for sublevel. Or do we really need to?
     if (c != NULL && !options_.enable_sublevel) {
-      manual_end = c->input(0, c->num_input_files(0)-1)->largest;
+      manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
     }
     Log(options_.info_log,
         "Manual compaction at level-%d from %s .. %s; will stop at %s\n",
@@ -779,13 +783,14 @@ void DBImpl::BackgroundCompaction() {
     // Nothing to do
   } else if (!is_manual && c->IsTrivialMove()) {
     // Move file to next level
-    assert(c->TotalNumInputFiles(false, NULL)==1);
+    assert(c->TotalNumInputFiles(false, NULL) == 1);
     assert(options_.enable_sublevel || c->num_input_files(0) == 1);
     FileMetaData* f = c->GetTheOnlyFile();
     c->AddInputDeletions(c->edit());
-    int output_level = options_.enable_sublevel? c->OutputSublevel(): c->level()+1;
+    int output_level =
+        options_.enable_sublevel ? c->OutputSublevel() : c->level() + 1;
     c->edit()->AddFile(output_level, f->number, f->file_size, f->seq_off,
-                         f->smallest, f->largest);
+                       f->smallest, f->largest);
 
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
@@ -932,36 +937,39 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   mutex_.AssertHeld();
   if (!options_.enable_sublevel) {
     Log(options_.info_log, "Compacted (%d,%ld)@%d + (%d,%ld)@%d => (%d,%lld)",
-        compact->compaction->num_input_files(0), (long)compact->compaction->num_input_bytes(0), compact->compaction->level(),
-        compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(1), compact->compaction->level()+1,
-        (int)compact->outputs.size(), static_cast<long long>(compact->total_bytes));
-  }
-  else {
+        compact->compaction->num_input_files(0),
+        (long)compact->compaction->num_input_bytes(0),
+        compact->compaction->level(), compact->compaction->num_input_files(1),
+        (long)compact->compaction->num_input_bytes(1),
+        compact->compaction->level() + 1, (int)compact->outputs.size(),
+        static_cast<long long>(compact->total_bytes));
+  } else {
     // TODO improve log for sublevel
     Log(options_.info_log, "Compacted (%d,%ld)@%d => (%d,%lld)",
-        compact->compaction->TotalNumInputFiles(
-                compact->need_truncate,
-                &compact->truncate_key),
-        (long)compact->read_size,
-        compact->compaction->level(),
+        compact->compaction->TotalNumInputFiles(compact->need_truncate,
+                                                &compact->truncate_key),
+        (long)compact->read_size, compact->compaction->level(),
         (int)compact->outputs.size(),
         static_cast<long long>(compact->total_bytes));
   }
 
-  if(compact->need_truncate) {
+  if (compact->need_truncate) {
     assert(options_.enable_sublevel);
-    compact->compaction->AddInputDeletionsOrUpdates(compact->compaction->edit(), compact->truncate_key);
-  }
-  else {
+    compact->compaction->AddInputDeletionsOrUpdates(compact->compaction->edit(),
+                                                    compact->truncate_key);
+  } else {
     // Add compaction outputs
     compact->compaction->AddInputDeletions(compact->compaction->edit());
   }
-  const int output_level = options_.enable_sublevel? compact->compaction->OutputSublevel(): compact->compaction->level()+1;
+  const int output_level = options_.enable_sublevel
+                               ? compact->compaction->OutputSublevel()
+                               : compact->compaction->level() + 1;
   for (size_t i = 0; i < compact->outputs.size(); i++) {
     const SequenceOff off = 0;
     const CompactionState::Output& out = compact->outputs[i];
-    compact->compaction->edit()->AddFile(output_level, out.number, out.file_size,
-                                         off, out.smallest, out.largest);
+    compact->compaction->edit()->AddFile(output_level, out.number,
+                                         out.file_size, off, out.smallest,
+                                         out.largest);
   }
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
@@ -970,12 +978,14 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
-  if(!options_.enable_sublevel) {
+  if (!options_.enable_sublevel) {
     Log(options_.info_log, "Compacting (%d,%ld)@%d + (%d,%ld)@%d",
-        compact->compaction->num_input_files(0), (long)compact->compaction->num_input_bytes(0), compact->compaction->level(),
-        compact->compaction->num_input_files(1), (long)compact->compaction->num_input_bytes(1), compact->compaction->level()+1);
-  }
-  else {
+        compact->compaction->num_input_files(0),
+        (long)compact->compaction->num_input_bytes(0),
+        compact->compaction->level(), compact->compaction->num_input_files(1),
+        (long)compact->compaction->num_input_bytes(1),
+        compact->compaction->level() + 1);
+  } else {
     // TODO improve log for sublevel
     Log(options_.info_log, "Compacting (%d,%ld)@%d",
         compact->compaction->TotalNumInputFiles(false, NULL),
@@ -1005,7 +1015,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   bool has_current_user_key = false;
   SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
 
-  if(options_.enable_sublevel && level>0) {
+  if (options_.enable_sublevel && level > 0) {
     input->Seek(compact->compaction->GetStart().Encode());
 #if 0
     if(input->key().compare(compact->compaction->GetStart().Encode())!=0) {
@@ -1019,7 +1029,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     }
 #endif
     assert(input->Valid());
-    assert(input->key().compare(compact->compaction->GetStart().Encode())==0);
+    assert(input->key().compare(compact->compaction->GetStart().Encode()) == 0);
   }
 
   for (; input->Valid() && !shutting_down_.Acquire_Load();) {
@@ -1059,7 +1069,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
               0) {
         // Too many bytes involved in this compaction
         // Note that we do not force stop when compacting level 0
-        if(level>0 && options_.enable_sublevel && read_size>compact->compaction->MaxCompactionSize())
+        if (level > 0 && options_.enable_sublevel &&
+            read_size > compact->compaction->MaxCompactionSize())
           break;
         // First occurrence of this user key
         current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
@@ -1130,10 +1141,10 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   }
 
   assert(!status.ok() || options_.enable_sublevel || !input->Valid());
-  // We haven't finished all tables, but we have to stop because we have done too much compaction
+  // We haven't finished all tables, but we have to stop because we have done
+  // too much compaction
   compact->need_truncate = options_.enable_sublevel && input->Valid();
-  if(compact->need_truncate)
-    compact->truncate_key.DecodeFrom(input->key());
+  if (compact->need_truncate) compact->truncate_key.DecodeFrom(input->key());
   compact->read_size = read_size;
 
   delete input;
@@ -1141,21 +1152,20 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
-  stats.tables_read = options_.enable_sublevel?
-                      compact->compaction->TotalNumInputFiles(
-                              compact->need_truncate,
-                              &compact->truncate_key):
-                      compact->compaction->num_input_files(0);
+  stats.tables_read = options_.enable_sublevel
+                          ? compact->compaction->TotalNumInputFiles(
+                                compact->need_truncate, &compact->truncate_key)
+                          : compact->compaction->num_input_files(0);
   stats.tables_written = compact->outputs.size();
-  stats.bytes_read = options_.enable_sublevel?
-                     read_size:
-                     compact->compaction->num_input_bytes(0);
+  stats.bytes_read = options_.enable_sublevel
+                         ? read_size
+                         : compact->compaction->num_input_bytes(0);
   stats.bytes_written = compact->total_bytes;
   stats.compactions_performed = 1;
 
   mutex_.Lock();
 
-  AddCompactionStat(compact->compaction->level()+1, stats);
+  AddCompactionStat(compact->compaction->level() + 1, stats);
 
   if (status.ok()) {
     status = InstallCompactionResults(compact);
@@ -1725,15 +1735,13 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       return false;
     } else {
       char buf[100];
-      if(options_.enable_sublevel) {
+      if (options_.enable_sublevel) {
         snprintf(buf, sizeof(buf), "%d",
                  versions_->current()->NumFilesInLevel_sub(level));
-      }
-      else {
-        if(level>=versions_->current()->NumLevels()) {
+      } else {
+        if (level >= versions_->current()->NumLevels()) {
           sprintf(buf, "0");
-        }
-        else {
+        } else {
           snprintf(buf, sizeof(buf), "%d",
                    versions_->NumLevelFiles(static_cast<int>(level)));
         }
@@ -1745,70 +1753,80 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     char buf[200];
     snprintf(buf, sizeof(buf),
              "                               Compactions\n"
-                     "Level  Files Size(MB) Time(sec) WA_Table WA_Bytes\n"
-                     "--------------------------------------------------\n");
+             "Level  Files Size(MB) Time(sec) WA_Table WA_Bytes\n"
+             "--------------------------------------------------\n");
     value->append(buf);
     int64_t total_tables_read = 0;
     int64_t total_tables_written = 0;
     int64_t total_bytes_read = 0;
     int64_t total_bytes_written = 0;
-    int levels = options_.enable_sublevel?
-                 versions_->current()->NumLevels_sub():
-                 versions_->current()->NumLevels();
+    int levels = options_.enable_sublevel
+                     ? versions_->current()->NumLevels_sub()
+                     : versions_->current()->NumLevels();
     for (int level = 0; level < levels; level++) {
-      int files = options_.enable_sublevel?
-                  versions_->current()->NumFilesInLevel_sub(level):
-                  versions_->NumLevelFiles(level);
-      int64_t bytes = options_.enable_sublevel?
-                      versions_->current()->NumBytesInLevel_sub(level):
-                      versions_->NumLevelBytes(level);
-      if(stats_.size()>level) {
+      int files = options_.enable_sublevel
+                      ? versions_->current()->NumFilesInLevel_sub(level)
+                      : versions_->NumLevelFiles(level);
+      int64_t bytes = options_.enable_sublevel
+                          ? versions_->current()->NumBytesInLevel_sub(level)
+                          : versions_->NumLevelBytes(level);
+      if (stats_.size() > level) {
         snprintf(buf, sizeof(buf), "%3d %8d %8.0f %9.0f %8.3f %8.3f\n", level,
-                 files, bytes/1048576.0,
-                 stats_[level].micros/1e6,
-                 stats_[level].tables_written*1.0/stats_[level].tables_read,
-                 stats_[level].bytes_written*1.0/stats_[level].bytes_read);
+                 files, bytes / 1048576.0, stats_[level].micros / 1e6,
+                 stats_[level].tables_written * 1.0 / stats_[level].tables_read,
+                 stats_[level].bytes_written * 1.0 / stats_[level].bytes_read);
         value->append(buf);
         total_tables_read += stats_[level].tables_read;
         total_tables_written += stats_[level].tables_written;
         total_bytes_read += stats_[level].bytes_read;
         total_bytes_written += stats_[level].bytes_written;
-      }
-      else {
-        snprintf(buf, sizeof(buf), "%3d %8d %8.0f N/A\n", level,
-                 files, versions_->NumLevelBytes(level)/1048576.0);
+      } else {
+        snprintf(buf, sizeof(buf), "%3d %8d %8.0f N/A\n", level, files,
+                 versions_->NumLevelBytes(level) / 1048576.0);
         value->append(buf);
       }
     }
-    snprintf(buf, sizeof(buf), "Overall WA_table: %8.3f\n", total_tables_written*1.0/total_tables_read);
+    snprintf(buf, sizeof(buf), "Overall WA_table: %8.3f\n",
+             total_tables_written * 1.0 / total_tables_read);
     value->append(buf);
-    snprintf(buf, sizeof(buf), "Overall WA_bytes: %8.3f\n", total_bytes_written*1.0/total_bytes_read);
+    snprintf(buf, sizeof(buf), "Overall WA_bytes: %8.3f\n",
+             total_bytes_written * 1.0 / total_bytes_read);
     value->append(buf);
 
     snprintf(buf, sizeof(buf), "Total # Gets: %ld\n",
              (long)get_stats_.gets_performed);
     value->append(buf);
-    if (get_stats_.gets_performed>0) {
-      snprintf(buf, sizeof(buf), "Average # table index blocks read in each Get: %8.3f\n",
-               get_stats_.index_block_reads*1.0/get_stats_.gets_performed);
+    if (get_stats_.gets_performed > 0) {
+      snprintf(buf, sizeof(buf),
+               "Average # table index blocks read in each Get: %8.3f\n",
+               get_stats_.index_block_reads * 1.0 / get_stats_.gets_performed);
       value->append(buf);
-      snprintf(buf, sizeof(buf), "Average # table index blocks load in each Get: %8.3f\n",
-               (get_stats_.index_block_reads-get_stats_.index_block_cache_hits)*1.0/get_stats_.gets_performed);
+      snprintf(
+          buf, sizeof(buf),
+          "Average # table index blocks load in each Get: %8.3f\n",
+          (get_stats_.index_block_reads - get_stats_.index_block_cache_hits) *
+              1.0 / get_stats_.gets_performed);
       value->append(buf);
-      snprintf(buf, sizeof(buf), "Average # table data blocks read in each Get: %8.3f\n",
-               get_stats_.data_block_reads*1.0/get_stats_.gets_performed);
+      snprintf(buf, sizeof(buf),
+               "Average # table data blocks read in each Get: %8.3f\n",
+               get_stats_.data_block_reads * 1.0 / get_stats_.gets_performed);
       value->append(buf);
-      snprintf(buf, sizeof(buf), "Average # table data blocks load in each Get: %8.3f\n",
-               (get_stats_.data_block_reads-get_stats_.data_block_cache_hits)*1.0/get_stats_.gets_performed);
+      snprintf(
+          buf, sizeof(buf),
+          "Average # table data blocks load in each Get: %8.3f\n",
+          (get_stats_.data_block_reads - get_stats_.data_block_cache_hits) *
+              1.0 / get_stats_.gets_performed);
       value->append(buf);
-      if (get_stats_.index_block_reads>0) {
+      if (get_stats_.index_block_reads > 0) {
         snprintf(buf, sizeof(buf),
-                 "Index block cache hit rate: %8.3f\nData block cache hit rate: %8.3f\n",
-                 get_stats_.index_block_cache_hits*1.0/get_stats_.index_block_reads,
-                 get_stats_.data_block_cache_hits*1.0/get_stats_.data_block_reads);
-      }
-      else {
-        assert(get_stats_.data_block_reads==0);
+                 "Index block cache hit rate: %8.3f\nData block cache hit "
+                 "rate: %8.3f\n",
+                 get_stats_.index_block_cache_hits * 1.0 /
+                     get_stats_.index_block_reads,
+                 get_stats_.data_block_cache_hits * 1.0 /
+                     get_stats_.data_block_reads);
+      } else {
+        assert(get_stats_.data_block_reads == 0);
         sprintf(buf, "No read happened at SSTables\n");
       }
       value->append(buf);
@@ -1822,7 +1840,9 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
     return true;
   } else if (in == "num-levels") {
     char buf[10];
-    int levels = options_.enable_sublevel? versions_->current()->NumLevels_sub(): versions_->current()->NumLevels();
+    int levels = options_.enable_sublevel
+                     ? versions_->current()->NumLevels_sub()
+                     : versions_->current()->NumLevels();
     snprintf(buf, sizeof(buf), "%d", levels);
     *value = buf;
     return true;

@@ -13,7 +13,6 @@
 #include <stdint.h>
 #include <string>
 
-
 #include "pdlfs-common/cache.h"
 #include "pdlfs-common/leveldb/db/dbformat.h"
 #include "pdlfs-common/leveldb/db/table_get_stats.h"
@@ -48,7 +47,8 @@ class TableCache {
   // call (*handle_result)(arg, found_key, found_value).
   Status Get(const ReadOptions& options, uint64_t file_number,
              uint64_t file_size, SequenceOff seq_off, const Slice& k, void* arg,
-             void (*handle_result)(void*, const Slice&, const Slice&), TableGetStats* tstats);
+             void (*handle_result)(void*, const Slice&, const Slice&),
+             TableGetStats* tstats);
 
   // Evict any entry for the specified file number
   void Evict(uint64_t file_number);
@@ -60,7 +60,7 @@ class TableCache {
   // Load the table for the specified file number.  Bind the
   // given sequence offset to the table.
   Status FindTable(uint64_t file_number, uint64_t file_size,
-                   SequenceOff seq_off, Cache::Handle**, TableGetStats*tstats);
+                   SequenceOff seq_off, Cache::Handle**, TableGetStats* tstats);
 
   // No copying allowed
   TableCache(const TableCache&);

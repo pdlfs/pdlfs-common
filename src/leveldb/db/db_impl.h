@@ -240,9 +240,8 @@ class DBImpl : public DB {
   };
   std::vector<CompactionStats> stats_;
 
-  void AddCompactionStat(int level, const CompactionStats &c) {
-    if(stats_.size()<=level)
-      stats_.resize(level+1);
+  void AddCompactionStat(int level, const CompactionStats& c) {
+    if (stats_.size() <= level) stats_.resize(level + 1);
     stats_[level].Add(c);
   }
 

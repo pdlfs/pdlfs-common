@@ -99,8 +99,7 @@ Status TableCache::FindTable(uint64_t fnum, uint64_t fsize, SequenceOff off,
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   } else {
-    if(tstats!=NULL)
-      ++tstats->index_block_cache_hits;
+    if (tstats != NULL) ++tstats->index_block_cache_hits;
     // Fetch table from cache
     TableAndFile* tf = FetchTableAndFile(cache_, *handle);
     if (tf->off != off) {
@@ -281,8 +280,7 @@ Status TableCache::Get(const ReadOptions& options, uint64_t fnum,
                        uint64_t fsize, SequenceOff off, const Slice& key,
                        void* arg, Saver saver, TableGetStats* tstat) {
   Cache::Handle* handle;
-  if(tstat!=NULL)
-    ++tstat->index_block_reads;
+  if (tstat != NULL) ++tstat->index_block_reads;
   Status s = FindTable(fnum, fsize, off, &handle, tstat);
   if (!s.ok()) {
     return s;

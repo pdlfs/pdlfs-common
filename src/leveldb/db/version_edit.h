@@ -79,9 +79,7 @@ class VersionEdit {
     updated_files_.insert(std::make_pair(level, file));
   }
 
-  void SetUpdateTruncate(const InternalKey &key) {
-    truncate_key_ = key;
-  }
+  void SetUpdateTruncate(const InternalKey& key) { truncate_key_ = key; }
 
   void EncodeTo(std::string* dst) const;
   Status DecodeFrom(const Slice& src);
