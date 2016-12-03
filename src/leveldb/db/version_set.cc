@@ -1299,6 +1299,7 @@ void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
           version->files_[version->files_.size() - 2].clear();
           version->input_pool_[level].second = 2;
         }
+        length = version->input_pool_[level].second-1;
         version->input_pool_[level].second = 1;
         version->output_pool_.push_back(
             std::make_pair(version->input_pool_[level].first + 1, length));
@@ -1915,12 +1916,9 @@ void VersionSet::SetupSublevelInputs(int level, Compaction* c) {
   // Pick up the table with the smallest left bound
   FileMetaData* f = NULL;
   int sublevel = -1;
-  const int output_pool_level_2nd = current_->output_pool_[level].second;
-  for (int i = 0; i < output_pool_level_2nd; ++i) {
-    const int output_pool_level_1st = current_->output_pool_[level].first;
-    const int row = i + output_pool_level_1st;
-    const bool is_empty = current_->files_[row].empty();
-    if (!is_empty &&
+  for (int i = 0; i < current_->output_pool_[level].second; ++i) {
+    const int row = i + current_->output_pool_[level].first;
+    if (!current_->files_[row].empty() &&
         (f == NULL ||
          icmp_.Compare(current_->files_[row][0]->smallest, f->smallest) < 0)) {
       f = current_->files_[row][0];

@@ -285,7 +285,7 @@ class Stats {
       // elapsed times.
       double elapsed = (finish_ - start_) * 1e-6;
       char rate[100];
-      snprintf(rate, sizeof(rate), "%6.1f MB/s",
+      snprintf(rate, sizeof(rate), "%6.4f MB/s",
                (bytes_ / 1048576.0) / elapsed);
       extra = rate;
     }
@@ -1048,6 +1048,8 @@ int main(int argc, char** argv) {
 
   if (FLAGS_range < 0) {
     FLAGS_range = FLAGS_num;
+    fprintf(stdout, "range=%d\n", FLAGS_range);
+    fflush(stdout);
   }
 
   pdlfs::Benchmark benchmark;
