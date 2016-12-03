@@ -1213,7 +1213,6 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
 }
 
 void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
-  static int count = 0;
   assert(options_->enable_sublevel);
   assert(version->input_pool_.size() == version->output_pool_.size());
   assert(version->input_pool_.size() == 2);
@@ -1306,7 +1305,7 @@ void VersionSet::ReorganizeSublevels(Version* version, VersionEdit* edit) {
       } else {
         version->output_pool_.push_back(std::make_pair(base_sublevel, length));
       }
-#if 1
+#if 0
       uint64_t bbytes = 0;
       for (int i = version->input_pool_[level].first,
                end = version->input_pool_[level].first +
