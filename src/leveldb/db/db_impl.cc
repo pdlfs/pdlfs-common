@@ -936,19 +936,20 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
 Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   mutex_.AssertHeld();
   if (!options_.enable_sublevel) {
-    Log(options_.info_log, "Compacted (%d,%ld)@%d + (%d,%ld)@%d => (%d,%lld)",
+    Log(options_.info_log, "Compacted (%d,%lld)@%d + (%d,%lld)@%d => (%d,%lld)",
         compact->compaction->num_input_files(0),
-        (long)compact->compaction->num_input_bytes(0),
+        static_cast<long long>(compact->compaction->num_input_bytes(0)),
         compact->compaction->level(), compact->compaction->num_input_files(1),
-        (long)compact->compaction->num_input_bytes(1),
+        static_cast<long long>(compact->compaction->num_input_bytes(1)),
         compact->compaction->level() + 1, (int)compact->outputs.size(),
         static_cast<long long>(compact->total_bytes));
   } else {
     // TODO improve log for sublevel
-    Log(options_.info_log, "Compacted (%d,%ld)@%d => (%d,%lld)",
+    Log(options_.info_log, "Compacted (%d,%lld)@%d => (%d,%lld)",
         compact->compaction->TotalNumInputFiles(compact->need_truncate,
                                                 &compact->truncate_key),
-        (long)compact->read_size, compact->compaction->level(),
+        static_cast<long long>(compact->read_size),
+        compact->compaction->level(),
         (int)compact->outputs.size(),
         static_cast<long long>(compact->total_bytes));
   }
