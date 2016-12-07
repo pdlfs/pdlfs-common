@@ -2187,7 +2187,7 @@ void Compaction::AddInputDeletionsOrUpdates(VersionEdit* edit,
       const FileMetaData* meta = inputs_[which][i];
       if (icmp.Compare(meta->largest, key) < 0) {
         edit->DeleteFile(base_input_sublevel_ + which,
-                         inputs_[which][i]->number);
+                         meta->number);
       } else {
         if (icmp.Compare(meta->smallest, key) < 0) {
           edit->UpdateFile(base_input_sublevel_ + which, meta->number);

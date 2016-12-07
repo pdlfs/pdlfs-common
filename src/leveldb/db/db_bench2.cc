@@ -72,6 +72,7 @@ static int FLAGS_l1_compaction_trigger = -1;
 static bool FLAGS_silent_mode = false;
 static bool FLAGS_clear_get_stats_after_stats = true;
 static bool FLAGS_disable_seek_compaction = true;
+static int FLAGS_table_cache_size = -1;
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -334,6 +335,7 @@ struct ThreadState {
 class Benchmark {
  private:
   Cache* cache_;
+  Cache* table_cache_;
   const FilterPolicy* filter_policy_;
   DB* db_;
   int num_;
@@ -417,6 +419,7 @@ class Benchmark {
  public:
   Benchmark()
       : cache_(FLAGS_cache_size >= 0 ? NewLRUCache(FLAGS_cache_size) : NULL),
+        table_cache_(FLAGS_table_cache_size >= 0 ? NewLRUCache(FLAGS_table_cache_size) : NULL),
         filter_policy_(FLAGS_bloom_bits >= 0
                            ? NewBloomFilterPolicy(FLAGS_bloom_bits)
                            : NULL),
@@ -441,6 +444,7 @@ class Benchmark {
   ~Benchmark() {
     delete db_;
     delete cache_;
+    delete table_cache_;
     delete filter_policy_;
   }
 
@@ -726,6 +730,7 @@ class Benchmark {
     options.env = g_env;
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
+    options.table_cache = table_cache_;
     options.write_buffer_size = FLAGS_write_buffer_size;
     options.block_size = FLAGS_block_size;
     options.filter_policy = filter_policy_;
@@ -1031,6 +1036,9 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--clear_get_stats_after_stats=%d%c", &n,
                       &junk) == 1) {
       FLAGS_clear_get_stats_after_stats = n;
+    } else if (sscanf(argv[i], "--table_cache_size=%d%c", &n,
+                      &junk) == 1) {
+      FLAGS_table_cache_size = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
