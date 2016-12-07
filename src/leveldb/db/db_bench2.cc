@@ -827,7 +827,7 @@ class Benchmark {
     int64_t bytes = 0;
     for (int i = 0; i < reads_; i++) {
       char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
+      const int k = thread->rand.Next() % FLAGS_range;
       snprintf(key, sizeof(key), "%016d", k);
       if (db_->Get(options, key, &value).ok()) {
         found++;
@@ -846,7 +846,7 @@ class Benchmark {
     std::string value;
     for (int i = 0; i < reads_; i++) {
       char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
+      const int k = thread->rand.Next() % FLAGS_range;
       snprintf(key, sizeof(key), "%016d.", k);
       db_->Get(options, key, &value);
       thread->stats.FinishedSingleOp();
@@ -856,7 +856,7 @@ class Benchmark {
   void ReadHot(ThreadState* thread) {
     ReadOptions options;
     std::string value;
-    const int range = (FLAGS_num + 99) / 100;
+    const int range = (FLAGS_range + 99) / 100;
     for (int i = 0; i < reads_; i++) {
       char key[100];
       const int k = thread->rand.Next() % range;
@@ -872,7 +872,7 @@ class Benchmark {
     for (int i = 0; i < reads_; i++) {
       Iterator* iter = db_->NewIterator(options);
       char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
+      const int k = thread->rand.Next() % FLAGS_range;
       snprintf(key, sizeof(key), "%016d", k);
       iter->Seek(key);
       if (iter->Valid() && iter->key() == key) found++;
@@ -891,7 +891,7 @@ class Benchmark {
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
+        const int k = seq ? i + j : (thread->rand.Next() % FLAGS_range);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         batch.Delete(key);
@@ -924,7 +924,7 @@ class Benchmark {
           }
         }
 
-        const int k = thread->rand.Next() % FLAGS_num;
+        const int k = thread->rand.Next() % FLAGS_range;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
