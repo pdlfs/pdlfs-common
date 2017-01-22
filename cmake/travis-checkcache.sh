@@ -131,15 +131,6 @@ else
     echo "autopkg updated to $autopkg"
 fi
 
-if [ x$oldmisc = x$misc ]; then
-    echo "misc packages are ok ($misc)"
-else
-    echo "misc packages are out of date ($oldmisc != $misc)... rebuilding"
-    make snappy gflags glog
-    echo $misc > $verdir/misc
-    echo "misc updated to $misc"
-fi
-
 if [ x$oldmpich = x$mpich ]; then
     echo "mpich packages are ok ($mpich)"
 else
@@ -147,6 +138,15 @@ else
     make mpich
     echo $mpich > $verdir/mpich
     echo "mpich updated to $mpich"
+fi
+
+if [ x$oldmisc = x$misc ]; then
+    echo "misc packages are ok ($misc)"
+else
+    echo "misc packages are out of date ($oldmisc != $misc)... rebuilding"
+    make snappy gflags glog
+    echo $misc > $verdir/misc
+    echo "misc updated to $misc"
 fi
 
 if [ x$oldssio = x$ssio ]; then
