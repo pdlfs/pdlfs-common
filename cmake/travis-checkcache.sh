@@ -140,22 +140,25 @@ else
     echo "mpich updated to $mpich"
 fi
 
-if [ x$oldmisc = x$misc ]; then
-    echo "misc packages are ok ($misc)"
-else
-    echo "misc packages are out of date ($oldmisc != $misc)... rebuilding"
-    make snappy gflags glog
-    echo $misc > $verdir/misc
-    echo "misc updated to $misc"
-fi
+#  only build misc and ssio if we are not prebuilding
+if [ x$CACHE_PREBUILD = x ]; then
+    if [ x$oldmisc = x$misc ]; then
+        echo "misc packages are ok ($misc)"
+    else
+        echo "misc packages are out of date ($oldmisc != $misc)... rebuilding"
+        make snappy gflags glog
+        echo $misc > $verdir/misc
+        echo "misc updated to $misc"
+    fi
 
-if [ x$oldssio = x$ssio ]; then
-    echo "ssio packages are ok ($ssio)"
-else
-    echo "ssio packages are out of date ($oldssio != $ssio)... rebuilding"
-    make margo
-    echo $ssio > $verdir/ssio
-    echo "ssio updated to $ssio"
+    if [ x$oldssio = x$ssio ]; then
+        echo "ssio packages are ok ($ssio)"
+    else
+        echo "ssio packages are out of date ($oldssio != $ssio)... rebuilding"
+        make margo
+        echo $ssio > $verdir/ssio
+        echo "ssio updated to $ssio"
+    fi
 fi
 
 exit 0
