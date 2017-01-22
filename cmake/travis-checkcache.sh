@@ -120,6 +120,7 @@ if [ x${CC} = xgcc -a x${TRAVIS_OS_NAME} = xlinux ]; then
 
         if [ x$CACHE_PREBUILD != x ]; then
             echo Had to PREBUILD gcc, exiting early... try again.
+            touch /tmp/cache_prebuild_retry
             exit 0
         fi
     fi
