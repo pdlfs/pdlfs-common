@@ -117,6 +117,11 @@ if [ x${CC} = xgcc -a x${TRAVIS_OS_NAME} = xlinux ]; then
         echo "gcc updated to $gcc"
         echo ${CC} --version
         ${CC} --version
+
+        if [ x$CACHE_PREBUILD != x ]; then
+            echo Had to PREBUILD gcc, exiting early... try again.
+            exit 0
+        fi
     fi
 else
     echo "skipping gcc on this platform (CC=$CC, OS=$TRAVIS_OS_NAME)"
