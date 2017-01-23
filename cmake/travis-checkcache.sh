@@ -4,6 +4,8 @@
 # 05-Oct-2016  chuck@ece.cmu.edu
 #
 
+cd $HOME
+
 # set wanted versions tokens here
 masterversion=2       # changing this will reset everything
 cmake=1               # for bootstrapping
@@ -31,6 +33,18 @@ else
     rm -rf ${HOME}/cache/bin ${HOME}/cache/lib ${HOME}/cache/lib64
     rm -rf ${HOME}/cache/include ${HOME}/cache/share $verdir
     rm -rf ${HOME}/cache/gcc
+
+    # preload prebuilt cache if requested
+    if [ x$CACHE_PREBUILD != x ]; then
+        target=cache-${TRAVIS_OS_NAME}-${CC}.tgz
+        echo "cache-prebuild: ${CACHE_PREBUILD}/${target}"
+        curl -u ftp:ftp -o /tmp/$target "${CACHE_PREBUILD}/${target}"
+        echo got tar file
+        cd $HOME
+        tar xzf /tmp/$target
+        echo PREBUILD cache load done
+    fi
+
     mkdir -p $verdir
     echo $masterversion > $verdir/masterversion
     echo "set master version to $masterversion"
