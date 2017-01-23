@@ -34,15 +34,15 @@ else
     rm -rf ${HOME}/cache/include ${HOME}/cache/share $verdir
     rm -rf ${HOME}/cache/gcc
 
-    # preload prebuilt cache if requested
-    if [ x$CACHE_PREBUILD != x ]; then
+    # preload initial cache if requested
+    if [ x$CACHE_INITSRC != x ]; then
         target=cache-${TRAVIS_OS_NAME}-${CC}.tgz
-        echo "cache-prebuild: ${CACHE_PREBUILD}/${target}"
-        curl -u ftp:ftp -o /tmp/$target "${CACHE_PREBUILD}/${target}"
+        echo "cache-initsrc: ${CACHE_INITSRC}/${target}"
+        curl -u ftp:ftp -o /tmp/$target "${CACHE_INITSRC}/${target}"
         echo got tar file
         cd $HOME
         tar xzf /tmp/$target
-        echo PREBUILD cache load done
+        echo INITSRC cache load done
     fi
 
     mkdir -p $verdir
