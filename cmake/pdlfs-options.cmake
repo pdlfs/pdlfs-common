@@ -36,6 +36,8 @@ include (xpkg-import)
 #     - SNAPPY_LIBRARY_DIR: optional hint for finding snappy lib
 #   -DPDLFS_VERBOSE=1                      -- set max log verbose level
 #
+# output variables:
+#    PDLFS_COMPONENT_CFG                   -- list of requested components
 #
 # note: package config files for external packages must be preinstalled in 
 #       CMAKE_INSTALL_PATH or on CMAKE_PREFIX_PATH, except as noted.
@@ -96,35 +98,43 @@ set (PDLFS_SNAPPY "OFF" CACHE
 # now start pulling the parts in.  currently we set find_package to
 # REQUIRED (so cmake will fail if the package is missing).  we could
 # remove that and print a (more meaningful?) custom error with a
-# message FATAL_ERROR ...
+# message FATAL_ERROR ...   we also set a ${PDLFS_COMPONENT_CFG}
+# variable list for users to use.
 #
+unset (PDLFS_COMPONENT_CFG)
 
 if (PDLFS_GFLAGS)
     find_package(gflags REQUIRED)
+    list (APPEND PDLFS_COMPONENT_CFG "gflags")
     message (STATUS "gflags enabled")
 endif ()
 
 if (PDLFS_GLOG)
     xdual_import (glog::glog,glog,libglog REQUIRED)
+    list (APPEND PDLFS_COMPONENT_CFG "glog::glog")
     message (STATUS "glog enabled")
 endif ()
 
 if (PDLFS_MERCURY_RPC)
     find_package(mercury CONFIG REQUIRED)
+    list (APPEND PDLFS_COMPONENT_CFG "mercury")
     message (STATUS "mercury rpc enabled")
 endif ()
 
 if (PDLFS_MARGO_RPC)
     xpkg_import_module (margo REQUIRED margo)
+    list (APPEND PDLFS_COMPONENT_CFG "margo")
     message (STATUS "margo rpc enabled")
 endif ()
 
 if (PDLFS_RADOS)
     find_package(RADOS MODULE REQUIRED)
+    list (APPEND PDLFS_COMPONENT_CFG "RADOS")
     message (STATUS "rados enabled")
 endif ()
 
 if (PDLFS_SNAPPY)
     find_package(Snappy MODULE REQUIRED)
+    list (APPEND PDLFS_COMPONENT_CFG "Snappy")
     message (STATUS "snappy enabled")
 endif ()
