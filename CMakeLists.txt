@@ -69,7 +69,7 @@ project (PDLFS-COMMON)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
      "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# try use -std=c++11 if possible
+# turn on -std=c++11 if possible
 set (CMAKE_CXX_STANDARD 11)
 
 # pull in pdlfs handling of generic cmake config
