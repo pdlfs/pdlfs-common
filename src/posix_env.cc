@@ -10,7 +10,7 @@
 
 #include "posix_env.h"
 #include "posix_logger.h"
-#include "posix_sock.h"
+#include "posix_netdev.h"
 
 #include <dirent.h>
 #include <pthread.h>
@@ -470,10 +470,15 @@ class PosixEnv : public Env {
   }
 
   virtual Status FetchHostIPAddrs(std::vector<std::string>* ips) {
-    PosixSock sock;
-    Status s = sock.OpenSocket();
-    if (s.ok()) s = sock.LoadSocketConfig();
-    if (s.ok()) s = sock.GetHostIPAddresses(ips);
+    PosixIf sock;
+    std::vector<Ifr> results;
+    Status s = sock.Open();
+    if (s.ok()) {
+      sock.IfConf(&results);
+      for (size_t i = 0; i < results.size(); i++) {
+        ips->push_back(results[i].ip);
+      }
+    }
     return s;
   }
 
