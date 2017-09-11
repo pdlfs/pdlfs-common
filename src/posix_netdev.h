@@ -12,27 +12,28 @@
 #include "pdlfs-common/status.h"
 
 #include <net/if.h>
+#include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <string>
 #include <vector>
 
 namespace pdlfs {
 
 struct Ifr {
   // Interface name (such as eth0)
-  std::string name;
+  char name[IF_NAMESIZE];
   // Network address (in the form of 11.22.33.44)
-  std::string ip;
+  char ip[INET_ADDRSTRLEN];
   // MTU number (such as 1500, 65520)
   int mtu;
 };
 
+// Low-level access to network devices.
 class PosixIf {
  public:
   PosixIf() : fd_(-1) {
     ifconf_.ifc_buf = reinterpret_cast<char*>(ifr_);
-    ifconf_.ifc_len = sizeof(ifr_);
+    ifconf_.ifc_len = 0;
   }
 
   ~PosixIf() {
