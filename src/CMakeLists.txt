@@ -18,7 +18,7 @@ set (pdlfs-common-srcs arena.cc blkdb.cc cache.cc coding.cc crc32c.cc
      ectrie/twolevel_bucketing.cc env.cc env_files.cc fio.cc fstypes.cc gigaplus.cc
      hash.cc histogram.cc index_cache.cc lease.cc log_reader.cc log_writer.cc
      logging.cc lookup_cache.cc mdb.cc murmur.cc osd.cc ofs.cc ofs_impl.cc
-     port_posix.cc posix_env.cc posix_netdev.cc rpc.cc slice.cc
+     port_posix.cc posix_env.cc posix_logger.cc posix_netdev.cc rpc.cc slice.cc
      spooky.cc spooky_hash.cc status.cc
      strutil.cc testharness.cc testutil.cc xxhash.cc xxhash_impl.cc)
 set (pdlfs-common-tests arena_test.cc blkdb_test.cc cache_test.cc
