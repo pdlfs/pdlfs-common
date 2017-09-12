@@ -79,6 +79,9 @@ Env* Env::Open(const char* name, const char* conf, bool* is_system) {
   if (env_name == "posix" || env_name == "posix.default") {
     *is_system = true;
     return port::posix::GetDefaultEnv();
+  } else if (env_name == "posix.devnull") {
+    *is_system = true;
+    return port::posix::GetDevNullEnv();
   } else if (env_name == "posix.unbufferedio") {
     *is_system = true;
     return port::posix::GetUnBufferedIOEnv();
@@ -87,7 +90,10 @@ Env* Env::Open(const char* name, const char* conf, bool* is_system) {
     return port::posix::GetDirectIOEnv();
   }
 #endif
-  if (env_name == "default") {
+  if (env_name.empty()) {
+    Warn(__LOG_ARGS__, "Open env without specifying a name...");
+  }
+  if (env_name.empty() || env_name == "default") {
     *is_system = true;
     Env* env = Env::Default();
     return env;
