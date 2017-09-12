@@ -19,7 +19,7 @@
 
 namespace pdlfs {
 
-static std::string ToFileName(const Fentry& fentry) {
+static std::string PosixName(const Fentry& fentry) {
   std::string key_prefix = fentry.UntypedKeyPrefix();
   char tmp[200];
   sprintf(tmp, "F_");
@@ -29,6 +29,10 @@ static std::string ToFileName(const Fentry& fentry) {
     p += 2;
   }
   return tmp;
+}
+
+std::string PosixFio::FileName(const Fentry& fentry) {
+  return root_ + "/" + PosixName(fentry);
 }
 
 #ifndef NDEBUG
@@ -50,7 +54,7 @@ static inline Fio::Handle* NewHandle(int fd) {
 #endif
 }
 
-static inline void Free(Fio::Handle* fh) {
+static inline void FreeHandle(Fio::Handle* fh) {
 #ifndef NDEBUG
   delete dynamic_cast<PosixFd*>(fh);
 #endif
@@ -68,10 +72,8 @@ static inline int ToFd(Fio::Handle* fh) {
 Status PosixFio::Creat(const Fentry& fentry, bool append_only, Handle** fh) {
   Status s;
   const int o1 = append_only ? O_APPEND : 0;
-  std::string fname = root_ + "/";
-  fname += ToFileName(fentry);
-  const char* f = fname.c_str();
-  int fd = open(f, O_RDWR | O_CREAT | O_TRUNC | o1, DEFFILEMODE);
+  std::string fname = FileName(fentry);
+  int fd = open(fname.c_str(), O_RDWR | O_CREAT | O_TRUNC | o1, DEFFILEMODE);
   if (fd != -1) {
     *fh = NewHandle(fd);
   } else {
@@ -87,8 +89,7 @@ Status PosixFio::Open(const Fentry& fentry, bool create_if_missing,
   const int o1 = create_if_missing ? O_CREAT : 0;
   const int o2 = truncate_if_exists ? O_TRUNC : 0;
   const int o3 = append_only ? O_APPEND : 0;
-  std::string fname = root_ + "/";
-  fname += ToFileName(fentry);
+  std::string fname = FileName(fentry);
   int fd = open(fname.c_str(), O_RDWR | o1 | o2 | o3, DEFFILEMODE);
   if (fd == -1) {
     s = IOError(fname, errno);
@@ -112,154 +113,96 @@ Status PosixFio::Open(const Fentry& fentry, bool create_if_missing,
 Status PosixFio::Fstat(const Fentry& fentry, Handle* fh, uint64_t* mtime,
                        uint64_t* size, bool skip_cache) {
   Status s;
-  int fd = ToFd(fh);
   struct stat statbuf;
-  int r = fstat(fd, &statbuf);
-  if (r == 0) {
-    *mtime = 1000LLU * 1000LLU * statbuf.st_mtime;
-    *size = statbuf.st_size;
-  } else {
-    std::string fname = root_ + "/";
-    fname += ToFileName(fentry);
-    s = IOError(fname, errno);
-  }
-
+  int r = fstat(ToFd(fh), &statbuf);
+  if (r != 0) return IOError(FileName(fentry), errno);
+  *mtime = 1000LLU * 1000LLU * statbuf.st_mtime;
+  *size = statbuf.st_size;
   return s;
 }
 
 Status PosixFio::Write(const Fentry& fentry, Handle* fh, const Slice& buf) {
   Status s;
-  int fd = ToFd(fh);
-  ssize_t n = write(fd, buf.data(), buf.size());
-  if (n == -1) {
-    std::string fname = root_ + "/";
-    fname += ToFileName(fentry);
-    s = IOError(fname, errno);
-  }
-
+  ssize_t n = write(ToFd(fh), buf.data(), buf.size());
+  if (n == -1) return IOError(FileName(fentry), errno);
   return s;
 }
 
 Status PosixFio::Pwrite(const Fentry& fentry, Handle* fh, const Slice& buf,
                         uint64_t off) {
   Status s;
-  int fd = ToFd(fh);
-  ssize_t n = pwrite(fd, buf.data(), buf.size(), off);
-  if (n == -1) {
-    std::string fname = root_ + "/";
-    fname += ToFileName(fentry);
-    s = IOError(fname, errno);
-  }
-
+  ssize_t n = pwrite(ToFd(fh), buf.data(), buf.size(), off);
+  if (n == -1) return IOError(FileName(fentry), errno);
   return s;
 }
 
 Status PosixFio::Read(const Fentry& fentry, Handle* fh, Slice* result,
                       uint64_t size, char* scratch) {
   Status s;
-  int fd = ToFd(fh);
-  ssize_t n = read(fd, scratch, size);
-  if (n == -1) {
-    std::string fname = root_ + "/";
-    fname += ToFileName(fentry);
-    s = IOError(fname, errno);
-  }
-  if (s.ok()) {
-    *result = Slice(scratch, n);
-  }
-
+  *result = Slice();
+  ssize_t n = read(ToFd(fh), scratch, size);
+  if (n == -1) return IOError(FileName(fentry), errno);
+  *result = Slice(scratch, n);
   return s;
 }
 
 Status PosixFio::Pread(const Fentry& fentry, Handle* fh, Slice* result,
                        uint64_t off, uint64_t size, char* scratch) {
   Status s;
-  int fd = ToFd(fh);
-  ssize_t n = pread(fd, scratch, size, off);
-  if (n == -1) {
-    std::string fname = root_ + "/";
-    fname += ToFileName(fentry);
-    s = IOError(fname, errno);
-  }
-  if (s.ok()) {
-    *result = Slice(scratch, n);
-  }
-
+  *result = Slice();
+  ssize_t n = pread(ToFd(fh), scratch, size, off);
+  if (n == -1) return IOError(FileName(fentry), errno);
+  *result = Slice(scratch, n);
   return s;
 }
 
 Status PosixFio::Ftrunc(const Fentry& fentry, Handle* fh, uint64_t size) {
   Status s;
-  int fd = ToFd(fh);
-  int r = ftruncate(fd, size);
-  if (r != 0) {
-    std::string fname = root_ + "/";
-    fname += ToFileName(fentry);
-    s = IOError(fname, errno);
-  }
-
+  int r = ftruncate(ToFd(fh), size);
+  if (r != 0) return IOError(FileName(fentry), errno);
   return s;
 }
 
 Status PosixFio::Flush(const Fentry& fentry, Handle* fh, bool force_sync) {
   Status s;
-  if (force_sync) {
-    int fd = ToFd(fh);
-    int r = fdatasync(fd);
-    if (r != 0) {
-      std::string fname = root_ + "/";
-      fname += ToFileName(fentry);
-      s = IOError(fname, errno);
-    }
-  }
-
+  if (!force_sync) return s;
+  int r = fdatasync(ToFd(fh));
+  if (r != 0) return IOError(FileName(fentry), errno);
   return s;
 }
 
 Status PosixFio::Close(const Fentry& fentry, Handle* fh) {
-  int fd = ToFd(fh);
-  close(fd);
-  Free(fh);
-  return Status::OK();
+  Status s;
+  close(ToFd(fh));
+  FreeHandle(fh);
+  return s;
 }
 
 Status PosixFio::Trunc(const Fentry& fentry, uint64_t size) {
   Status s;
-  std::string fname = root_ + "/";
-  fname += ToFileName(fentry);
+  std::string fname = FileName(fentry);
   int r = truncate(fname.c_str(), size);
-  if (r != 0) {
-    return IOError(fname, errno);
-  } else {
-    return s;
-  }
+  if (r != 0) return IOError(fname, errno);
+  return s;
 }
 
 Status PosixFio::Stat(const Fentry& fentry, uint64_t* mtime, uint64_t* size) {
   Status s;
-  std::string fname = root_ + "/";
-  fname += ToFileName(fentry);
+  std::string fname = FileName(fentry);
   struct stat statbuf;
   int r = stat(fname.c_str(), &statbuf);
-  if (r != 0) {
-    return IOError(fname, errno);
-  } else {
-    *mtime = 1000LLU * 1000LLU * statbuf.st_mtime;
-    *size = statbuf.st_size;
-    return s;
-  }
+  if (r != 0) return IOError(fname, errno);
+  *mtime = 1000LLU * 1000LLU * statbuf.st_mtime;
+  *size = statbuf.st_size;
+  return s;
 }
 
 Status PosixFio::Drop(const Fentry& fentry) {
   Status s;
-  std::string fname = root_ + "/";
-  fname += ToFileName(fentry);
+  std::string fname = FileName(fentry);
   int r = unlink(fname.c_str());
-  if (r != 0) {
-    return IOError(fname, errno);
-  } else {
-    return s;
-  }
+  if (r != 0) return IOError(fname, errno);
+  return s;
 }
 
 }  // namespace pdlfs

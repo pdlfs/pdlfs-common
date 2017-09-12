@@ -46,6 +46,7 @@ class PosixFio : public Fio {
   virtual Status Drop(const Fentry& fentry);
 
  private:
+  std::string FileName(const Fentry &fentry);
   std::string root_;
 };
 
