@@ -32,3 +32,4 @@
 #cmakedefine PDLFS_MERCURY_RPC
 #cmakedefine PDLFS_RADOS
 #cmakedefine PDLFS_SNAPPY
+#cmakedefine PDLFS_TBB

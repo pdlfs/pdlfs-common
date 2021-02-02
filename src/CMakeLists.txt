@@ -115,6 +115,11 @@ if (TARGET glog::glog AND PDLFS_GLOG)
     list (APPEND pdlfs-xtra-libs glog::glog)
 endif ()
 
+if (TARGET TBB AND PDLFS_TBB)
+    list (APPEND PDLFS_REQUIRED_PACKAGES TBB)
+    list (APPEND pdlfs-xtra-libs tbb)
+endif ()
+
 if (PDLFS_GFLAGS)
     if (TARGET gflags OR TARGET gflags-shared OR TARGET gflags-static)
         list (APPEND PDLFS_REQUIRED_PACKAGES gflags)
