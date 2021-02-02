@@ -121,6 +121,8 @@ set (PDLFS_RADOS "OFF" CACHE
      BOOL "Include RADOS object store")
 set (PDLFS_SNAPPY "OFF" CACHE
      BOOL "Include (libsnappy-dev) for compression")
+set (PDLFS_TBB "OFF" CACHE
+     BOOL "Include (intel-tbb) for parallel STL sort")
 
 #
 # now start pulling the parts in.  currently we set find_package to
@@ -165,4 +167,11 @@ if (PDLFS_SNAPPY)
     find_package(Snappy MODULE REQUIRED)
     list (APPEND PDLFS_COMPONENT_CFG "Snappy")
     message (STATUS "Enabled Snappy - PDLFS_SNAPPY=ON")
+endif ()
+
+if (PDLFS_TBB)
+  # Set TBB_DIR to tbbroot/lib/cmake/tbb
+  find_package(TBB REQUIRED tbb)
+  list (APPEND PDLFS_COMPONENT_CFG "TBB")
+  message (STATUS "Enabled TBB - PDLFS_TBB=ON")
 endif ()
