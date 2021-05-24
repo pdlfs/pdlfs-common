@@ -124,7 +124,9 @@ bool Fentry::DecodeFrom(Slice* input) {
     stat.SetFileMode(mode);
     stat.SetUserId(uid);
     stat.SetGroupId(gid);
+#if defined(DELTAFS_PROTO) || defined(DELTAFS) || defined(INDEXFS)
     stat.SetZerothServer(my_zserver);
+#endif
     stat.SetChangeTime(ctime);
     stat.SetModifyTime(mtime);
 
@@ -177,7 +179,9 @@ Slice Fentry::EncodeTo(char* scratch) const {
   p = EncodeVarint32(p, stat.FileMode());
   p = EncodeVarint32(p, stat.UserId());
   p = EncodeVarint32(p, stat.GroupId());
+#if defined(DELTAFS_PROTO) || defined(DELTAFS) || defined(INDEXFS)
   p = EncodeVarint32(p, stat.ZerothServer());
+#endif
   p = EncodeVarint64(p, stat.ChangeTime());
   p = EncodeVarint64(p, stat.ModifyTime());
 
