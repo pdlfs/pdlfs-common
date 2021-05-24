@@ -35,7 +35,9 @@ TEST(FioTest, EncodeDecode) {
   stat1->SetFileMode(9);
   stat1->SetUserId(10);
   stat1->SetGroupId(11);
+#if defined(DELTAFS_PROTO) || defined(DELTAFS) || defined(INDEXFS)
   stat1->SetZerothServer(12);
+#endif
   stat1->SetChangeTime(13);
   stat1->SetModifyTime(14);
   char tmp1[DELTAFS_FENTRY_BUFSIZE];
