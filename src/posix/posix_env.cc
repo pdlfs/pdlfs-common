@@ -331,12 +331,12 @@ static void InitEnvs() {
   posix_env = base;
 }
 
-static Env* PosixGetUnBufferedIoEnv() {
+static Env* InternalPosixGetUnBufferedIoEnv() {
   port::PthreadCall("pthread_once", pthread_once(&once, InitEnvs));
   return posix_env;
 }
 
-static Env* PosixGetDefaultEnv() {
+static Env* InternalPosixGetDefaultEnv() {
   port::PthreadCall("pthread_once", pthread_once(&once, InitEnvs));
   return posix_env_wrapped;
 }
@@ -371,15 +371,22 @@ Status PosixError(const Slice& err_context, int err_number) {
 // Return the base Env implemented using the standard os io calls.
 // The returned result belongs to the system.
 Env* Env::GetUnBufferedIoEnv() {
-  Env* result = PosixGetUnBufferedIoEnv();
+  Env* result = InternalPosixGetUnBufferedIoEnv();
   return result;
 }
 
 // Return the default Env for common use.
 // The returned result belongs to the system.
 Env* Env::Default() {
-  Env* result = PosixGetDefaultEnv();
+  Env* result = InternalPosixGetDefaultEnv();
   return result;
+}
+
+// obsolete API for backward compat with old code
+namespace port {
+Env* PosixGetDefaultEnv() {
+  return Env::GetUnBufferedIoEnv();
+}
 }
 
 }  // namespace pdlfs

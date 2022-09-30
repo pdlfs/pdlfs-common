@@ -191,5 +191,11 @@ inline bool GetHeapProfile(void (*)(void*, const char*, int), void*) {
 
 extern void PthreadCall(const char* label, int result);
 
+// Obsolete PosixGetDefaultEnv() API (for backward compat only)
+// replace with Env::GetUnBufferedIoEnv(), etc.
+// Result of the call belong to the system.
+// Caller should not delete the result.
+extern Env* PosixGetDefaultEnv();
+
 }  // namespace port
 }  // namespace pdlfs

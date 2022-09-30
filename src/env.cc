@@ -68,7 +68,8 @@ Env* Env::Open(const char* name, const char* conf, bool* is_system) {
     return NULL;  // XXX: impl this
   }
 #endif
-  if (env_name == "unbufferedio") {
+  if (env_name == "unbufferedio" ||
+      env_name == "posix.unbufferedio") { /* obsolete name for back compat */
     *is_system = true;
     return Env::GetUnBufferedIoEnv();
   }

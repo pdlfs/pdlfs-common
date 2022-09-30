@@ -191,6 +191,12 @@ class Env {
   // Create and return a log file for storing informational messages.
   virtual Status NewLogger(const char* fname, Logger** result) = 0;
 
+  // Obsolete alias for CurrentMicros() (for backward compat only)
+  static uint64_t NowMicros() {
+    extern uint64_t CurrentMicros();
+    return CurrentMicros();
+  }
+
  private:
   // No copying allowed
   void operator=(const Env&);
