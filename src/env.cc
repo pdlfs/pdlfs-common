@@ -191,28 +191,12 @@ class PosixGoogleLogger : public Logger {
     return base;
   }
 
-  static ::google::LogSeverity PdlfsToGoogleSeverity(int severity) {
-    switch (severity) {
-      case 0:
-        return ::google::INFO;
-      case 1:
-        return ::google::WARNING;
-      case 2:
-        return ::google::ERROR;
-      case 3:
-        return ::google::FATAL;
-      default:
-        return ::google::INFO;
-    }
-  }
-
   virtual void Logv(const char* file, int line, int severity, int verbose,
                     const char* format, va_list ap) {
     if (severity > 0 || VLOG_IS_ON(verbose)) {
       char buffer[500];
       char* msg = VsnprintfWrapper(buffer, format, ap);
-      ::google::LogSeverity gseverity = PdlfsToGoogleSeverity(severity);
-      ::google::LogMessage(file, line, gseverity).stream() << msg;
+      ::google::LogMessage(file, line, severity).stream() << msg;
       if (msg != buffer) {
         delete[] msg;
       }
